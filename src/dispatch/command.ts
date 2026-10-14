@@ -16,7 +16,7 @@ import type { Effect, Option } from "effect";
 import type { AgentCli, AgentPassFailed } from "../agent/agent-cli.ts";
 import type { AgentCredential } from "../agent/credential.ts";
 import type { PromptUnusable } from "../agent/prompt-source.ts";
-import type { BessemerConfig } from "../config/config.ts";
+import type { SpeepoboxConfig } from "../config/config.ts";
 import type { DockerUnavailable, GhUnavailable, ImageUnavailable } from "../doctor/probes.ts";
 import type { Forge, ForgeError } from "../forge/forge.ts";
 import type { Git, GitError } from "../git/git.ts";
@@ -183,7 +183,7 @@ const hardReset = Options.boolean("hard-reset").pipe(
 // The scriptability escape hatch (T86): a command line missing an answer is
 // refused as it is off a terminal, and the picker is never asked. It is a
 // boolean the request carries, so the `AnswerMissing` the dispatch raises
-// tells the entrypoint whether to ask. It is not a modifier: `bessemer
+// tells the entrypoint whether to ask. It is not a modifier: `speepobox
 // --no-input` alone is a dispatch and is refused, rather than being usage.
 const noInput = Options.boolean("no-input").pipe(
   Options.withDescription(
@@ -211,7 +211,7 @@ const dispatchCommand = (
   forgeRepo: Option.Option<RepoSlug>,
 ) =>
   Command.make(
-    "bessemer",
+    "speepobox",
     {
       spec,
       branch,
@@ -266,7 +266,7 @@ export const dispatchCli = (
   | PromptUnusable
   | ForgeError
   | ValidationError,
-  | BessemerConfig
+  | SpeepoboxConfig
   | Ledger
   | RunLock
   | Git
@@ -283,7 +283,7 @@ export const dispatchCli = (
   | Prompt
 > =>
   Command.run(dispatchCommand(repoRoot, selfHosted, credential, dispatcherRevision, forgeRepo), {
-    name: "bessemer",
+    name: "speepobox",
     version: "0.1.0",
-    executable: "bessemer",
-  })(["node", "bessemer", ...argv]);
+    executable: "speepobox",
+  })(["node", "speepobox", ...argv]);

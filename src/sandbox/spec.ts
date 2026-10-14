@@ -25,7 +25,7 @@
 import { basename, join } from "node:path";
 import { type Effect, Option } from "effect";
 import type { AgentCredential } from "../agent/credential.ts";
-import type { BessemerConfigShape } from "../config/config.ts";
+import type { SpeepoboxConfigShape } from "../config/config.ts";
 import { resolveSandboxEnvFile, resolveSetupHookPath } from "../config/paths.ts";
 import type { DispatchPlan } from "../dispatch/plan.ts";
 import type { RepoUrl } from "../git/repo-url.ts";
@@ -47,7 +47,7 @@ export const FEATURE_ISSUES_TARGET = "/feature-issues";
 // Where an orchestrator-owned file lands inside the container, as bash mounts
 // its setup script (`run.sh:1328`). A directory of single files, never the
 // host directory holding them: that one holds `.env` and other runs' state.
-export const SETUP_HOOK_DIR = "/bessemer";
+export const SETUP_HOOK_DIR = "/speepobox";
 
 // The workspace, trusted by every git in the container. Docker Desktop reports
 // a bind mount's own directory as root-owned while the files under it keep
@@ -99,7 +99,7 @@ export interface SandboxSpec {
   // inferred from a name (`ownership/labels.ts`, design rule 3).
   readonly name: string;
   readonly image: string;
-  // The host fact the `bessemer.repo` label hashes. It rides on the spec
+  // The host fact the `speepobox.repo` label hashes. It rides on the spec
   // rather than being resolved here: it is resolved once at the composition
   // root and passed down (AGENTS.md), and a re-derivation here would make the
   // label depend on where the process happened to start.
@@ -109,11 +109,11 @@ export interface SandboxSpec {
   readonly env: ReadonlyArray<SandboxEnvVar>;
   // The file docker reads the rest of the container's environment out of, when
   // the served repo declares one (T61) — `docker run --env-file <path>`. Its
-  // own field beside `env` above, which stays bessemer's one-variable-at-a-time
+  // own field beside `env` above, which stays speepobox's one-variable-at-a-time
   // allowlist: that list is what this process forwards by name, and this is
   // what the repo itself chose to hand its own containers.
   //
-  // **Bessemer never opens the file; docker reads it.** That is *why* its
+  // **Speepobox never opens the file; docker reads it.** That is *why* its
   // values cannot reach argv, a log, the ledger, or an event — this path may
   // appear in any of them, the contents never, because nothing under `src/`
   // reads them. Absent means the repo declared none; an outside or missing
@@ -222,7 +222,7 @@ export const sandboxSpecFor = (fields: {
   readonly plan: DispatchPlan;
   readonly repoRoot: string;
   readonly workspace: RepoUrl;
-  readonly config: BessemerConfigShape;
+  readonly config: SpeepoboxConfigShape;
   readonly credential: AgentCredential;
 }): SandboxSpec => ({
   name: fields.plan.containerId,
@@ -302,7 +302,7 @@ export const renderRunArgs = (spec: SandboxSpec): ReadonlyArray<string> => [
 export interface SandboxBuildSpec {
   readonly tag: string;
   // The build context, whole: every file in it is sent to the daemon, which is
-  // why the caller names `.bessemer/image` and never the repo root, whose
+  // why the caller names `.speepobox/image` and never the repo root, whose
   // `checkouts/` holds the clones of other runs.
   readonly context: string;
   readonly dockerfile: string;

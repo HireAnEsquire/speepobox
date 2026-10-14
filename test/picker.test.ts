@@ -11,7 +11,7 @@ import { FileSystem, Terminal } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { DateTime, Effect, Either, Layer, Option, Ref, type Scope, TestClock } from "effect";
 import { appCompositionFor, appDryRunLiveFor, modifiersFor } from "../src/app.ts";
-import { BessemerConfig, type BessemerConfigShape, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, type SpeepoboxConfigShape, defaultConfig } from "../src/config/config.ts";
 import type { DispatchRequest } from "../src/dispatch/dispatch.ts";
 import { AnswerMissing, type GuardRefused, issueSetRefusal } from "../src/dispatch/guards.ts";
 import { renderFailure } from "../src/dispatch/render.ts";
@@ -71,7 +71,7 @@ import {
 } from "./support/prompt-fake.ts";
 
 const SPEC = "T3";
-const BRANCH = "bessemer-t3";
+const BRANCH = "speepobox-t3";
 const NOW = 1_759_000_000_000;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -86,12 +86,12 @@ const branchAt = (name: string, days: number): LocalBranch => ({
 const BRANCHES: ReadonlyArray<LocalBranch> = [
   branchAt("main", 1),
   branchAt(BRANCH, 2),
-  branchAt("bessemer-t80", 9),
+  branchAt("speepobox-t80", 9),
 ];
 
 // The branch the dispatcher is standing on, which git would refuse a fetch
 // into — the guard's own question (T5), and here a disabled row.
-const CHECKED_OUT = "bessemer-t81";
+const CHECKED_OUT = "speepobox-t81";
 
 const WORLD: BranchWorld = {
   branches: [...BRANCHES, branchAt(CHECKED_OUT, 3)],
@@ -149,7 +149,7 @@ interface PickOptions {
   // all — derived state, so the hints go and the list stays.
   readonly records?: Either.Either<ReadonlyArray<RunRecord>, LedgerError>;
   readonly modifiers?: ReadonlyArray<string>;
-  readonly config?: Partial<BessemerConfigShape>;
+  readonly config?: Partial<SpeepoboxConfigShape>;
   // The base each branch's newest ledger row recorded (T82); a branch absent
   // here has none, and the chain falls through to the configured `base`.
   readonly lastBases?: Readonly<Record<string, string>>;
@@ -268,7 +268,7 @@ const pick = (
             ...(options.editor === undefined
               ? []
               : [scriptedExecutor({ "sh -c": options.editor })]),
-            Layer.succeed(BessemerConfig, {
+            Layer.succeed(SpeepoboxConfig, {
               ...defaultConfig,
               runtimeRoot,
               base: CONFIG_BASE,
@@ -322,7 +322,7 @@ describe("the rows", () => {
       "⛔ PROTECTED — main",
       BRANCH,
       `⛔ CHECKED OUT — ${CHECKED_OUT}`,
-      "bessemer-t80",
+      "speepobox-t80",
     ]);
   });
 
@@ -343,7 +343,7 @@ describe("the rows", () => {
   it("ages every row, and says what the ledger remembers about the branch", () => {
     const rows = branchRows("", WORLD);
     expect(rows.find((row) => row.label === BRANCH)?.hint).toBe("2d ago · needs-work · #37");
-    expect(rows.find((row) => row.label === "bessemer-t80")?.hint).toBe("9d ago");
+    expect(rows.find((row) => row.label === "speepobox-t80")?.hint).toBe("9d ago");
   });
 
   // The marquee case (13): `tsf` finds `tseff` in fzf and finds **nothing**
@@ -387,7 +387,7 @@ describe("the rows", () => {
       "main",
       BRANCH,
       CHECKED_OUT,
-      "bessemer-t80",
+      "speepobox-t80",
     ]);
   });
 
@@ -395,18 +395,18 @@ describe("the rows", () => {
     const hints = ledgerHints([
       ledgerRow(BRANCH, "approved", 37),
       ledgerRow(BRANCH, "needs-work", 12),
-      ledgerRow("bessemer-t80", "approved", null),
+      ledgerRow("speepobox-t80", "approved", null),
     ]);
     expect(hints.get(BRANCH)).toBe("approved · #37");
     // A PR the row never opened is absent from the hint rather than empty.
-    expect(hints.get("bessemer-t80")).toBe("approved");
+    expect(hints.get("speepobox-t80")).toBe("approved");
   });
 });
 
 describe("the command line", () => {
   it("is the words a dispatch would have been typed as", () => {
     expect(argvFor(SPEC, BRANCH, [])).toEqual([SPEC, "--branch", BRANCH]);
-    expect(commandLine(argvFor(SPEC, BRANCH, []))).toBe(`bessemer ${SPEC} --branch ${BRANCH}`);
+    expect(commandLine(argvFor(SPEC, BRANCH, []))).toBe(`speepobox ${SPEC} --branch ${BRANCH}`);
   });
 
   // bash's copy-paste parity (`run.sh:48`): what is printed is what pastes
@@ -447,10 +447,10 @@ describe("the wizard", () => {
         { label: "⛔ PROTECTED — main", hint: "1d ago", disabled: true },
         { label: BRANCH, hint: "2d ago · needs-work · #37" },
         { label: `⛔ CHECKED OUT — ${CHECKED_OUT}`, hint: "3d ago", disabled: true },
-        { label: "bessemer-t80", hint: "9d ago" },
+        { label: "speepobox-t80", hint: "9d ago" },
       ]);
       // And the summary carried the command line those words spell.
-      expect(result.asked[3]?.message).toContain(`bessemer ${SPEC} --branch ${BRANCH}`);
+      expect(result.asked[3]?.message).toContain(`speepobox ${SPEC} --branch ${BRANCH}`);
       expect(result.asked[4]?.rows.map((row) => row.label)).toEqual([
         "Dispatch",
         "Edit source",
@@ -494,7 +494,7 @@ describe("the wizard", () => {
       });
 
       expect(answered(result)).toEqual([SPEC, "--branch", BRANCH, "--dry-run"]);
-      expect(result.asked[3]?.message).toContain(`bessemer ${SPEC} --branch ${BRANCH} --dry-run`);
+      expect(result.asked[3]?.message).toContain(`speepobox ${SPEC} --branch ${BRANCH} --dry-run`);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -589,7 +589,7 @@ describe("the base step", () => {
     Effect.gen(function* () {
       const result = yield* pick({
         answers: [SPEC, BRANCH, ENTER, "Dispatch"],
-        lastBases: { "bessemer-t80": "origin/release-2" },
+        lastBases: { "speepobox-t80": "origin/release-2" },
       });
 
       expect(answered(result)).toEqual([SPEC, "--branch", BRANCH]);
@@ -608,7 +608,7 @@ describe("the base step", () => {
 
       expect(answered(result)).toEqual([SPEC, "--branch", BRANCH, "--base", "origin/release-2"]);
       expect(result.asked[3]?.message).toContain(
-        `bessemer ${SPEC} --branch ${BRANCH} --base origin/release-2`,
+        `speepobox ${SPEC} --branch ${BRANCH} --base origin/release-2`,
       );
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -664,11 +664,11 @@ describe("the summary's edit rows", () => {
   it.scoped("re-runs the branch step and then the base step on Edit branch", () =>
     Effect.gen(function* () {
       const result = yield* pick({
-        answers: [SPEC, BRANCH, ENTER, "Edit branch", "bessemer-t80", ENTER, "Dispatch"],
-        lastBases: { "bessemer-t80": "origin/release-2" },
+        answers: [SPEC, BRANCH, ENTER, "Edit branch", "speepobox-t80", ENTER, "Dispatch"],
+        lastBases: { "speepobox-t80": "origin/release-2" },
       });
 
-      expect(answered(result)).toEqual([SPEC, "--branch", "bessemer-t80"]);
+      expect(answered(result)).toEqual([SPEC, "--branch", "speepobox-t80"]);
       expect(result.asked.map((question) => question.message)).toEqual([
         "What should the run work on?",
         "Which branch?",
@@ -684,7 +684,7 @@ describe("the summary's edit rows", () => {
       // the new branch's chain.
       expect(result.asked[5]?.initial).toBe(BRANCH);
       expect(result.asked[6]?.initial).toBe(defaultBaseLabel("origin/release-2"));
-      expect(result.asked[7]?.message).toContain("branch: bessemer-t80");
+      expect(result.asked[7]?.message).toContain("branch: speepobox-t80");
       expect(result.asked[7]?.message).toContain("base:   [default] origin/release-2");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -830,7 +830,7 @@ describe("a repository git cannot read", () => {
 describe("the summary block", () => {
   it("says what was chosen and how to type it again", () => {
     expect(summaryNote(SPEC, BRANCH, argvFor(SPEC, BRANCH, []))).toBe(
-      [`spec:   ${SPEC}`, `branch: ${BRANCH}`, "", `bessemer ${SPEC} --branch ${BRANCH}`].join(
+      [`spec:   ${SPEC}`, `branch: ${BRANCH}`, "", `speepobox ${SPEC} --branch ${BRANCH}`].join(
         "\n",
       ),
     );
@@ -894,7 +894,7 @@ describe("the feature rows (T83)", () => {
         "issues: T2,T10",
         "branch: b",
         "",
-        "bessemer --feature f --issues T2,T10 --branch b",
+        "speepobox --feature f --issues T2,T10 --branch b",
       ].join("\n"),
     );
   });
@@ -1009,7 +1009,7 @@ describe("the issues step (T83)", () => {
       ]);
       expect(result.asked[4]?.message).toContain("issues: all");
       expect(result.asked[4]?.message).toContain(
-        `bessemer --feature ${FEATURE} --issues all --branch ${BRANCH}`,
+        `speepobox --feature ${FEATURE} --issues all --branch ${BRANCH}`,
       );
       expect(result.asked[5]?.rows.map((row) => row.label)).toEqual([
         "Dispatch",
@@ -1224,7 +1224,7 @@ describe("the issues step (T83)", () => {
           all,
           ENTER,
           "Edit branch",
-          "bessemer-t80",
+          "speepobox-t80",
           all,
           ENTER,
           "Dispatch",
@@ -1237,7 +1237,7 @@ describe("the issues step (T83)", () => {
         "--issues",
         "all",
         "--branch",
-        "bessemer-t80",
+        "speepobox-t80",
       ]);
       expect(result.asked.map((question) => question.message)).toEqual([
         "What should the run work on?",
@@ -1259,7 +1259,7 @@ describe("the issues step (T83)", () => {
         ),
       ).toEqual([
         { _tag: "RevParse", repo: expect.any(String), rev: `refs/heads/${BRANCH}` },
-        { _tag: "RevParse", repo: expect.any(String), rev: "refs/heads/bessemer-t80" },
+        { _tag: "RevParse", repo: expect.any(String), rev: "refs/heads/speepobox-t80" },
       ]);
       expect(result.issueCalls).toHaveLength(2);
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -1337,7 +1337,7 @@ const runRow = (branch: string, daysAgo: number, spec: string, outcome: string):
 // its newer run approved.
 const THREE_RUNS: ReadonlyArray<RunRecord> = [
   runRow(BRANCH, 1, SPEC, "approved"),
-  runRow("bessemer-t80", 2, "T80", "needs-work"),
+  runRow("speepobox-t80", 2, "T80", "needs-work"),
   runRow(BRANCH, 3, SPEC, "needs-work"),
 ];
 
@@ -1362,7 +1362,7 @@ describe("the task row (T85)", () => {
         "Dispatch this?",
       ]);
       // The echoed command line quotes the text, so it pastes back whole.
-      expect(result.asked[3]?.message).toContain(`bessemer --task '${TASK}' --branch b`);
+      expect(result.asked[3]?.message).toContain(`speepobox --task '${TASK}' --branch b`);
       expect(result.asked[4]?.rows.map((row) => row.label)).toEqual([
         "Dispatch",
         "Edit source",
@@ -1399,7 +1399,7 @@ describe("the resume row (T85)", () => {
   it("takes each branch's newest record, newest first, capped at ten", () => {
     expect(latestPerBranch(THREE_RUNS).map((record) => record.branch)).toEqual([
       BRANCH,
-      "bessemer-t80",
+      "speepobox-t80",
     ]);
     expect(latestPerBranch(THREE_RUNS)[0]?.outcome).toEqual(Option.some("approved"));
     const many = Array.from({ length: 12 }, (_, index) =>
@@ -1426,12 +1426,12 @@ describe("the resume row (T85)", () => {
       ]);
       expect(result.asked[1]?.rows.map((row) => row.label)).toEqual([
         NEWER_ROW,
-        `bessemer-t80 — T80 ⚠️ needs-work 2d ago`,
+        `speepobox-t80 — T80 ⚠️ needs-work 2d ago`,
         BACK_LABEL,
       ]);
       expect(result.asked[2]?.message).toBe("Add feedback?");
       expect(result.asked[3]?.message).toContain(`resume: ${BRANCH}`);
-      expect(result.asked[3]?.message).toContain(`bessemer --resume ${BRANCH}`);
+      expect(result.asked[3]?.message).toContain(`speepobox --resume ${BRANCH}`);
       // Its summary offers the source step and nothing else to edit.
       expect(result.asked[4]?.rows.map((row) => row.label)).toEqual([
         "Dispatch",
@@ -1453,7 +1453,7 @@ describe("the resume row (T85)", () => {
       expect(answered(result)).toEqual(["--resume", BRANCH, "--feedback", FEEDBACK]);
       expect(result.asked[3]?.message).toContain(`feedback: ${FEEDBACK}`);
       expect(result.asked[3]?.message).toContain(
-        `bessemer --resume ${BRANCH} --feedback '${FEEDBACK}'`,
+        `speepobox --resume ${BRANCH} --feedback '${FEEDBACK}'`,
       );
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -1755,13 +1755,13 @@ describe("flags seed the wizard (T86)", () => {
     Effect.gen(function* () {
       const result = yield* pick({
         seed: seeded({ branch: Option.some(BRANCH) }),
-        answers: [SPEC, ENTER, "Edit branch", "bessemer-t80", ENTER, "Dispatch"],
+        answers: [SPEC, ENTER, "Edit branch", "speepobox-t80", ENTER, "Dispatch"],
       });
 
       expect(result.asked[4]?.message).toBe("Which branch?");
       expect(result.asked[4]?.initial).toBe(BRANCH);
       const words = answered(result);
-      expect(words).toEqual([SPEC, "--branch", "bessemer-t80"]);
+      expect(words).toEqual([SPEC, "--branch", "speepobox-t80"]);
       expect(words).not.toContain(BRANCH);
     }).pipe(Effect.provide(NodeContext.layer)),
   );

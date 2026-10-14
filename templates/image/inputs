@@ -1,5 +1,5 @@
 # The files this repo's agent image is built from, beyond the Dockerfile.
-# `bessemer image build` hashes them into the image's labels, and `doctor`
+# `speepobox image build` hashes them into the image's labels, and `doctor`
 # recomputes that digest to tell whether the image is stale.
 #
 # One exact repo-relative path per line. No globs. Blank lines and `#`

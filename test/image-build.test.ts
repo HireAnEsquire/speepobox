@@ -1,4 +1,4 @@
-// `bessemer image build` (T111) against a fake `Sandbox` that keeps the build
+// `speepobox image build` (T111) against a fake `Sandbox` that keeps the build
 // spec it was handed, over a real temporary repo: the spec is the assertion,
 // and whether the declared files exist is a question only a real tree answers.
 // The argv docker is handed is `test/sandbox-spec.test.ts`'s and
@@ -9,7 +9,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem, Path } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { Effect, Either, Layer, Option, Ref } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { packageRoot } from "../src/config/paths.ts";
 import { IMAGE_USAGE, imageBuild, ImageBuildRefused } from "../src/image/build.ts";
 import { INPUTS_DIGEST_LABEL, INPUTS_LABEL, inputsDigest } from "../src/image/inputs.ts";
@@ -17,7 +17,7 @@ import { Reporter, type ReporterEvent } from "../src/reporter.ts";
 import { Sandbox, SandboxError } from "../src/sandbox/sandbox.ts";
 import type { SandboxBuildSpec } from "../src/sandbox/spec.ts";
 
-const DOCKERFILE = ".bessemer/image/Dockerfile";
+const DOCKERFILE = ".speepobox/image/Dockerfile";
 const UID = 501;
 const GID = 20;
 
@@ -61,9 +61,9 @@ const world = (options: { readonly lines?: ReadonlyArray<string>; readonly fails
       Layer.succeed(Reporter, {
         emit: (event) => Ref.update(events, (current) => [...current, event]),
       }),
-      Layer.succeed(BessemerConfig, {
+      Layer.succeed(SpeepoboxConfig, {
         ...defaultConfig,
-        runtimeRoot: "/srv/bessemer",
+        runtimeRoot: "/srv/speepobox",
         image: "hae-agentbox",
       }),
     );
@@ -72,7 +72,7 @@ const world = (options: { readonly lines?: ReadonlyArray<string>; readonly fails
 
 const build = (
   repoRoot: string,
-  layer: Layer.Layer<Sandbox | Reporter | BessemerConfig>,
+  layer: Layer.Layer<Sandbox | Reporter | SpeepoboxConfig>,
   argv: ReadonlyArray<string> = ["build"],
 ) => imageBuild({ repoRoot, argv, uid: UID, gid: GID }).pipe(Effect.provide(layer), Effect.either);
 
@@ -87,13 +87,13 @@ const refusalOf = (
 
 describe("image build", () => {
   it.scoped(
-    "builds the config's image from .bessemer/image with the uid, gid, and both labels",
+    "builds the config's image from .speepobox/image with the uid, gid, and both labels",
     () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
         const root = yield* repoWith({
           [DOCKERFILE]: "FROM scratch\n",
-          ".bessemer/image/inputs": "# stamp\npackage.json\n\napi/requirements.txt\n",
+          ".speepobox/image/inputs": "# stamp\npackage.json\n\napi/requirements.txt\n",
           "package.json": "{}\n",
           "api/requirements.txt": "effect\n",
         });
@@ -106,8 +106,8 @@ describe("image build", () => {
         const inputs = [DOCKERFILE, "package.json", "api/requirements.txt"];
         expect(spec).toMatchObject({
           tag: "hae-agentbox",
-          context: path.join(root, ".bessemer", "image"),
-          dockerfile: path.join(root, ".bessemer", "image", "Dockerfile"),
+          context: path.join(root, ".speepobox", "image"),
+          dockerfile: path.join(root, ".speepobox", "image", "Dockerfile"),
           buildArgs: { AGENT_UID: "501", AGENT_GID: "20" },
         });
         // The Dockerfile first, then the list in its own order; and the digest
@@ -145,7 +145,7 @@ describe("image build", () => {
     Effect.gen(function* () {
       const root = yield* repoWith({
         [DOCKERFILE]: "FROM scratch\n",
-        ".bessemer/image/inputs": "package.json\nclient/yarn.lock\n",
+        ".speepobox/image/inputs": "package.json\nclient/yarn.lock\n",
         "package.json": "{}\n",
       });
       const scratch = yield* world();
@@ -169,11 +169,11 @@ describe("image build", () => {
     Effect.gen(function* () {
       const root = yield* repoWith({
         [DOCKERFILE]: "FROM scratch\n",
-        ".bessemer/image/inputs": "# stamp\napi/requirements*.txt\n",
+        ".speepobox/image/inputs": "# stamp\napi/requirements*.txt\n",
       });
       const scratch = yield* world();
       const { detail } = refusalOf(yield* build(root, scratch.layer));
-      expect(detail).toContain(".bessemer/image/inputs line 2");
+      expect(detail).toContain(".speepobox/image/inputs line 2");
       expect(detail).toContain("api/requirements*.txt");
       expect(detail).toContain("glob");
       expect(detail).not.toContain("\n");
@@ -192,7 +192,7 @@ describe("image build", () => {
       const scratch = yield* world();
       const { detail } = refusalOf(yield* build(root, scratch.layer, argv));
       expect(detail).toContain(named);
-      expect(detail).toContain("bessemer image build");
+      expect(detail).toContain("speepobox image build");
       expect(yield* Ref.get(scratch.builds)).toEqual([]);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -215,7 +215,7 @@ describe("image build", () => {
 });
 
 // `bin.ts` runs the CLI on import, so its usage text is read as a file rather
-// than imported (AGENTS.md): the command a dispatcher cannot find in `bessemer`
+// than imported (AGENTS.md): the command a dispatcher cannot find in `speepobox`
 // with no arguments is a command nobody runs.
 describe("the usage text", () => {
   it("names image build", () => {

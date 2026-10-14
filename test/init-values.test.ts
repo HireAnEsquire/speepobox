@@ -11,18 +11,18 @@ const LEGAL = /^[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*$/;
 
 describe("imageNameFor", () => {
   it.each([
-    ["My App", "my-app-bessemer"],
-    ["acme.web", "acme.web-bessemer"],
-    ["_x", "x-bessemer"],
-    ["API--v2", "api-v2-bessemer"],
-    ["hae", "hae-bessemer"],
-    ["trailing.", "trailing-bessemer"],
-    ["Ünïcode repo!", "n-code-repo-bessemer"],
-    ["___", "bessemer"],
+    ["My App", "my-app-speepobox"],
+    ["acme.web", "acme.web-speepobox"],
+    ["_x", "x-speepobox"],
+    ["API--v2", "api-v2-speepobox"],
+    ["hae", "hae-speepobox"],
+    ["trailing.", "trailing-speepobox"],
+    ["Ünïcode repo!", "n-code-repo-speepobox"],
+    ["___", "speepobox"],
   ])("maps %j to %j, a legal lowercase name", (directoryName, expected) => {
     const name = imageNameFor(directoryName);
     expect(name).toBe(expected);
     expect(name).toMatch(LEGAL);
-    expect(name.endsWith("bessemer")).toBe(true);
+    expect(name.endsWith("speepobox")).toBe(true);
   });
 });

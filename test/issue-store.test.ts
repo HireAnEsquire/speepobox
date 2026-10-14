@@ -14,7 +14,7 @@ import { CommandExecutor, FileSystem } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { Effect, Either, Layer, Option, Ref } from "effect";
 import { appBaseLiveFor, appDryRunLiveFor, appLiveFor } from "../src/app.ts";
-import { bessemerDir } from "../src/config/paths.ts";
+import { speepoboxDir } from "../src/config/paths.ts";
 import { LOCKS_DIRNAME, slugFor, statusIndexPathFor } from "../src/dispatch/plan.ts";
 import { exec } from "../src/internal/exec.ts";
 import {
@@ -943,9 +943,9 @@ describe("the compositions", () => {
       const repoRoot = yield* fs.makeTempDirectoryScoped();
       // `image` and `base` have no code default (T40), and both compositions
       // decode the config at build — so the served repo declares them.
-      yield* fs.makeDirectory(bessemerDir(repoRoot));
+      yield* fs.makeDirectory(speepoboxDir(repoRoot));
       yield* fs.writeFileString(
-        `${bessemerDir(repoRoot)}/config.toml`,
+        `${speepoboxDir(repoRoot)}/config.toml`,
         'image = "baseline-image"\nbase = "origin/main"\n',
       );
       yield* resolves(appLiveFor(repoRoot, false).pipe(Layer.orDie));

@@ -7,13 +7,13 @@ import { posix } from "node:path";
 import { Data, Effect, Either, Option } from "effect";
 
 // The two labels the image carries about its own build (T30). They share the
-// `bessemer.*` prefix with `ownership/labels.ts` and nothing else: ownership is
+// `speepobox.*` prefix with `ownership/labels.ts` and nothing else: ownership is
 // a claim the *dispatcher* makes about a container it created and filters on,
 // these are a declaration the *image* makes about the files it was built from,
 // so they live beside the recipe the build writes them with and probe 2 reads
 // them back through.
-export const INPUTS_LABEL = "bessemer.inputs";
-export const INPUTS_DIGEST_LABEL = "bessemer.inputs.digest";
+export const INPUTS_LABEL = "speepobox.inputs";
+export const INPUTS_DIGEST_LABEL = "speepobox.inputs.digest";
 
 export interface DeclaredInputs {
   // Repo-relative, `/`-separated, **in the order they were hashed** — the order
@@ -22,7 +22,7 @@ export interface DeclaredInputs {
   readonly digest: string;
 }
 
-// The `bessemer.inputs` / `bessemer.inputs.digest` pair as inspect prints it.
+// The `speepobox.inputs` / `speepobox.inputs.digest` pair as inspect prints it.
 // `None` is the undeclared image — every image built before T30, and any image
 // built by something other than the repo's own build command.
 export const parseDeclaredInputs = (stdout: string): Option.Option<DeclaredInputs> => {
@@ -67,7 +67,7 @@ export const inputsDigest = (
     return Option.some(createHash("sha256").update(lines, "utf8").digest("hex"));
   });
 
-// The served repo's input list (`.bessemer/image/inputs`, T110), refused. It
+// The served repo's input list (`.speepobox/image/inputs`, T110), refused. It
 // names the line — its 1-based number and its text as written — because the
 // dispatcher's repair is an edit to exactly that line.
 export class InputsListRefused extends Data.TaggedError("InputsListRefused")<{

@@ -1,12 +1,12 @@
 {
-  "name": "@hireanesquire/bessemer",
+  "name": "@hireanesquire/speepobox",
   "version": "0.1.0",
   "private": true,
   "description": "AFK agent dispatcher — agentbox ported to Effect/TypeScript (ADR 0007)",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "bessemer": "./src/bin.ts"
+    "speepobox": "./src/bin.ts"
   },
   "engines": {
     "node": ">=26"

@@ -10,7 +10,7 @@
 // Nothing here infers a repo: the value is taken as given, and nothing walks
 // up from it. Three shapes were rejected in 19 §1 — walking up from the
 // working directory (AGENTS.md: "the point is that the working directory
-// stopped mattering"), a `BESSEMER_*` environment variable (the config
+// stopped mattering"), a `SPEEPOBOX_*` environment variable (the config
 // provider's namespace, so it would read as a config key), and a config key
 // (circular: config is found *through* the repo root).
 //

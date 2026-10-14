@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { Effect, Either, Layer, Option } from "effect";
 import { resolveCredential } from "./agent/credential.ts";
 import { appBaseLiveFor, appLayerFor, appLiveFor, isModifiersOnly, modifiersFor } from "./app.ts";
-import { bessemerDir, findRepoRoot, packageRoot, templatesRoot } from "./config/paths.ts";
+import { speepoboxDir, findRepoRoot, packageRoot, templatesRoot } from "./config/paths.ts";
 import { peelRepoRoot } from "./config/served-repo.ts";
 import { dispatchCli } from "./dispatch/command.ts";
 import { isAnswerMissing } from "./dispatch/guards.ts";
@@ -29,56 +29,56 @@ import { SandboxLive } from "./sandbox/sandbox.ts";
 import { status } from "./status/status.ts";
 import { upgrade } from "./upgrade/upgrade.ts";
 
-const usage = `bessemer — AFK agent dispatcher (ADR 0007)
+const usage = `speepobox — AFK agent dispatcher (ADR 0007)
 
 Usage:
-  bessemer <spec> --branch <name> [--base <ref>]
+  speepobox <spec> --branch <name> [--base <ref>]
                       dispatch an AFK run. A bare <spec> resolves under the
                       tasks dir; anything with a slash is a path used as-is
-  bessemer --resume <branch>
+  speepobox --resume <branch>
                       re-dispatch <branch> off the ledger: the spec, the base,
                       and the identity come back off its newest record
-  bessemer --last    --resume on the most recently recorded branch
-  bessemer ... --dry-run
+  speepobox --last    --resume on the most recently recorded branch
+  speepobox ... --dry-run
                       rehearse: every guard, the resolved plan, and the
                       mutations this run would have made — no lock, no
                       container, no checkout, no PR, no ledger row
-  bessemer ... --feedback "<what to change>"
+  speepobox ... --feedback "<what to change>"
                       extra dispatcher instructions for this run. On a --resume
                       whose recorded spec is gone, the feedback is the work
                       order and the run revises the branch's PR
-  bessemer --repo-root <dir> ...
+  speepobox --repo-root <dir> ...
                       the repo this invocation serves, on any command here —
                       status and doctor included. The committed shim always
                       passes it; without it, the repo the package itself
                       lives in
-  bessemer           no arguments, on a terminal: pick the spec and the branch,
+  speepobox           no arguments, on a terminal: pick the spec and the branch,
                       read back the command line they spell, and dispatch it.
                       Off a terminal, this text
-  bessemer status    read-only: what's running, what just finished, where the
+  speepobox status    read-only: what's running, what just finished, where the
                       PRs are. Always exit 0; each half degrades on its own
-  bessemer doctor    read-only preflight: eleven probes, exit 1 on any FAIL,
+  speepobox doctor    read-only preflight: eleven probes, exit 1 on any FAIL,
                       exit 0 on warnings
-  bessemer gc [--force]
-                      read-only: what this host holds from bessemer runs, and
+  speepobox gc [--force]
+                      read-only: what this host holds from speepobox runs, and
                       what --force would do with each item. Logs are never
                       deleted. Exit 0
-  bessemer init [--base <ref>] [--image <tag>]
-                      write the scaffold into .bessemer/: only files that are
+  speepobox init [--base <ref>] [--image <tag>]
+                      write the scaffold into .speepobox/: only files that are
                       absent, each reported wrote or kept, then the next steps.
                       The base defaults to origin/HEAD, the image to the repo
                       directory's name, tool-sha to this package's revision
-  bessemer init --diff
+  speepobox init --diff
                       read-only: which scaffold files this package's templates
                       would change, never counting your own edits. Exit 1 if
                       any is missing or behind, or the shim is not executable
-  bessemer upgrade [--to vN]
-                      move .bessemer/config.toml's tool-sha pin to the newest
+  speepobox upgrade [--to vN]
+                      move .speepobox/config.toml's tool-sha pin to the newest
                       release, or to the one --to names (rollbacks included).
                       Rewrites that one line, commits nothing, and prints
-                      .bessemer/bessemer init --diff to run next
-  bessemer image build
-                      build the configured image from .bessemer/image, labelled
+                      .speepobox/speepobox init --diff to run next
+  speepobox image build
+                      build the configured image from .speepobox/image, labelled
                       with the inputs probe 2 checks. Exit 1 if the build fails
 `;
 
@@ -155,7 +155,7 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
   const dispatchWords = (words: ReadonlyArray<string>): Effect.Effect<void> =>
     // The agent credential is a host read like the repo root, so it happens
     // here and travels down as a parameter (T23):
-    // `<repoRoot>/.bessemer/.env` — the file beside `config.toml` that
+    // `<repoRoot>/.speepobox/.env` — the file beside `config.toml` that
     // probe 3's advice names, in the **served repo** and never in the
     // package (T58) — then the process environment, resolved by the same
     // module probe 3 reports on, which `doctor` hands the same root.
@@ -177,7 +177,7 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
     // enclosing repo — the served repo is whose `origin` a `gh --repo`
     // argument has to name.
     Effect.all({
-      credential: resolveCredential(bessemerDir(repoRoot)),
+      credential: resolveCredential(speepoboxDir(repoRoot)),
       dispatcherRevision: resolveDispatcherRevision(packageRepoRoot),
       forgeRepo: resolveForgeRepo(repoRoot),
     }).pipe(
@@ -259,7 +259,7 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
         Effect.catchAll(reportFailure),
       );
     // `image build` is on the dispatch surface (T111): it reads `image` off
-    // `BessemerConfig`, so a config that does not decode stops it at layer
+    // `SpeepoboxConfig`, so a config that does not decode stops it at layer
     // build as it stops a dispatch, and it gets the one `appLiveFor`. Its
     // words are its own (`image/build.ts`), and `--dry-run` is not one of
     // them.
@@ -304,7 +304,7 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
       );
     // upgrade parses its own words (`upgrade/argv.ts`) and moves the pin
     // (T128). Beside `init`, before any config decode: it reads the pin by
-    // T121's grammar, never through `BessemerConfig`, so the read-only slice
+    // T121's grammar, never through `SpeepoboxConfig`, so the read-only slice
     // is enough. The releases are asked of the package's own repo, whose
     // `origin` is the release URL under the shim.
     case "upgrade":
@@ -324,7 +324,7 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
       // came from and probe 3 reports whether there is one. `packageRoot`
       // travels the same way, because `doctor.ts` may not import it (19 §8).
       return Effect.all({
-        credential: resolveCredential(bessemerDir(repoRoot)),
+        credential: resolveCredential(speepoboxDir(repoRoot)),
         dispatcherRevision: resolveDispatcherRevision(packageRepoRoot),
       }).pipe(
         Effect.flatMap(({ credential, dispatcherRevision }) =>

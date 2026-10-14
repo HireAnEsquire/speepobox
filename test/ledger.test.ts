@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem, Path } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { DateTime, Effect, Either, Layer, Option, Ref, Schema } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import {
   LEDGER_FILENAME,
   Ledger,
@@ -23,20 +23,20 @@ import { Reporter } from "../src/reporter.ts";
 // text rather than encoded from the schema, for `V1_LINE_WITHOUT_RESCUE`'s
 // reason below.
 const V1_LINES = [
-  '{"schemaVersion":1,"runId":null,"branch":"bessemer-t1","identity":{"_tag":"Feature","feature":"issues","issues":[{"issue":"T1","outcome":"approved"}]},"startedAt":null,"endedAt":"2026-08-07T21:07:26.322Z","terminalReason":null,"outcome":null,"base":{"ref":"origin/feature-x","sha":null},"mergeBaseSha":null,"pr":{"number":101,"url":"https://example.test/pull/101"}}',
+  '{"schemaVersion":1,"runId":null,"branch":"speepobox-t1","identity":{"_tag":"Feature","feature":"issues","issues":[{"issue":"T1","outcome":"approved"}]},"startedAt":null,"endedAt":"2026-08-07T21:07:26.322Z","terminalReason":null,"outcome":null,"base":{"ref":"origin/feature-x","sha":null},"mergeBaseSha":null,"pr":{"number":101,"url":"https://example.test/pull/101"}}',
   '{"schemaVersion":1,"runId":null,"branch":"widget-report","identity":{"_tag":"OneOff","spec":"widget-report.md"},"startedAt":null,"endedAt":"2026-08-07T21:07:26.553Z","terminalReason":null,"outcome":"needs-work","base":{"ref":"origin/master","sha":null},"mergeBaseSha":null,"pr":{"number":102,"url":"https://example.test/pull/102"}}',
   '{"schemaVersion":1,"runId":null,"branch":"widget-report","identity":{"_tag":"OneOff","spec":"widget-report.md"},"startedAt":null,"endedAt":"2026-08-07T21:07:26.806Z","terminalReason":null,"outcome":"approved","base":{"ref":"origin/master","sha":null},"mergeBaseSha":null,"pr":{"number":102,"url":"https://example.test/pull/102"}}',
 ];
 
 // The line T135 stopped reading: a bash-agentbox line, which carries no
-// `schemaVersion` and so is not a bessemer record.
+// `schemaVersion` and so is not a speepobox record.
 const BASH_LINE =
-  '{"timestamp": "2026-08-07T21:07:26.322108+00:00", "branch": "bessemer-t1", "base": "origin/feature-x", "spec": null, "feature": "issues", "issues": {"T1": "approved"}, "outcome": null, "pr_url": "https://example.test/pull/101", "task_dir": "docs/wayfinder/effect-agentbox/issues"}';
+  '{"timestamp": "2026-08-07T21:07:26.322108+00:00", "branch": "speepobox-t1", "base": "origin/feature-x", "spec": null, "feature": "issues", "issues": {"T1": "approved"}, "outcome": null, "pr_url": "https://example.test/pull/101", "task_dir": "docs/wayfinder/effect-agentbox/issues"}';
 
 const nativeRecord: RunRecord = {
   schemaVersion: CURRENT_SCHEMA_VERSION,
   runId: Option.some("01JZ0000000000000000000000"),
-  branch: "bessemer-t2",
+  branch: "speepobox-t2",
   identity: {
     _tag: "FeedbackResume",
     resumed: {
@@ -74,7 +74,7 @@ const nativeRecord: RunRecord = {
 // dispatcher already has — a fixture built by today's encoder would carry
 // today's keys and assert nothing.
 const V1_LINE_WITHOUT_RESCUE =
-  '{"schemaVersion":1,"runId":"bessemer-t29-1786000000000","branch":"bessemer-t29","identity":{"_tag":"OneOff","spec":"/repo/tasks/T29.md"},"startedAt":"2026-08-13T20:00:00.000Z","endedAt":"2026-08-13T20:41:00.000Z","terminalReason":{"_tag":"Failed","stage":"land"},"outcome":null,"base":{"ref":"origin/master","sha":"26f4ea47ef"},"mergeBaseSha":"22e7e70e14","pr":null}';
+  '{"schemaVersion":1,"runId":"speepobox-t29-1786000000000","branch":"speepobox-t29","identity":{"_tag":"OneOff","spec":"/repo/tasks/T29.md"},"startedAt":"2026-08-13T20:00:00.000Z","endedAt":"2026-08-13T20:41:00.000Z","terminalReason":{"_tag":"Failed","stage":"land"},"outcome":null,"base":{"ref":"origin/master","sha":"26f4ea47ef"},"mergeBaseSha":"22e7e70e14","pr":null}';
 
 // A Ledger over a throwaway runtime root, plus the warnings it emitted. Config
 // arrives as Layer.succeed over an object literal, which is cheaper than
@@ -83,7 +83,7 @@ const ledgerLayer = (runtimeRoot: string, warnings: Ref.Ref<ReadonlyArray<string
   LedgerLive.pipe(
     Layer.provide(
       Layer.mergeAll(
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) =>
             event._tag === "Warned"
@@ -194,7 +194,7 @@ describe("the record", () => {
         expect(decoded.passes).toEqual(Option.none());
         expect(decoded.models).toEqual(Option.none());
         expect(decoded.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-        expect(decoded.branch).toBe("bessemer-t29");
+        expect(decoded.branch).toBe("speepobox-t29");
         expect(decoded.terminalReason).toEqual(Option.some({ _tag: "Failed", stage: "land" }));
       }),
   );
@@ -206,10 +206,10 @@ describe("the record", () => {
     Effect.gen(function* () {
       const rescued: RunRecord = {
         ...nativeRecord,
-        rescuedOnto: Option.some("bessemer-t29-from-run-a1b2c3d"),
+        rescuedOnto: Option.some("speepobox-t29-from-run-a1b2c3d"),
       };
       const encoded = yield* Schema.encode(RunRecord)(rescued);
-      expect(encoded.rescuedOnto).toBe("bessemer-t29-from-run-a1b2c3d");
+      expect(encoded.rescuedOnto).toBe("speepobox-t29-from-run-a1b2c3d");
       expect(yield* Schema.decode(RunRecord)(encoded)).toEqual(rescued);
     }),
   );
@@ -327,7 +327,7 @@ describe("the record", () => {
         identity: {
           _tag: "FeedbackResume",
           resumed: { _tag: "InlineTask", task: text },
-          resumedRunId: Option.some("bessemer-t67-1786000000000"),
+          resumedRunId: Option.some("speepobox-t67-1786000000000"),
         },
       };
       expect(yield* Schema.decode(RunRecord)(yield* Schema.encode(RunRecord)(resumed))).toEqual(
@@ -381,7 +381,7 @@ describe("ledger queries", () => {
       expect(recent.map((record) => record.branch)).toEqual([
         "widget-report",
         "widget-report",
-        "bessemer-t1",
+        "speepobox-t1",
       ]);
       expect(recent[0]?.outcome).toEqual(Option.some("approved"));
       expect(yield* Ref.get(warnings)).toEqual([]);
@@ -398,10 +398,10 @@ describe("ledger queries", () => {
       );
       const recent = yield* ledger.recent(10);
       expect(recent.map((record) => record.branch)).toEqual([
-        "bessemer-t29",
+        "speepobox-t29",
         "widget-report",
         "widget-report",
-        "bessemer-t1",
+        "speepobox-t1",
       ]);
       expect(recent[0]?.rescuedOnto).toEqual(Option.none());
       expect(yield* Ref.get(warnings)).toEqual([]);
@@ -437,7 +437,7 @@ describe("ledger queries", () => {
         Option.some("needs-work"),
       ]);
       expect(yield* Ref.get(warnings)).toEqual([
-        expect.stringMatching(/runs\.jsonl:2 skipped — no schemaVersion — not a bessemer record$/),
+        expect.stringMatching(/runs\.jsonl:2 skipped — no schemaVersion — not a speepobox record$/),
       ]);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -454,7 +454,7 @@ describe("ledger queries", () => {
         ].join("\n"),
       );
       const recent = yield* ledger.recent(10);
-      expect(recent.map((record) => record.branch)).toEqual(["bessemer-t1"]);
+      expect(recent.map((record) => record.branch)).toEqual(["speepobox-t1"]);
       const emitted = yield* Ref.get(warnings);
       expect(emitted.length).toBe(3);
       expect(emitted[0]).toContain(":1 skipped");
@@ -492,7 +492,7 @@ describe("ledger queries", () => {
     Effect.gen(function* () {
       const { ledger } = yield* openLedger(`${V1_LINES.join("\n")}\n`);
       // The version-1 lines only, so far.
-      expect(yield* ledger.lastBaseForBranch("bessemer-t1")).toEqual(
+      expect(yield* ledger.lastBaseForBranch("speepobox-t1")).toEqual(
         Option.some("origin/feature-x"),
       );
       expect(yield* ledger.lastBaseForBranch("widget-report")).toEqual(
@@ -537,13 +537,13 @@ describe("ledger queries", () => {
       const { ledger } = yield* openLedger();
       yield* ledger.append({
         ...nativeRecord,
-        branch: "bessemer-t16",
-        runId: Option.some("bessemer-t16-1786000000000"),
+        branch: "speepobox-t16",
+        runId: Option.some("speepobox-t16-1786000000000"),
         identity: { _tag: "OneOff", spec: "/repo/tasks/T16.md" },
       });
-      const resolved = yield* ledger.resolveResume({ _tag: "Branch", branch: "bessemer-t16" });
+      const resolved = yield* ledger.resolveResume({ _tag: "Branch", branch: "speepobox-t16" });
       expect(resolved._tag === "Resumable" && resolved.resumedRunId).toEqual(
-        Option.some("bessemer-t16-1786000000000"),
+        Option.some("speepobox-t16-1786000000000"),
       );
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -595,7 +595,7 @@ describe("ledger queries", () => {
       const resolved = yield* ledger.resolveResume({ _tag: "Branch", branch: "never-dispatched" });
       expect(resolved).toEqual({
         _tag: "NoRecord",
-        knownBranches: ["widget-report", "bessemer-t1"],
+        knownBranches: ["widget-report", "speepobox-t1"],
       });
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -729,7 +729,7 @@ describe("the newest branch an issue was worked on", () => {
       const { ledger } = yield* openLedger();
       yield* ledger.append(
         featureRow({
-          branch: "bessemer-t28-first",
+          branch: "speepobox-t28-first",
           feature: "docs/queue",
           issues: ["T28"],
           outcome: "approved",
@@ -738,7 +738,7 @@ describe("the newest branch an issue was worked on", () => {
       );
       yield* ledger.append(
         featureRow({
-          branch: "bessemer-t28",
+          branch: "speepobox-t28",
           feature: "docs/queue",
           issues: ["T27", "T28"],
           outcome: "needs-work",
@@ -747,7 +747,7 @@ describe("the newest branch an issue was worked on", () => {
       );
       expect(yield* ledger.newestBranchForIssue({ feature: "docs/queue", issue: "T28" })).toEqual(
         Option.some({
-          branch: "bessemer-t28",
+          branch: "speepobox-t28",
           endedAt: DateTime.unsafeMake("2026-08-18T16:04:00.000Z"),
           outcome: Option.some("needs-work"),
         }),
@@ -762,7 +762,7 @@ describe("the newest branch an issue was worked on", () => {
     Effect.gen(function* () {
       const { ledger } = yield* openLedger();
       const worked = featureRow({
-        branch: "bessemer-t2",
+        branch: "speepobox-t2",
         feature: "issues",
         issues: ["T1", "T2"],
         endedAt: "2026-08-07T20:39:00.000Z",
@@ -772,7 +772,7 @@ describe("the newest branch an issue was worked on", () => {
       yield* ledger.append({ ...worked, identity: nativeRecord.identity });
       expect(yield* ledger.newestBranchForIssue({ feature: "issues", issue: "T2" })).toEqual(
         Option.some({
-          branch: "bessemer-t2",
+          branch: "speepobox-t2",
           endedAt: DateTime.unsafeMake("2026-08-07T20:39:00.000Z"),
           outcome: Option.none(),
         }),
@@ -806,7 +806,7 @@ describe("the newest branch an issue was worked on", () => {
       const { ledger } = yield* openLedger();
       yield* ledger.append(
         featureRow({
-          branch: "bessemer-t27",
+          branch: "speepobox-t27",
           feature: "docs/queue",
           issues: ["T27"],
           endedAt: "2026-08-18T16:04:00.000Z",
@@ -827,14 +827,14 @@ describe("the newest branch an issue was worked on", () => {
       const { ledger } = yield* openLedger();
       yield* ledger.append(
         featureRow({
-          branch: "bessemer-t37",
+          branch: "speepobox-t37",
           feature: "docs/queue",
           issues: ["37"],
           endedAt: "2026-08-18T16:04:00.000Z",
         }),
       );
       const found = yield* ledger.newestBranchForIssue({ feature: "docs/queue", issue: "T37" });
-      expect(Option.map(found, (work) => work.branch)).toEqual(Option.some("bessemer-t37"));
+      expect(Option.map(found, (work) => work.branch)).toEqual(Option.some("speepobox-t37"));
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -846,7 +846,7 @@ describe("the newest branch an issue was worked on", () => {
       const { ledger, warnings } = yield* openLedger(`${V1_LINES.join("\n")}\n`);
       expect(yield* ledger.newestBranchForIssue({ feature: "issues", issue: "T1" })).toEqual(
         Option.some({
-          branch: "bessemer-t1",
+          branch: "speepobox-t1",
           endedAt: DateTime.unsafeMake("2026-08-07T21:07:26.322Z"),
           // A run that recorded no verdict is still where the issue was last
           // worked on, so the absence travels rather than a stand-in.

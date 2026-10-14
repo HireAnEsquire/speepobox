@@ -28,10 +28,10 @@ import { PLAN_TIP } from "../support/plan.ts";
 
 // This process's pid keeps two runs of this file, and any container a hard
 // kill left behind, from colliding on a name.
-const BRANCH = `bessemer-live-labels-${process.pid}`;
+const BRANCH = `speepobox-live-labels-${process.pid}`;
 // The other container: same host, same image, no labels of ours. It is what
 // the query must *not* reach.
-const UNLABELLED = `bessemer-live-unlabelled-${process.pid}`;
+const UNLABELLED = `speepobox-live-unlabelled-${process.pid}`;
 
 // Every container this host holds, ours and everyone else's, by name. It is
 // the check that keeps the selectivity assertions from passing vacuously: a
@@ -47,7 +47,7 @@ describe("the reconciler's ownership query against a real dockerd", () => {
     Effect.gen(function* () {
       yield* dockerdIsUp;
       const fs = yield* FileSystem.FileSystem;
-      // Two throwaway repo roots: `bessemer.repo` hashes the root, so these
+      // Two throwaway repo roots: `speepobox.repo` hashes the root, so these
       // are two repos on one host — the case the name prefix could not tell
       // apart, and the second direction this asserts.
       const repoRoot = yield* fs.makeTempDirectoryScoped();

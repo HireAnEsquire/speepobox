@@ -8,7 +8,7 @@
 // `run.sh:541-544`).
 import { Data, Either } from "effect";
 
-export const GC_USAGE = "bessemer gc [--force]";
+export const GC_USAGE = "speepobox gc [--force]";
 
 // One line on stderr and exit 1, through the renderer every other refusal
 // uses (`dispatch/render.ts`).

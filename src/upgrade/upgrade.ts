@@ -3,7 +3,7 @@
 // rewrites one line and commits nothing.
 //
 // Intercepted in `bin.ts` beside `init`, before any config decode: the pin is
-// read by T121's grammar, never through `BessemerConfig` (T120). Everything is
+// read by T121's grammar, never through `SpeepoboxConfig` (T120). Everything is
 // read before anything is written, and the only write is the `tool-sha` line —
 // every refusal leaves the file as it was.
 //
@@ -14,7 +14,7 @@ import { join } from "node:path";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { FileSystem } from "@effect/platform";
 import { Array as Arr, Effect, Either, Option } from "effect";
-import { BESSEMER_DIRNAME } from "../config/paths.ts";
+import { SPEEPOBOX_DIRNAME } from "../config/paths.ts";
 import {
   latestRelease,
   moveDecision,
@@ -39,7 +39,7 @@ export interface UpgradeOptions {
   readonly packageRepoRoot: string;
 }
 
-const CONFIG = `${BESSEMER_DIRNAME}/config.toml`;
+const CONFIG = `${SPEEPOBOX_DIRNAME}/config.toml`;
 
 const NOTHING_WRITTEN = "nothing was written";
 
@@ -74,12 +74,12 @@ export const upgrade = (
     // repo's dispatcher.
     if (options.selfHosted) {
       return yield* refuse(
-        `upgrade refused: ${options.repoRoot} is the repo bessemer itself lives in — its checked-out branch chooses the dispatcher, and there is no pin`,
+        `upgrade refused: ${options.repoRoot} is the repo speepobox itself lives in — its checked-out branch chooses the dispatcher, and there is no pin`,
       );
     }
 
     const fs = yield* FileSystem.FileSystem;
-    const at = join(options.repoRoot, BESSEMER_DIRNAME, "config.toml");
+    const at = join(options.repoRoot, SPEEPOBOX_DIRNAME, "config.toml");
     // An absent file has no tool-sha line, and is told so in the grammar's
     // own sentence.
     const text = yield* fs.readFile(at).pipe(

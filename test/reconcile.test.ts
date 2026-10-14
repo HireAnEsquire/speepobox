@@ -6,7 +6,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { Effect, Layer, Option, Ref } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { checkoutPathFor, LOCKS_DIRNAME, lockPathFor } from "../src/dispatch/plan.ts";
 import { Ledger } from "../src/ledger/ledger.ts";
 import { GitLive } from "../src/git/git.ts";
@@ -40,7 +40,7 @@ const DEAD_PID = 2147483647;
 const HELD_ATTEMPT = 100_000;
 
 const wreck = (fields: Partial<RunWreckage> = {}): RunWreckage => ({
-  slug: "bessemer-t8",
+  slug: "speepobox-t8",
   lock: Option.none(),
   sandbox: Option.none(),
   checkout: Option.none(),
@@ -48,16 +48,16 @@ const wreck = (fields: Partial<RunWreckage> = {}): RunWreckage => ({
 });
 
 const lock = (owner: Option.Option<number>) =>
-  Option.some({ path: "/runtime/locks/bessemer-t8.pid", owner });
+  Option.some({ path: "/runtime/locks/speepobox-t8.pid", owner });
 
 const container = (running: boolean) =>
-  Option.some({ id: "d15c0ffee1d", name: "bessemer-bessemer-t8", running });
+  Option.some({ id: "d15c0ffee1d", name: "speepobox-speepobox-t8", running });
 
-// The branch defaults to the one a `bessemer-t8` run would be on, because the
+// The branch defaults to the one a `speepobox-t8` run would be on, because the
 // notice's commands name it; the cases that assert the branchless form pass
 // `Option.none()` explicitly.
-const kept = (branch: Option.Option<string> = Option.some("bessemer-t8")) =>
-  Option.some({ path: "/runtime/checkouts/bessemer-t8", branch });
+const kept = (branch: Option.Option<string> = Option.some("speepobox-t8")) =>
+  Option.some({ path: "/runtime/checkouts/speepobox-t8", branch });
 
 describe("reading docker's stdout", () => {
   // §3b: one parse, trimming *before* it filters. The asymmetry it closes is a
@@ -75,11 +75,11 @@ describe("reading docker's stdout", () => {
   it("reads id, name, and state, and carries no untrimmed id out", () => {
     expect(
       parseOwnedSandboxes(
-        "  d15c0ffee1d\tbessemer-t8\trunning  \n0ddba11\tbessemer-t7\texited\n\n   \n",
+        "  d15c0ffee1d\tspeepobox-t8\trunning  \n0ddba11\tspeepobox-t7\texited\n\n   \n",
       ),
     ).toEqual([
-      { id: "d15c0ffee1d", name: "bessemer-t8", running: true },
-      { id: "0ddba11", name: "bessemer-t7", running: false },
+      { id: "d15c0ffee1d", name: "speepobox-t8", running: true },
+      { id: "0ddba11", name: "speepobox-t7", running: false },
     ]);
   });
 
@@ -93,7 +93,7 @@ describe("reading docker's stdout", () => {
   });
 
   it("keys a container to its run by name, and never to its ownership", () => {
-    expect(slugOfContainer("bessemer-bessemer-t8")).toBe("bessemer-t8");
+    expect(slugOfContainer("speepobox-speepobox-t8")).toBe("speepobox-t8");
     // Labelled ours under a name we did not derive: still ours to account for.
     expect(slugOfContainer("someone-elses-name")).toBe("someone-elses-name");
   });
@@ -184,11 +184,11 @@ describe("classifying one run's wreckage", () => {
   // by name, so the commands ask the copy what it is on instead rather than
   // printing a branch that does not exist.
   it("falls back to a branchless recovery when HEAD names no branch", () => {
-    const notice = keptCheckoutNotice("bessemer-t8", {
-      path: "/runtime/checkouts/bessemer-t8",
+    const notice = keptCheckoutNotice("speepobox-t8", {
+      path: "/runtime/checkouts/speepobox-t8",
       branch: Option.none(),
     });
-    expect(notice).toContain("git fetch /runtime/checkouts/bessemer-t8 HEAD");
+    expect(notice).toContain("git fetch /runtime/checkouts/speepobox-t8 HEAD");
     expect(notice).toContain("git branch --contains FETCH_HEAD");
     expect(notice).not.toContain("refs/heads/");
   });
@@ -200,17 +200,17 @@ describe("classifying one run's wreckage", () => {
   // it does not depend on why it is there.
   it("says what the read found when it will not authorize a reclaim's removal", () => {
     const notice = unmovedCheckoutNotice(
-      "bessemer-t8",
-      { path: "/runtime/checkouts/bessemer-t8", branch: Option.some("bessemer-t8") },
-      "'bessemer-t8' here does not hold abc1234, the commit that copy is on",
+      "speepobox-t8",
+      { path: "/runtime/checkouts/speepobox-t8", branch: Option.some("speepobox-t8") },
+      "'speepobox-t8' here does not hold abc1234, the commit that copy is on",
     );
     expect(notice).toContain("**not** removed");
     expect(notice).toContain("does not hold abc1234");
     // The recovery is the shared one, keyed to the branch the copy is on.
     expect(notice).toContain(
-      "git fetch /runtime/checkouts/bessemer-t8 refs/heads/bessemer-t8:refs/heads/bessemer-t8-from-run",
+      "git fetch /runtime/checkouts/speepobox-t8 refs/heads/speepobox-t8:refs/heads/speepobox-t8-from-run",
     );
-    expect(notice).toContain("rm -rf /runtime/checkouts/bessemer-t8");
+    expect(notice).toContain("rm -rf /runtime/checkouts/speepobox-t8");
     // And it claims nothing about where the commits are: that is the sentence
     // this ticket deleted.
     expect(notice).not.toContain("already home");
@@ -220,7 +220,7 @@ describe("classifying one run's wreckage", () => {
   // HEAD holds a bare SHA, which names no ref the fetch could use.
   it("reads a branch out of HEAD, and nothing out of a detached one", () => {
     expect(branchInHead("ref: refs/heads/feature/foo\n")).toEqual(Option.some("feature/foo"));
-    expect(branchInHead("ref: refs/heads/bessemer-t8")).toEqual(Option.some("bessemer-t8"));
+    expect(branchInHead("ref: refs/heads/speepobox-t8")).toEqual(Option.some("speepobox-t8"));
     expect(branchInHead("9fceb02d0ae598e95dc970b74767f19372d61af8\n")).toEqual(Option.none());
     expect(branchInHead("")).toEqual(Option.none());
   });
@@ -271,18 +271,18 @@ describe("classifying one run's wreckage", () => {
         }),
       ),
     ).toBe(
-      "container 'bessemer-bessemer-t8', checkout /runtime/checkouts/bessemer-t8, lock /runtime/locks/bessemer-t8.pid",
+      "container 'speepobox-speepobox-t8', checkout /runtime/checkouts/speepobox-t8, lock /runtime/locks/speepobox-t8.pid",
     );
   });
 });
 
 describe("stranded eviction witnesses", () => {
   it("reads a witness by its shape, and takes nothing else for one", () => {
-    expect(isEvictionWitness("bessemer-t8.pid.4321.evicting")).toBe(true);
-    expect(isEvictionWitness("bessemer-t8.pid.unowned.evicting")).toBe(true);
-    expect(isEvictionWitness("bessemer-t8.pid")).toBe(false);
-    expect(isEvictionWitness("bessemer-t8.4321.claim")).toBe(false);
-    expect(isEvictionWitness("bessemer-t8.pid.4321.evicting.99.1.evictor")).toBe(false);
+    expect(isEvictionWitness("speepobox-t8.pid.4321.evicting")).toBe(true);
+    expect(isEvictionWitness("speepobox-t8.pid.unowned.evicting")).toBe(true);
+    expect(isEvictionWitness("speepobox-t8.pid")).toBe(false);
+    expect(isEvictionWitness("speepobox-t8.4321.claim")).toBe(false);
+    expect(isEvictionWitness("speepobox-t8.pid.4321.evicting.99.1.evictor")).toBe(false);
     expect(isEvictionWitness(".evicting")).toBe(false);
   });
 
@@ -312,7 +312,7 @@ describe("stranded eviction witnesses", () => {
 // "our fake removed it" is not "the wreckage is gone", and the whole point of
 // this pass is the world it leaves behind. Only dockerd is scripted — the live
 // tier owns the one question a fake cannot answer (SPEC §11, case 4).
-const SLUG = "bessemer-t8";
+const SLUG = "speepobox-t8";
 const CONTAINER_ID = "d15c0ffee1d";
 
 // How every command `Git` spawns opens (T27): the directory it runs in, and
@@ -325,7 +325,7 @@ const inRepo = (repo: string): string => `git -C ${repo} --git-dir=${repo}/.git`
 const COPY_TIP = "6666666666666666666666666666666666666666";
 
 const dockerHolding = (state: string): Record<string, ScriptedResult> => ({
-  "docker ps": { exit: 0, stdout: `  ${CONTAINER_ID}\tbessemer-${SLUG}\t${state}  \n\n` },
+  "docker ps": { exit: 0, stdout: `  ${CONTAINER_ID}\tspeepobox-${SLUG}\t${state}  \n\n` },
   "docker rm": { exit: 0 },
 });
 
@@ -372,7 +372,7 @@ const world = (
           },
           commands,
         ),
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) => Ref.update(events, (current) => [...current, event]),
         }),
@@ -408,7 +408,7 @@ const leaveCheckout = (runtimeRoot: string, slug: string) =>
     const fs = yield* FileSystem.FileSystem;
     const checkout = checkoutPathFor(runtimeRoot, slug);
     yield* fs.makeDirectory(`${checkout}/.git`, { recursive: true });
-    yield* fs.writeFileString(`${checkout}/.git/HEAD`, "ref: refs/heads/bessemer-t8\n");
+    yield* fs.writeFileString(`${checkout}/.git/HEAD`, "ref: refs/heads/speepobox-t8\n");
   });
 
 const warnings = (events: ReadonlyArray<ReporterEvent>): ReadonlyArray<string> =>
@@ -442,7 +442,7 @@ describe("the reconciler on a dispatch preflight", () => {
 
       const events = yield* Ref.get(scratch.events);
       expect(said(events, `reclaiming the wreckage of '${SLUG}'`)).toBe(true);
-      expect(said(events, `reclaimed the container 'bessemer-${SLUG}'`)).toBe(true);
+      expect(said(events, `reclaimed the container 'speepobox-${SLUG}'`)).toBe(true);
       expect(said(events, "reclaimed the checkout at")).toBe(true);
       expect(said(events, `pid ${DEAD_PID} is not alive`)).toBe(true);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
@@ -575,7 +575,7 @@ describe("the reconciler on a dispatch preflight", () => {
       expect(said(events, "nothing was removed")).toBe(true);
       // The branch came out of the copy's own `.git/HEAD`, which is the only
       // place it exists — the slug the pass scanned by cannot carry it back.
-      expect(said(events, "refs/heads/bessemer-t8:refs/heads/bessemer-t8-from-run")).toBe(true);
+      expect(said(events, "refs/heads/speepobox-t8:refs/heads/speepobox-t8-from-run")).toBe(true);
       // And it took no lock to say so: reporting is not reclaiming, so the
       // acquisition that a reclaim goes through never happened — the locks
       // directory it would have created is not even there.
@@ -800,7 +800,7 @@ describe("the reconciler's scan", () => {
       const marker = evictorMarkerFor(witness, DEAD_PID, 1);
       yield* leaveLock(scratch.runtimeRoot, SLUG, DEAD_PID);
       yield* leaveCheckout(scratch.runtimeRoot, SLUG);
-      yield* leaveCheckout(scratch.runtimeRoot, "bessemer-t7");
+      yield* leaveCheckout(scratch.runtimeRoot, "speepobox-t7");
       yield* fs.link(lockFile, witness);
       yield* fs.writeFileString(marker, "");
       const before = (yield* fs.readDirectory(locksDirOf(scratch.runtimeRoot))).toSorted();
@@ -809,18 +809,18 @@ describe("the reconciler's scan", () => {
 
       expect(scan.wreckage).toEqual([
         {
-          slug: "bessemer-t7",
+          slug: "speepobox-t7",
           lock: Option.none(),
           sandbox: Option.none(),
           checkout: Option.some({
-            path: checkoutPathFor(scratch.runtimeRoot, "bessemer-t7"),
-            branch: Option.some("bessemer-t8"),
+            path: checkoutPathFor(scratch.runtimeRoot, "speepobox-t7"),
+            branch: Option.some("speepobox-t8"),
           }),
         },
         {
           slug: SLUG,
           lock: Option.some({ path: lockFile, owner: Option.some(DEAD_PID) }),
-          sandbox: Option.some({ id: CONTAINER_ID, name: `bessemer-${SLUG}`, running: true }),
+          sandbox: Option.some({ id: CONTAINER_ID, name: `speepobox-${SLUG}`, running: true }),
           checkout: Option.some({
             path: checkoutPathFor(scratch.runtimeRoot, SLUG),
             branch: Option.some(SLUG),
@@ -838,7 +838,7 @@ describe("the reconciler's scan", () => {
       expect((yield* fs.readDirectory(locksDirOf(scratch.runtimeRoot))).toSorted()).toEqual(before);
       expect(yield* fs.readFileString(lockFile)).toBe(`${DEAD_PID}\n`);
       expect(yield* fs.exists(checkoutPathFor(scratch.runtimeRoot, SLUG))).toBe(true);
-      expect(yield* fs.exists(checkoutPathFor(scratch.runtimeRoot, "bessemer-t7"))).toBe(true);
+      expect(yield* fs.exists(checkoutPathFor(scratch.runtimeRoot, "speepobox-t7"))).toBe(true);
       expect(
         (yield* Ref.get(scratch.commands)).map((command) => command.split(" ", 2).join(" ")),
       ).toEqual(["docker ps"]);

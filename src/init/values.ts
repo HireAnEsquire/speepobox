@@ -23,13 +23,13 @@ export const ResolvedValue = Schema.Struct({
 });
 export type ResolvedValue = Schema.Schema.Type<typeof ResolvedValue>;
 
-const SUFFIX = "bessemer";
+const SUFFIX = "speepobox";
 
 // The served repo directory's basename as an image name: lowercased, every
 // character outside `[a-z0-9._-]` replaced by `-`, runs of `-` collapsed, and
-// separators trimmed from the ends so the `-bessemer` joined on after them is
-// never a second separator beside one — `My App` is `my-app-bessemer`. A name
-// with nothing left after that is `bessemer` alone rather than `-bessemer`,
+// separators trimmed from the ends so the `-speepobox` joined on after them is
+// never a second separator beside one — `My App` is `my-app-speepobox`. A name
+// with nothing left after that is `speepobox` alone rather than `-speepobox`,
 // which is not a legal repository name.
 export const imageNameFor = (directoryName: string): string => {
   const stem = directoryName

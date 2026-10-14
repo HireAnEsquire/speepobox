@@ -4,7 +4,7 @@
 // and this module only ever sees their text.
 //
 // A stamp is one whole `#` comment line,
-// `# bessemer-template: <name> v<N> sha256:<12 hex>`, where the digest is the
+// `# speepobox-template: <name> v<N> sha256:<12 hex>`, where the digest is the
 // template's text with the stamp line removed. Stamped files are never
 // substituted, so that digest is the template as written, and a scaffold file
 // that still hashes to its own stamp is one nobody has edited.
@@ -16,15 +16,15 @@ import { Data, Either, Option } from "effect";
 // lower one behind. `config.toml` is versioned like the rest even though it
 // carries no stamp — it is the one substituted file, checked for presence only.
 export const TEMPLATE_VERSIONS = {
-  "config.toml": 3,
-  ".gitignore": 2,
-  "image/Dockerfile": 3,
-  "image/inputs": 1,
-  // The shim (T125), written at `.bessemer/bessemer` (T127) and stamped after
+  "config.toml": 4,
+  ".gitignore": 3,
+  "image/Dockerfile": 4,
+  "image/inputs": 2,
+  // The shim (T125), written at `.speepobox/speepobox` (T127) and stamped after
   // its shebang. Bumping a released shim template: copy its text into
   // `test/fixtures/shim/` first, named by version — a package release never
   // stops accepting a call an earlier released shim makes (P6 F17, F18).
-  bessemer: 4,
+  speepobox: 5,
 } as const;
 
 export type TemplateName = keyof typeof TEMPLATE_VERSIONS;
@@ -34,13 +34,13 @@ export const STAMPED_TEMPLATES = [
   ".gitignore",
   "image/Dockerfile",
   "image/inputs",
-  "bessemer",
+  "speepobox",
 ] as const;
 
-// The shim's template, which is also its path under the bessemer directory:
+// The shim's template, which is also its path under the speepobox directory:
 // the one scaffold file that is executed, so the one written executable and
 // the one whose execute bit `--diff` asks about (T127).
-export const SHIM = "bessemer";
+export const SHIM = "speepobox";
 
 export type StampedTemplate = (typeof STAMPED_TEMPLATES)[number];
 
@@ -50,10 +50,10 @@ export interface Stamp {
   readonly digest: string;
 }
 
-const STAMP_LINE = /^# bessemer-template: (\S+) v(\d+) sha256:([0-9a-f]{12})$/;
+const STAMP_LINE = /^# speepobox-template: (\S+) v(\d+) sha256:([0-9a-f]{12})$/;
 
 const stampLine = (stamp: Stamp): string =>
-  `# bessemer-template: ${stamp.name} v${stamp.version} sha256:${stamp.digest}`;
+  `# speepobox-template: ${stamp.name} v${stamp.version} sha256:${stamp.digest}`;
 
 const digestOf = (text: string): string =>
   createHash("sha256").update(text, "utf8").digest("hex").slice(0, 12);

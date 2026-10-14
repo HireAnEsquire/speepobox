@@ -16,7 +16,7 @@
 import { basename } from "node:path";
 import { Effect, Option, Ref } from "effect";
 import { AgentCli } from "../agent/agent-cli.ts";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { Forge, type ForgeError } from "../forge/forge.ts";
 import type { RepoSlug } from "../git/repo-slug.ts";
 import type { IssueOutcome, PullRequest } from "../ledger/record.ts";
@@ -28,7 +28,7 @@ import type { DispatchPlan, Task } from "./plan.ts";
 // bash's title (`run.sh:1721`). It carries the tool's name because the first
 // thing a reviewer meeting one of these in a PR list needs to know is who
 // wrote it.
-export const PR_TITLE_PREFIX = "[bessemer] ";
+export const PR_TITLE_PREFIX = "[speepobox] ";
 
 export const prTitleFor = (branch: string): string => `${PR_TITLE_PREFIX}${branch}`;
 
@@ -46,8 +46,8 @@ export const DESCRIPTION_UNAVAILABLE = "_(description generation failed — see 
 // deliberately, because the one it used to carry was a spec the run never read.
 const authorship = (task: Task): string =>
   task._tag === "Spec"
-    ? `AI-authored via bessemer (spec: \`${basename(task.path)}\`).`
-    : "AI-authored via bessemer.";
+    ? `AI-authored via speepobox (spec: \`${basename(task.path)}\`).`
+    : "AI-authored via speepobox.";
 
 // A feature run's body ends with its `### Issues` checklist (T79), rendered
 // here from the run's outcomes and never asked of the agent: what became of
@@ -87,12 +87,12 @@ export const openPullRequest = (
   // the edit path as much as the create one — so a resumed run's PR shows the
   // newest run's checklist, never the one the first run wrote.
   outcomes: Ref.Ref<ReadonlyArray<IssueOutcome>>,
-): Effect.Effect<void, ForgeError, Forge | AgentCli | BessemerConfig | Reporter> =>
+): Effect.Effect<void, ForgeError, Forge | AgentCli | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
     const forge = yield* Forge;
     const agent = yield* AgentCli;
     const reporter = yield* Reporter;
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
 
     // The pass, and the whole of its failure handling: it is typed like every
     // other pass at the seam (`agent/agent-cli.ts`) and degrades here, where

@@ -6,7 +6,7 @@
 //
 // The script answers asks in order. A row ask is answered by the **label** of
 // the row to pick, which is how the acceptance criteria are written ("T3",
-// then "bessemer-t3", then "Dispatch") and what keeps a case readable when the
+// then "speepobox-t3", then "Dispatch") and what keeps a case readable when the
 // value behind a row is a tagged union. Three things deliberately fail the
 // test rather than degrading:
 //

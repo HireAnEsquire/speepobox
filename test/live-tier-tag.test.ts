@@ -16,11 +16,11 @@ describe("the live tier's tag", () => {
     // the harness *is* the case: a live case that somehow reached the fake
     // tier dies exactly here, and `test/live/live.ts` is the only import a
     // live case needs to inherit that.
-    await expect(import("./live/live.ts")).rejects.toThrow(/BESSEMER_LIVE/);
+    await expect(import("./live/live.ts")).rejects.toThrow(/SPEEPOBOX_LIVE/);
   });
 
   it("takes its marker from the live config, so only that config admits a live case", () => {
-    expect(liveTier.test?.env).toEqual({ BESSEMER_LIVE: "1" });
+    expect(liveTier.test?.env).toEqual({ SPEEPOBOX_LIVE: "1" });
   });
 
   it("keeps the live directory out of verify, and never passes an empty live run", () => {

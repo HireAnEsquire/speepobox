@@ -11,7 +11,7 @@
 // `PromptAssembled` from there.
 //
 // **Two roots, whole-file granularity.** The served repo's
-// `<repoRoot>/.bessemer/prompts/<name>.md` beats `<packageRoot>/prompts/
+// `<repoRoot>/.speepobox/prompts/<name>.md` beats `<packageRoot>/prompts/
 // <name>.md`, and that is the entire override mechanism: there is no
 // fragment-patching of a default, because that is a mini-templating-language
 // and 05 Q9 rejected it by name. What a served repo gets instead of patching
@@ -21,7 +21,7 @@
 // setup notes) survives the defaults improving underneath it and needs no copy
 // of them.
 //
-// **The bessemer directory, not the runtime root** (19 §2, T59). A prompt is a
+// **The speepobox directory, not the runtime root** (19 §2, T59). A prompt is a
 // read location, and read locations resolve against the served repo
 // (`CONTEXT.md`); the runtime root is where this tool *writes*, so moving it
 // moves writes only and says nothing about which prompt wins.
@@ -32,7 +32,7 @@
 import { FileSystem, type Path } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import { Context, Data, Effect, Layer, Option } from "effect";
-import { bessemerDir } from "../config/paths.ts";
+import { speepoboxDir } from "../config/paths.ts";
 import { packagePromptPath, PROJECT_CONTEXT_PROMPT, promptPathIn } from "./prompt.ts";
 
 // Which root a prompt came from. Two arms, because there are two roots — a
@@ -108,14 +108,14 @@ export const promptSourceLiveFor = (
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
 
-      // The overriding root: the served repo's bessemer directory, derived
+      // The overriding root: the served repo's speepobox directory, derived
       // once here and never spelled as a literal (`paths.ts`). No guard stands
-      // beside it and none can be needed — `.bessemer/prompts/` is never
+      // beside it and none can be needed — `.speepobox/prompts/` is never
       // `<packageRoot>/prompts/`, self-hosted or not, so the two roots cannot
       // be one directory and a shipped default cannot arrive wearing an
       // override's name. `promptPathIn` is what both arms below derive with,
       // so the two roots cannot resolve a name two different ways either.
-      const overrideRoot = bessemerDir(repoRoot);
+      const overrideRoot = speepoboxDir(repoRoot);
 
       // One read, not an `exists` and then a read: the two-syscall shape has to
       // decide what a file that vanished in between means, and this has the
@@ -130,7 +130,7 @@ export const promptSourceLiveFor = (
           ),
         );
 
-      // The chain itself, and the whole of it: the served repo's bessemer
+      // The chain itself, and the whole of it: the served repo's speepobox
       // directory when it holds the file, the package root otherwise.
       const resolve = (
         name: string,

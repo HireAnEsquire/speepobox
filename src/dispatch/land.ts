@@ -18,7 +18,7 @@
 // over zero commits, so the checkout goes by its ordinary derived path —
 // which is exactly what matrix row 14 says a failed push leaves behind.
 import { Effect, Option, Ref } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { Git, type GitError } from "../git/git.ts";
 import { IssueStore, type IssueStoreError } from "../issues/issue-store.ts";
 import type { IssueOutcome } from "../ledger/record.ts";
@@ -63,10 +63,10 @@ export const land = (
   plan: DispatchPlan,
   repoRoot: string,
   outcomes: Ref.Ref<ReadonlyArray<IssueOutcome>>,
-): Effect.Effect<LandOutcome, GitError, Git | IssueStore | BessemerConfig | Reporter> =>
+): Effect.Effect<LandOutcome, GitError, Git | IssueStore | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
     const repo = yield* Git;
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const issueStore = yield* IssueStore;
     const reporter = yield* Reporter;
     const branchRef = `refs/heads/${plan.branch}`;

@@ -91,7 +91,7 @@ export type DriftFile = Schema.Schema.Type<typeof DriftFile>;
 
 export const InitDiff = Schema.TaggedStruct("Diff", {
   // A self-hosted repo is not scaffolded, so its remedy names the template
-  // rather than `rm … && .bessemer/bessemer init` or the shim's `mv`.
+  // rather than `rm … && .speepobox/speepobox init` or the shim's `mv`.
   selfHosted: Schema.Boolean,
   files: Schema.Array(DriftFile),
 });

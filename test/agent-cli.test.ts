@@ -44,8 +44,8 @@ import {
 } from "../src/agent/prompt-source.ts";
 import { DESCRIPTION_CLOSE, DESCRIPTION_OPEN } from "../src/agent/description.ts";
 import { APPROVED_MARKER, FIXED_MARKER, type ReviewRound } from "../src/agent/verdict.ts";
-import { BessemerConfig, type BessemerConfigShape, defaultConfig } from "../src/config/config.ts";
-import { bessemerDir } from "../src/config/paths.ts";
+import { SpeepoboxConfig, type SpeepoboxConfigShape, defaultConfig } from "../src/config/config.ts";
+import { speepoboxDir } from "../src/config/paths.ts";
 import { featureDispatch, type DispatchPlan, planFor, specDispatch } from "../src/dispatch/plan.ts";
 import { runInScope } from "../src/dispatch/run.ts";
 import { Ledger } from "../src/ledger/ledger.ts";
@@ -70,7 +70,7 @@ import { fakeIssue } from "./support/issue-store-fake.ts";
 import { fakeNotifier } from "./support/notifier-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t9";
+const BRANCH = "speepobox-t9";
 const CONTAINER_ID = "d15c0ffee1d";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
 // What the agent says while it works, as the CLI prints it under
@@ -106,7 +106,7 @@ const narrationEvents = (pass: AgentPass): ReadonlyArray<ReporterEvent> => [
 const passOutput = (answer: string): string => streamJson(...NARRATION, answersWith(answer));
 // What the branch's PR says today, as the forge answered it — the context a
 // resuming pass is handed (T17, T66).
-const PR: PrContext = { title: "[bessemer] bessemer-t9", body: "## Overview\n\nThe run before." };
+const PR: PrContext = { title: "[speepobox] speepobox-t9", body: "## Overview\n\nThe run before." };
 
 const happyScript: Record<string, ScriptedResult> = {
   "docker run": { exit: 0, stdout: `${CONTAINER_ID}\n` },
@@ -134,7 +134,7 @@ const NO_SUCH_CONTAINER: ScriptedResult = {
 // and everything else here is real.
 const world = (
   script: Record<string, ScriptedResult> = happyScript,
-  config: Partial<BessemerConfigShape> = {},
+  config: Partial<SpeepoboxConfigShape> = {},
 ) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
@@ -166,7 +166,7 @@ const world = (
         // The prompt layer joins the merge over the same base, exactly as
         // `appLiveFor` composes it (T14): the real chain, over this scratch
         // served repo, so an override is a file a case writes into its
-        // `.bessemer/prompts/` (T59).
+        // `.speepobox/prompts/` (T59).
         Layer.mergeAll(
           SandboxLive,
           RunLockLive,
@@ -182,7 +182,7 @@ const world = (
           NodeFileSystem.layer,
           NodePath.layer,
           scriptedExecutor(script, commands, fed),
-          Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot, ...config }),
+          Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot, ...config }),
           Layer.succeed(Reporter, {
             emit: (event) => Ref.update(events, (current) => [...current, event]),
           }),
@@ -228,12 +228,12 @@ const passFailuresIn = (events: ReadonlyArray<ReporterEvent>) =>
 const watchEventsIn = (events: ReadonlyArray<ReporterEvent>) =>
   events.filter((event) => event._tag === "PassStillRunning" || event._tag === "NoWritesYet");
 
-// Where a served repo puts an override: its bessemer directory (T59), derived
+// Where a served repo puts an override: its speepobox directory (T59), derived
 // the way the chain derives it.
 const overrideIn = (repoRoot: string, name: string): string =>
-  promptPathIn(bessemerDir(repoRoot), name);
+  promptPathIn(speepoboxDir(repoRoot), name);
 
-// A served repo dropping a file into `.bessemer/prompts/` — the whole of an
+// A served repo dropping a file into `.speepobox/prompts/` — the whole of an
 // override and the whole of the fragment (T14).
 const dropIn = (
   repoRoot: string,
@@ -242,7 +242,7 @@ const dropIn = (
 ): Effect.Effect<void, never, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    yield* fs.makeDirectory(`${bessemerDir(repoRoot)}/${PROMPTS_DIRNAME}`, { recursive: true });
+    yield* fs.makeDirectory(`${speepoboxDir(repoRoot)}/${PROMPTS_DIRNAME}`, { recursive: true });
     yield* fs.writeFileString(overrideIn(repoRoot, name), text);
   }).pipe(Effect.orDie);
 
@@ -1278,7 +1278,7 @@ describe("the PR description pass", () => {
 // `PromptSource` and says which root it came from — while the chain's own arms
 // are `test/prompt-source.test.ts`'s. A pass that read a package path directly
 // would still be green there and red here.
-describe("a served repo's prompts in its bessemer directory", () => {
+describe("a served repo's prompts in its speepobox directory", () => {
   const OVERRIDE = "# TASK\n\nThe served repo's own instructions, whole-file.\n";
   const CONTEXT = "Run `npm run verify` from the repo root; there is no pytest here.\n";
 
@@ -1535,7 +1535,7 @@ describe("the pass whose task is stated inline", () => {
     identity: {
       _tag: "FeedbackResume",
       resumed: { _tag: "OneOff", spec: "tasks/T9.md" },
-      resumedRunId: Option.some("bessemer-t9-1786000000000"),
+      resumedRunId: Option.some("speepobox-t9-1786000000000"),
     },
   });
 

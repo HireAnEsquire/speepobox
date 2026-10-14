@@ -5,7 +5,7 @@
 import type { Release } from "../git/releases.ts";
 import type { PinnedBefore, UpgradeSnapshot } from "./snapshot.ts";
 
-export const INIT_DIFF_COMMAND = ".bessemer/bessemer init --diff";
+export const INIT_DIFF_COMMAND = ".speepobox/speepobox init --diff";
 
 export const shortSha = (sha: string): string => sha.slice(0, 7);
 
@@ -24,7 +24,7 @@ export const renderUpgrade = (snapshot: UpgradeSnapshot): string =>
         "",
         "Next: run this to see which scaffold files the new release's templates change:",
         `  ${INIT_DIFF_COMMAND}`,
-        "Nothing was committed: commit .bessemer/config.toml when you are ready.",
+        "Nothing was committed: commit .speepobox/config.toml when you are ready.",
       ].join("\n")
     : snapshot.explicit
       ? `already pinned ${named(snapshot.release)} — nothing was written`

@@ -1,5 +1,5 @@
 # Committed config layer (05 Q4): defaults that travel with the repo.
-# Precedence: flags > BESSEMER_* env > config.local.toml (gitignored) > this
+# Precedence: flags > SPEEPOBOX_* env > config.local.toml (gitignored) > this
 # file > code defaults. Secrets never go here — they live in a gitignored
 # .env beside this file.
 
@@ -16,18 +16,18 @@ tasks-dir = "tasks"
 # This repo's agent image, and the ref a dispatch diffs and branches from. The
 # package ships no default for either (T40): both are one repo's answers, and a
 # config declaring neither is refused by name. That this repo's tag is now the
-# package's own word is T65's coincidence and not a default the package
+# package's own word is a coincidence (T65, T144) and not a default the package
 # supplies — an image belongs to the repo whose image it is, and an adopter
 # names its own whatever it likes. `image build` tags what it builds with this
 # key, so there is no second spelling of the tag to keep in step.
-image = "bessemer"
+image = "speepobox"
 base = "origin/main"
 
 # The command `doctor` and the dispatch preflight name when the agent image is
 # missing or stale (T30). The package ships no default: how a repo builds its
 # image is that repo's to say, and a default baked in would name one host's
 # layout from inside every repo that adopts it. This repo's image needs nothing
-# beyond the package's own build of `.bessemer/image/` (T111, T112), and it
+# beyond the package's own build of `.speepobox/image/` (T111, T112), and it
 # runs the package from its own tree, so this is the package's command.
 #
 # NOT `.agentbox/build-image.sh`: that directory was hae's bash dispatcher,
@@ -66,7 +66,7 @@ setup-hook = "setup-hook.sh"
 
 # The container's environment file (T61): one file, inside this repo, whose
 # contents docker reads into the container — `docker run --env-file <path>`.
-# Bessemer never opens it. That is why its values cannot reach argv, a log, the
+# Speepobox never opens it. That is why its values cannot reach argv, a log, the
 # ledger, or an event: the path may appear in any of them, the contents never.
 #
 # Relative to the *repo* root, like `setup-hook` above — and unlike it, an
@@ -79,9 +79,9 @@ setup-hook = "setup-hook.sh"
 # model every pass runs on, rather than whichever default the CLI baked into the
 # image had. No secret goes in it — the credential is forwarded by name, never
 # through this file. hae's `.agentbox/.env.sandbox` is an adopter's example.
-sandbox-env-file = ".bessemer/env.sandbox"
+sandbox-env-file = ".speepobox/env.sandbox"
 
 # Runtime root (05 Q19) intentionally NOT set here: unset, it defaults to this
-# directory — the bessemer directory of the repo being served. Set it only to
+# directory — the speepobox directory of the repo being served. Set it only to
 # move *writes* somewhere else: the checkouts, the locks, the logs, and the
 # ledger follow it, and every read location stays exactly where it is.

@@ -13,8 +13,8 @@
 // it is called from the composition root and reaches commands as a parameter
 // (AGENTS.md).
 //
-// The root both readers hand it is `<repoRoot>/.bessemer/.env` — the served
-// repo's bessemer directory, beside the `config.toml` the advice below names
+// The root both readers hand it is `<repoRoot>/.speepobox/.env` — the served
+// repo's speepobox directory, beside the `config.toml` the advice below names
 // (T58, 19 §3). Three places are deliberately *not* read. Not the package: the
 // clone-run shim re-clones its cache on every repin, and one cache serves
 // every repo the operator dispatches for, so a token there would be lost on a
@@ -70,7 +70,7 @@ export interface AgentCredential {
   readonly source: CredentialSource;
 }
 
-// `<root>/.env` first — the root being the served repo's bessemer directory,
+// `<root>/.env` first — the root being the served repo's speepobox directory,
 // which is the caller's answer and not this module's — then the process
 // environment: the precedence probe 3 already had, kept because it is the
 // advice the tool gives and hosts follow it. Each name is asked of the two

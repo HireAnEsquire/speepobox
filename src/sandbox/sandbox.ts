@@ -11,7 +11,7 @@
 // `run`, `remove`, `exec`, and `build` are the whole surface. `exec` landed
 // with its first caller — T7's setup hook — rather than ahead of it, because a
 // method with no consumer is a layer rather than a tracer bullet; `build`
-// landed with `bessemer image build` (T111).
+// landed with `speepobox image build` (T111).
 import { CommandExecutor } from "@effect/platform";
 import { Context, Data, Effect, Layer, Schema, type Scope } from "effect";
 import {

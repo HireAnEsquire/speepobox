@@ -11,7 +11,7 @@
 // the usage line.
 import { Data, Either, Option } from "effect";
 
-export const INIT_USAGE = "bessemer init [--base <ref>] [--image <tag>] | bessemer init --diff";
+export const INIT_USAGE = "speepobox init [--base <ref>] [--image <tag>] | speepobox init --diff";
 
 // One line on stderr and exit 1, through the renderer every other refusal
 // uses (`dispatch/render.ts`).

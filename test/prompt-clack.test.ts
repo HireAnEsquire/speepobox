@@ -94,7 +94,7 @@ describe("PromptClackLive under fiber interrupt", () => {
 const BRANCHES: ReadonlyArray<PromptRow<string>> = [
   { value: "back", label: "← Back" },
   { value: "main", label: "⛔ PROTECTED — main", disabled: true },
-  { value: "bessemer-t81", label: "bessemer-t81" },
+  { value: "speepobox-t81", label: "speepobox-t81" },
 ];
 
 const matching = (query: string): ReadonlyArray<PromptRow<string>> =>
@@ -129,9 +129,9 @@ const typedInto = (keys: ReadonlyArray<string>) =>
 describe("PromptClackLive's autocomplete", () => {
   it.live("answers with the row a query left focused", () =>
     Effect.gen(function* () {
-      const fiber = yield* typedInto(["bessemer", "\r"]);
+      const fiber = yield* typedInto(["speepobox", "\r"]);
 
-      expect(yield* Fiber.join(fiber)).toBe("bessemer-t81");
+      expect(yield* Fiber.join(fiber)).toBe("speepobox-t81");
     }),
   );
 
@@ -202,9 +202,9 @@ const openWith = (
 describe("PromptClackLive's starting row and as-is row", () => {
   it.live("starts the cursor on the initial row, so Enter takes it", () =>
     Effect.gen(function* () {
-      const fiber = yield* openWith({ initial: "bessemer-t81" }, ["\r"]);
+      const fiber = yield* openWith({ initial: "speepobox-t81" }, ["\r"]);
 
-      expect(yield* Fiber.join(fiber)).toBe("bessemer-t81");
+      expect(yield* Fiber.join(fiber)).toBe("speepobox-t81");
     }),
   );
 

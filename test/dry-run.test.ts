@@ -19,7 +19,7 @@ import {
   isModifiersOnly,
 } from "../src/app.ts";
 import { promptSourceLiveFor } from "../src/agent/prompt-source.ts";
-import { BessemerConfig, type BessemerConfigShape, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, type SpeepoboxConfigShape, defaultConfig } from "../src/config/config.ts";
 import { packagePathspec } from "../src/config/paths.ts";
 import { dispatchCli } from "../src/dispatch/command.ts";
 import { dispatch, type DispatchRequest } from "../src/dispatch/dispatch.ts";
@@ -75,9 +75,9 @@ import { PLAN_TIP } from "./support/plan.ts";
 import { scriptedPrompt } from "./support/prompt-fake.ts";
 
 const REPO_ROOT = "/srv/hae";
-const BRANCH = "bessemer-t15";
-const CONTAINER = `bessemer-${BRANCH}`;
-const CHECKOUT = `/srv/bessemer/checkouts/${BRANCH}`;
+const BRANCH = "speepobox-t15";
+const CONTAINER = `speepobox-${BRANCH}`;
+const CHECKOUT = `/srv/speepobox/checkouts/${BRANCH}`;
 // The feature folder a rehearsal would have marked issues under (T77).
 const FOLDER = "docs/wayfinder/effect-agentbox";
 
@@ -86,9 +86,9 @@ const FOLDER = "docs/wayfinder/effect-agentbox";
 // answers to. No `runtimeRoot`: every case below is a scratch root of its own
 // and supplies it, so the one key that is a fact about the served repo is not
 // answered here (T57).
-const hostConfig: Omit<BessemerConfigShape, "runtimeRoot"> = {
+const hostConfig: Omit<SpeepoboxConfigShape, "runtimeRoot"> = {
   ...defaultConfig,
-  image: "test-bessemer",
+  image: "test-speepobox",
   base: "origin/master",
 };
 
@@ -101,7 +101,7 @@ const plan = planFor({
   baseSha: "1111111111111111111111111111111111111111",
   mergeBaseSha: "2222222222222222222222222222222222222222",
   tipSha: PLAN_TIP,
-  runtimeRoot: "/srv/bessemer",
+  runtimeRoot: "/srv/speepobox",
   startedAt: DateTime.unsafeMake("2026-01-01T00:00:00.000Z"),
 });
 
@@ -186,8 +186,8 @@ describe("the recording sandbox", () => {
       yield* Effect.flatMap(Sandbox, (sandbox) =>
         sandbox.build({
           tag: "hae-agentbox",
-          context: `${REPO_ROOT}/.bessemer/image`,
-          dockerfile: `${REPO_ROOT}/.bessemer/image/Dockerfile`,
+          context: `${REPO_ROOT}/.speepobox/image`,
+          dockerfile: `${REPO_ROOT}/.speepobox/image/Dockerfile`,
           buildArgs: { AGENT_UID: "501", AGENT_GID: "20" },
           labels: {},
           onOutput: (line) => Ref.update(narrated, (current) => [...current, line]),
@@ -197,7 +197,7 @@ describe("the recording sandbox", () => {
       );
 
       expect(intents(yield* Ref.get(seen.events))).toEqual([
-        `build the image 'hae-agentbox' from ${REPO_ROOT}/.bessemer/image/Dockerfile in ${REPO_ROOT}/.bessemer/image`,
+        `build the image 'hae-agentbox' from ${REPO_ROOT}/.speepobox/image/Dockerfile in ${REPO_ROOT}/.speepobox/image`,
       ]);
       expect(yield* Ref.get(narrated)).toEqual([]);
     }),
@@ -233,7 +233,7 @@ describe("the recording sandbox", () => {
   it.scoped("names the declared env file in the line it records, and reads nothing of it", () =>
     Effect.gen(function* () {
       const seen = yield* recording();
-      const declared = `${REPO_ROOT}/.bessemer/env.sandbox`;
+      const declared = `${REPO_ROOT}/.speepobox/env.sandbox`;
       yield* recordingSandbox(seen.reporter)
         .run({ ...sandboxSpec, envFile: Option.some(declared) })
         .pipe(Effect.provideService(Reporter, seen.reporter));
@@ -600,7 +600,7 @@ describe("the recording ledger", () => {
           LedgerRecordingLive.pipe(
             Layer.provide(
               Layer.mergeAll(
-                Layer.succeed(BessemerConfig, { ...hostConfig, runtimeRoot }),
+                Layer.succeed(SpeepoboxConfig, { ...hostConfig, runtimeRoot }),
                 Layer.succeed(Reporter, seen.reporter),
                 NodeContext.layer,
               ),
@@ -664,12 +664,12 @@ describe("the recording notifier", () => {
     Effect.gen(function* () {
       const seen = yield* recording();
       yield* recordingNotifier(seen.reporter).notify({
-        title: `bessemer: ${BRANCH}`,
+        title: `speepobox: ${BRANCH}`,
         body: "approved — PR: https://example.test/pull/1",
       });
 
       expect(intents(yield* Ref.get(seen.events))).toEqual([
-        `notify: bessemer: ${BRANCH} — approved — PR: https://example.test/pull/1`,
+        `notify: speepobox: ${BRANCH} — approved — PR: https://example.test/pull/1`,
       ]);
     }),
   );
@@ -683,10 +683,10 @@ const passLayer = (seen: Recording) =>
   AgentCliRecordingLive.pipe(
     Layer.provide(
       Layer.mergeAll(
-        Layer.succeed(BessemerConfig, { ...hostConfig, runtimeRoot: "/srv/bessemer" }),
+        Layer.succeed(SpeepoboxConfig, { ...hostConfig, runtimeRoot: "/srv/speepobox" }),
         Layer.succeed(Reporter, seen.reporter),
         // The real chain over the served repo (T59), which takes no config at
-        // all: nothing sits under `${REPO_ROOT}/.bessemer/prompts/`, so the
+        // all: nothing sits under `${REPO_ROOT}/.speepobox/prompts/`, so the
         // package default wins and the rehearsal logs the bytes a live run
         // would have been handed.
         promptSourceLiveFor(REPO_ROOT).pipe(Layer.provide(NodeContext.layer)),
@@ -873,7 +873,7 @@ interface Rehearsal {
   readonly script?: Record<string, ScriptedResult>;
   // What the served repo's own `config.toml` declares, over the host config
   // above: the keys a case is about, and nothing else (T61).
-  readonly config?: Partial<Omit<BessemerConfigShape, "runtimeRoot">>;
+  readonly config?: Partial<Omit<SpeepoboxConfigShape, "runtimeRoot">>;
   // Files staged under the scratch repo root before anything runs, named the
   // way a config names them — relative to the served repo.
   readonly repoFiles?: ReadonlyArray<string>;
@@ -950,7 +950,7 @@ const dispatched = (
       NodeFileSystem.layer,
       NodePath.layer,
       scriptedExecutor(script, commands),
-      Layer.succeed(BessemerConfig, { ...hostConfig, runtimeRoot, ...options.config }),
+      Layer.succeed(SpeepoboxConfig, { ...hostConfig, runtimeRoot, ...options.config }),
       Layer.succeed(Reporter, {
         emit: (event) => Ref.update(events, (current) => [...current, event]),
       }),
@@ -1253,7 +1253,7 @@ describe("a rehearsed land with an approved issue", () => {
             Layer.mergeAll(GitRecordingLive, IssueStoreRecordingLive),
             Layer.mergeAll(
               scriptedExecutor(script, commands),
-              Layer.succeed(BessemerConfig, { ...hostConfig, runtimeRoot }),
+              Layer.succeed(SpeepoboxConfig, { ...hostConfig, runtimeRoot }),
               Layer.succeed(Reporter, seen.reporter),
             ),
           ),
@@ -1288,13 +1288,13 @@ describe("a rehearsal of a repo that declares an env file", () => {
   it.scoped("names it in the sandbox line, and repeats nothing that is in it", () =>
     Effect.gen(function* () {
       const dry = yield* dispatched(true, {
-        config: { sandboxEnvFile: ".bessemer/env.sandbox" },
-        repoFiles: [".bessemer/env.sandbox"],
+        config: { sandboxEnvFile: ".speepobox/env.sandbox" },
+        repoFiles: [".speepobox/env.sandbox"],
       });
 
       expect(Either.isRight(dry.outcome)).toBe(true);
       const start = intents(dry.events).find((detail) => detail.startsWith("start the sandbox"));
-      expect(start).toContain(`--env-file ${dry.repoRoot}/.bessemer/env.sandbox`);
+      expect(start).toContain(`--env-file ${dry.repoRoot}/.speepobox/env.sandbox`);
       // The path travelled; the contents did not. Nothing here opened the
       // file — docker would have — so there is nothing of it to leak into a
       // recorded intent, an event, or a spawned command.
@@ -1446,7 +1446,7 @@ describe("the --dry-run flag", () => {
         expect(resolved.plan.identity).toEqual({ _tag: "InlineTask", task: text });
         const block = renderPlan(resolved.plan);
         expect(block).toContain("  mode:          one-off (inline task)");
-        expect(block).toContain(`bessemer: '${text}'`.slice(0, 30));
+        expect(block).toContain(`speepobox: '${text}'`.slice(0, 30));
       }
 
       // Every pass's message, assembled over the template that won: the text

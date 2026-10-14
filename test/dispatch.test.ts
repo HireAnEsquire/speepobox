@@ -13,8 +13,8 @@ import type { AgentCredential } from "../src/agent/credential.ts";
 import type { CurrentIssue, PrContext } from "../src/agent/prompt.ts";
 import { PromptUnusable } from "../src/agent/prompt-source.ts";
 import {
-  BessemerConfig,
-  type BessemerConfigShape,
+  SpeepoboxConfig,
+  type SpeepoboxConfigShape,
   ConfigError,
   defaultConfig,
 } from "../src/config/config.ts";
@@ -145,7 +145,7 @@ const passFinished = (pass: AgentPass): ReporterEvent => ({
   usage: ZERO_PASS_USAGE,
 });
 
-const BRANCH = "bessemer-t3";
+const BRANCH = "speepobox-t3";
 // The scratch repo root is a temp directory the world below creates, so the
 // worktree list is scripted against a placeholder and rewritten per attempt.
 const REPO_WORKTREE = "<repo-root>";
@@ -177,7 +177,7 @@ const ISSUE_BOUNDARY = "8888888888888888888888888888888888888888";
 // Another branch's run, hard-killed before this one was typed: the wreckage
 // the reconciler meets on preflight (T8). Its pid is above Linux's pid_max, so
 // `kill -0` can only answer "no such process".
-const WRECK = "bessemer-t7";
+const WRECK = "speepobox-t7";
 const WRECK_CONTAINER = "0ddba11";
 const DEAD_PID = 2147483647;
 
@@ -354,7 +354,7 @@ interface AttemptOptions {
   // so a dispatch that asks anything the case did not script dies.
   readonly answers?: ReadonlyArray<ScriptedAnswer>;
   readonly script?: Record<string, ScriptedResult>;
-  readonly config?: Partial<BessemerConfigShape>;
+  readonly config?: Partial<SpeepoboxConfigShape>;
   // Files to create under the scratch repo root before dispatching, named the
   // way someone standing anywhere would name them: relative read locations
   // anchor there, not to the working directory and not to the runtime root.
@@ -425,7 +425,7 @@ const terminalOf = (isTTY: boolean): Terminal.Terminal => ({
 // `dispatch` directly, and the same call through the `@effect/cli` parser.
 interface World {
   readonly layer: Layer.Layer<
-    | BessemerConfig
+    | SpeepoboxConfig
     | Ledger
     | RunLock
     | Git
@@ -510,9 +510,9 @@ const world = (
     // `image` and `base` have no code default (T40), so this harness declares
     // them as a repo's config.toml would; `options.config` still overrides.
     // `origin/master` is the ref the git script answers to.
-    const config: BessemerConfigShape = {
+    const config: SpeepoboxConfigShape = {
       ...defaultConfig,
-      image: "test-bessemer",
+      image: "test-speepobox",
       base: "origin/master",
       runtimeRoot,
       ...options.config,
@@ -558,7 +558,7 @@ const world = (
       NodeFileSystem.layer,
       NodePath.layer,
       scriptedExecutor(scriptFor(options.script ?? happyScript, repoRoot, runtimeRoot), commands),
-      Layer.succeed(BessemerConfig, config),
+      Layer.succeed(SpeepoboxConfig, config),
       Layer.succeed(Reporter, {
         emit: (event) => Ref.update(events, (current) => [...current, event]),
       }),
@@ -775,7 +775,7 @@ describe("dispatch guards", () => {
         // No `--hard-reset`, so nothing to discard (T101).
         reset: Option.none(),
         slug: BRANCH,
-        containerId: `bessemer-${BRANCH}`,
+        containerId: `speepobox-${BRANCH}`,
         checkoutPath: checkoutPathFor(result.runtimeRoot, BRANCH),
         logPath: Option.some(logPathFor(result.runtimeRoot, plan.runId)),
         runId: plan.runId,
@@ -876,7 +876,7 @@ describe("dispatch guards", () => {
       const forgeRepoArg = `${TEST_FORGE_REPO.owner}/${TEST_FORGE_REPO.name}`;
       expect(gh).toEqual([
         `gh pr view ${BRANCH} --repo ${forgeRepoArg} --json number,state,url,title,body`,
-        `gh pr create --repo ${forgeRepoArg} --draft --base master --head ${BRANCH} --title [bessemer] ${BRANCH} --body-file -`,
+        `gh pr create --repo ${forgeRepoArg} --draft --base master --head ${BRANCH} --title [speepobox] ${BRANCH} --body-file -`,
       ]);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -1181,7 +1181,7 @@ describe("dispatch guards", () => {
               "",
               "worktree /tmp/wt-other",
               `HEAD ${MERGE_BASE_SHA}`,
-              "branch refs/heads/bessemer-t4",
+              "branch refs/heads/speepobox-t4",
               "",
             ].join("\n"),
           },
@@ -2095,7 +2095,7 @@ describe("--resume and --last", () => {
     _tag: "Resumable",
     branch: BRANCH,
     identity: { _tag: "OneOff", spec: "T3" },
-    resumedRunId: Option.some("bessemer-t3-1786000000000"),
+    resumedRunId: Option.some("speepobox-t3-1786000000000"),
     base: Option.some("origin/release"),
   };
 
@@ -2147,7 +2147,7 @@ describe("--resume and --last", () => {
       expect(result.appended[0]?.identity).toEqual({
         _tag: "FeedbackResume",
         resumed: { _tag: "OneOff", spec: "T3" },
-        resumedRunId: Option.some("bessemer-t3-1786000000000"),
+        resumedRunId: Option.some("speepobox-t3-1786000000000"),
       });
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -2159,13 +2159,13 @@ describe("--resume and --last", () => {
     Effect.gen(function* () {
       const result = yield* attempt({
         request: resumeRequest,
-        resume: Either.right({ ...RECORDED, resumedRunId: Option.some("bessemer-t3-2") }),
+        resume: Either.right({ ...RECORDED, resumedRunId: Option.some("speepobox-t3-2") }),
         script: resumeScript,
       });
       expect(result.appended[0]?.identity).toEqual({
         _tag: "FeedbackResume",
         resumed: { _tag: "OneOff", spec: "T3" },
-        resumedRunId: Option.some("bessemer-t3-2"),
+        resumedRunId: Option.some("speepobox-t3-2"),
       });
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -2393,7 +2393,7 @@ describe("--feedback", () => {
           _tag: "Resumable",
           branch: BRANCH,
           identity: { _tag: "OneOff", spec: "T3" },
-          resumedRunId: Option.some("bessemer-t3-1786000000000"),
+          resumedRunId: Option.some("speepobox-t3-1786000000000"),
           base: Option.none(),
         }),
       });
@@ -2413,7 +2413,7 @@ describe("--feedback", () => {
       expect(result.appended[0]?.identity).toEqual({
         _tag: "FeedbackResume",
         resumed: { _tag: "OneOff", spec: "T3" },
-        resumedRunId: Option.some("bessemer-t3-1786000000000"),
+        resumedRunId: Option.some("speepobox-t3-1786000000000"),
       });
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -2624,7 +2624,7 @@ describe("the resume whose recorded spec is gone", () => {
     // A spec this repo no longer has: the branch's work is on the branch, and
     // the file it was dispatched from is not on disk.
     identity: { _tag: "OneOff", spec: "T99" },
-    resumedRunId: Option.some("bessemer-t3-1786000000000"),
+    resumedRunId: Option.some("speepobox-t3-1786000000000"),
     base: Option.none(),
   };
 
@@ -2662,7 +2662,7 @@ describe("the resume whose recorded spec is gone", () => {
       expect(result.appended[0]?.identity).toEqual({
         _tag: "FeedbackResume",
         resumed: { _tag: "OneOff", spec: "T99" },
-        resumedRunId: Option.some("bessemer-t3-1786000000000"),
+        resumedRunId: Option.some("speepobox-t3-1786000000000"),
       });
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -3010,7 +3010,7 @@ describe("--feature and --issues", () => {
       expect(plan.identity).toEqual({ _tag: "Feature", feature: RESOLVED, issues: [] });
 
       const block = renderPlan(plan).split("\n");
-      expect(block[0]).toContain(`bessemer: '${RESOLVED}' on branch '${BRANCH}'`);
+      expect(block[0]).toContain(`speepobox: '${RESOLVED}' on branch '${BRANCH}'`);
       expect(block[1]).toBe("  mode:          feature");
       expect(block[2]).toBe("  issues:        T70 T71 (2)");
     }).pipe(Effect.provide(NodeFileSystem.layer)),
@@ -3306,7 +3306,7 @@ describe("the two witnesses for someone else having this issue", () => {
   // remote-tracking copy are two refs at one commit and two answers, because a
   // local branch behind its own remote is a different repair from a branch
   // somebody else landed (T72).
-  const LANDED_REFS = ["refs/heads/bessemer-t25", "refs/remotes/origin/bessemer-t25"];
+  const LANDED_REFS = ["refs/heads/speepobox-t25", "refs/remotes/origin/speepobox-t25"];
 
   // Criterion 1: git's answer is truth — host-independent and self-correcting
   // after a `--hard-reset` discards a branch (14) — so one hit refuses, and the
@@ -3319,7 +3319,7 @@ describe("the two witnesses for someone else having this issue", () => {
         issues: { ...atTheTip(fakeIssue("T25")), landed: { T25: LANDED_REFS } },
       });
       expect(refusal(result).detail).toBe(
-        `T25 is Done on refs/heads/bessemer-t25 and refs/remotes/origin/bessemer-t25 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
+        `T25 is Done on refs/heads/speepobox-t25 and refs/remotes/origin/speepobox-t25 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
       );
       // The scan was asked about the selected issues, standing on the tip the
       // set was read at — the same ref, since a second ref at that commit
@@ -3344,12 +3344,12 @@ describe("the two witnesses for someone else having this issue", () => {
         request: feature("all"),
         issues: {
           ...atTheTip(fakeIssue("T25"), fakeIssue("T26")),
-          landed: { T25: ["refs/heads/bessemer-t25"], T26: ["refs/heads/bessemer-t26"] },
+          landed: { T25: ["refs/heads/speepobox-t25"], T26: ["refs/heads/speepobox-t26"] },
         },
       });
       expect(refusal(result).detail.split("\n")).toEqual([
-        `T25 is Done on refs/heads/bessemer-t25 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
-        `T26 is Done on refs/heads/bessemer-t26 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
+        `T25 is Done on refs/heads/speepobox-t25 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
+        `T26 is Done on refs/heads/speepobox-t26 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
       ]);
       yield* heldNothing(result);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
@@ -3382,10 +3382,10 @@ describe("the two witnesses for someone else having this issue", () => {
       const result = yield* attempt({
         request: feature("all"),
         issues: atTheTip(fakeIssue("T28")),
-        workedOn: Either.right({ T28: workedOn("bessemer-t28") }),
+        workedOn: Either.right({ T28: workedOn("speepobox-t28") }),
       });
       expect(refusal(result).detail).toBe(
-        "T28 was last worked on 'bessemer-t28' (needs-work, 2026-08-18) — dispatch it there with --resume, or enumerate --issues to override",
+        "T28 was last worked on 'speepobox-t28' (needs-work, 2026-08-18) — dispatch it there with --resume, or enumerate --issues to override",
       );
       // Asked of the folder as the row records it — repo-relative (14, lesson
       // 9) — and once per selected issue.
@@ -3401,10 +3401,10 @@ describe("the two witnesses for someone else having this issue", () => {
       const result = yield* attempt({
         request: feature("all"),
         issues: atTheTip(fakeIssue("T28")),
-        workedOn: Either.right({ T28: workedOn("bessemer-t28", Option.none()) }),
+        workedOn: Either.right({ T28: workedOn("speepobox-t28", Option.none()) }),
       });
       expect(refusal(result).detail).toContain(
-        "T28 was last worked on 'bessemer-t28' (2026-08-18) —",
+        "T28 was last worked on 'speepobox-t28' (2026-08-18) —",
       );
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -3452,9 +3452,9 @@ describe("the two witnesses for someone else having this issue", () => {
       const result = yield* attempt({
         request: feature("all"),
         issues: { ...atTheTip(fakeIssue("T25")), landed: { T25: LANDED_REFS } },
-        workedOn: Either.right({ T25: workedOn("bessemer-t25") }),
+        workedOn: Either.right({ T25: workedOn("speepobox-t25") }),
       });
-      expect(refusal(result).detail).toContain("is Done on refs/heads/bessemer-t25");
+      expect(refusal(result).detail).toContain("is Done on refs/heads/speepobox-t25");
       expect(result.issueWorkQueries).toEqual([]);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -3471,7 +3471,7 @@ describe("the two witnesses for someone else having this issue", () => {
           ...atTheTip(fakeIssue("T25"), fakeIssue("T28")),
           landed: { T25: LANDED_REFS },
         },
-        workedOn: Either.right({ T28: workedOn("bessemer-t28") }),
+        workedOn: Either.right({ T28: workedOn("speepobox-t28") }),
       });
       ranTheFeature(result, [CAPPED("T25"), UNATTEMPTED("T28")]);
       expect(result.issueReads).toEqual([
@@ -3562,12 +3562,12 @@ describe("--feature under --hard-reset", () => {
         request: resetting("all"),
         issues: {
           ...doneOnlyOnTheDiscard,
-          landed: { T25: [...OWN_REFS, "refs/heads/bessemer-t25"] },
+          landed: { T25: [...OWN_REFS, "refs/heads/speepobox-t25"] },
         },
         script: withOrigin,
       });
       expect(refusal(result).detail).toBe(
-        `T25 is Done on refs/heads/bessemer-t25 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
+        `T25 is Done on refs/heads/speepobox-t25 but not on '${BRANCH}' — merge or rebase before dispatching it here, or enumerate --issues to override`,
       );
       yield* heldNothing(result);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
@@ -3793,7 +3793,7 @@ describe("the resume of a branch that last ran --task", () => {
     _tag: "Resumable",
     branch: BRANCH,
     identity: { _tag: "InlineTask", task: TEXT },
-    resumedRunId: Option.some("bessemer-t3-1786000000000"),
+    resumedRunId: Option.some("speepobox-t3-1786000000000"),
     base: Option.none(),
   };
 
@@ -3817,7 +3817,7 @@ describe("the resume of a branch that last ran --task", () => {
       expect(result.appended[0]?.identity).toEqual({
         _tag: "FeedbackResume",
         resumed: { _tag: "InlineTask", task: TEXT },
-        resumedRunId: Option.some("bessemer-t3-1786000000000"),
+        resumedRunId: Option.some("speepobox-t3-1786000000000"),
       });
       // Nothing is mounted: the recorded task is text, and there is no file.
       const [started] = result.commands.filter((command) => command.startsWith("docker run"));
@@ -3862,7 +3862,7 @@ describe("the resume of a branch that last ran --task", () => {
 // row recorded, and re-read at the tip through the content guards; the folder
 // is never rescanned.
 describe("the resume of a branch that last ran a feature run", () => {
-  const RUN_ID = "bessemer-t3-1786000000000";
+  const RUN_ID = "speepobox-t3-1786000000000";
 
   const recordedAs = (identity: DispatchIdentity): ResumeResolution => ({
     _tag: "Resumable",
@@ -3992,7 +3992,7 @@ describe("the resume of a branch that last ran a feature run", () => {
         issues: TIP,
       });
       const block = renderPlan(planIn(result)).split("\n");
-      expect(block[0]).toContain(`bessemer: '${RESOLVED}' on branch '${BRANCH}'`);
+      expect(block[0]).toContain(`speepobox: '${RESOLVED}' on branch '${BRANCH}'`);
       expect(block[1]).toBe("  mode:          resume (feature)");
       expect(block[2]).toBe("  issues:        T71 T72 (2)");
     }).pipe(Effect.provide(NodeFileSystem.layer)),
@@ -4309,7 +4309,7 @@ describe("the resume of a branch that last ran a feature run", () => {
 const RESUMED_IDENTITY: RunIdentity = {
   _tag: "FeedbackResume",
   resumed: { _tag: "OneOff", spec: "T99" },
-  resumedRunId: Option.some("bessemer-t3-1786000000000"),
+  resumedRunId: Option.some("speepobox-t3-1786000000000"),
 };
 
 const INLINE_TASK: Task = { _tag: "Inline", text: "fix the note", feedback: Option.none() };
@@ -4715,10 +4715,10 @@ describe("dispatch preflight", () => {
   // any other bad input — before the lock, with no ledger row.
   it.scoped("refuses a sandbox env file the config names but the host does not have", () =>
     Effect.gen(function* () {
-      const result = yield* attempt({ config: { sandboxEnvFile: ".bessemer/env.sandbox" } });
+      const result = yield* attempt({ config: { sandboxEnvFile: ".speepobox/env.sandbox" } });
       expect(refusal(result)._tag).toBe("GuardRefused");
       expect(refusal(result).detail).toContain("sandbox env file not found");
-      expect(refusal(result).detail).toContain(`${result.repoRoot}/.bessemer/env.sandbox`);
+      expect(refusal(result).detail).toContain(`${result.repoRoot}/.speepobox/env.sandbox`);
       // Which of the three it was, and under which key.
       expect(refusal(result).detail).toContain("sandbox-env-file");
       expect(result.commands.some((command) => command.startsWith("docker"))).toBe(false);
@@ -4758,12 +4758,12 @@ describe("dispatch preflight", () => {
   it.scoped("hands docker the declared env file, resolved against the served repo", () =>
     Effect.gen(function* () {
       const result = yield* attempt({
-        config: { sandboxEnvFile: ".bessemer/env.sandbox" },
-        repoFiles: [".bessemer/env.sandbox"],
+        config: { sandboxEnvFile: ".speepobox/env.sandbox" },
+        repoFiles: [".speepobox/env.sandbox"],
       });
       expect(Either.isRight(result.outcome)).toBe(true);
       const run = result.commands.find((command) => command.startsWith("docker run")) ?? "";
-      expect(run).toContain(`--env-file ${result.repoRoot}/.bessemer/env.sandbox`);
+      expect(run).toContain(`--env-file ${result.repoRoot}/.speepobox/env.sandbox`);
       // The allowlist is unchanged beside it: the credential's name with no
       // value (T23), and the three constants of git's workspace trust.
       expect(run.match(/ -e /g)).toHaveLength(4);
@@ -4843,7 +4843,7 @@ describe("dispatch preflight", () => {
       const result = yield* attempt({
         script: {
           ...happyScript,
-          "docker ps": { exit: 0, stdout: `${WRECK_CONTAINER}\tbessemer-${WRECK}\trunning\n` },
+          "docker ps": { exit: 0, stdout: `${WRECK_CONTAINER}\tspeepobox-${WRECK}\trunning\n` },
         },
         leaveBehind: leftByTheDeadRun,
       });
@@ -4892,7 +4892,7 @@ describe("dispatch preflight", () => {
         script: {
           ...script,
           [`${inRepo(REPO_WORKTREE)} rev-parse --verify`]: { exit: 1 },
-          "docker ps": { exit: 0, stdout: `${WRECK_CONTAINER}\tbessemer-${WRECK}\texited\n` },
+          "docker ps": { exit: 0, stdout: `${WRECK_CONTAINER}\tspeepobox-${WRECK}\texited\n` },
         },
         leaveBehind: leftByTheDeadRun,
       });
@@ -4975,14 +4975,14 @@ describe("dispatch preflight", () => {
 
 describe("plan derivation", () => {
   it("slugs a branch the way bash does", () => {
-    expect(slugFor("bessemer-t3")).toBe("bessemer-t3");
+    expect(slugFor("speepobox-t3")).toBe("speepobox-t3");
     expect(slugFor("Feature/Some_Thing")).toBe("feature-some-thing");
     expect(slugFor("--wrapped--")).toBe("wrapped");
   });
 
   it("keys the container, checkout, and lock off the same slug", () => {
     const slug = slugFor("Feature/X");
-    expect(containerIdFor(slug)).toBe("bessemer-feature-x");
+    expect(containerIdFor(slug)).toBe("speepobox-feature-x");
     expect(checkoutPathFor("/runtime", slug)).toBe("/runtime/checkouts/feature-x");
     expect(lockPathFor("/runtime", slug)).toBe("/runtime/locks/feature-x.pid");
   });
@@ -5057,7 +5057,7 @@ const RESUMABLE: ResumeResolution = {
   _tag: "Resumable",
   branch: BRANCH,
   identity: { _tag: "OneOff", spec: "T3" },
-  resumedRunId: Option.some("bessemer-t3-1786000000000"),
+  resumedRunId: Option.some("speepobox-t3-1786000000000"),
   base: Option.some("origin/release"),
 };
 
@@ -5346,30 +5346,30 @@ const resumeOf = (resumed: DispatchIdentity): RunIdentity => ({
 describe("dispatch rendering", () => {
   const plan: DispatchPlan = {
     ...specDispatch("/runtime/tasks/T3.md"),
-    branch: "bessemer-t3",
+    branch: "speepobox-t3",
     baseRef: "origin/master",
     baseSha: BASE_SHA,
     mergeBaseSha: MERGE_BASE_SHA,
     tipSha: PLAN_TIP,
     reset: Option.none(),
-    slug: "bessemer-t3",
-    containerId: "bessemer-bessemer-t3",
-    checkoutPath: "/runtime/checkouts/bessemer-t3",
-    logPath: Option.some("/runtime/logs/bessemer-t3-1700000000000.log"),
-    runId: "bessemer-t3-1700000000000",
+    slug: "speepobox-t3",
+    containerId: "speepobox-speepobox-t3",
+    checkoutPath: "/runtime/checkouts/speepobox-t3",
+    logPath: Option.some("/runtime/logs/speepobox-t3-1700000000000.log"),
+    runId: "speepobox-t3-1700000000000",
   };
 
   it("renders the plan block bash prints under --dry-run", () => {
     expect(renderPlan(plan)).toBe(
       [
-        "bessemer: '/runtime/tasks/T3.md' on branch 'bessemer-t3'  |  base origin/master @ 1111111111",
+        "speepobox: '/runtime/tasks/T3.md' on branch 'speepobox-t3'  |  base origin/master @ 1111111111",
         "  mode:          one-off (spec)",
-        "  branch:        bessemer-t3",
+        "  branch:        speepobox-t3",
         "  base:          origin/master @ 1111111111",
         `  diff boundary: ${MERGE_BASE_SHA}`,
-        "  container:     bessemer-bessemer-t3",
-        "  checkout path: /runtime/checkouts/bessemer-t3",
-        "  log path:      /runtime/logs/bessemer-t3-1700000000000.log",
+        "  container:     speepobox-speepobox-t3",
+        "  checkout path: /runtime/checkouts/speepobox-t3",
+        "  log path:      /runtime/logs/speepobox-t3-1700000000000.log",
       ].join("\n"),
     );
   });
@@ -5379,9 +5379,9 @@ describe("dispatch rendering", () => {
   // is a fact about the run, so none of them moves.
   it("names an inline task on the arm that has no path", () => {
     const inline = renderPlan({ ...plan, ...inlineDispatch("fix the release note") });
-    expect(inline).toContain("bessemer: 'fix the release note' on branch 'bessemer-t3'");
+    expect(inline).toContain("speepobox: 'fix the release note' on branch 'speepobox-t3'");
     expect(inline).not.toContain("/runtime/tasks/T3.md");
-    expect(inline).toContain("  container:     bessemer-bessemer-t3");
+    expect(inline).toContain("  container:     speepobox-speepobox-t3");
   });
 
   // The mode line SPEC §7:428 specified and nothing rendered until T67: the two
@@ -5432,7 +5432,7 @@ describe("dispatch rendering", () => {
         issues: [fakeIssue("T70"), fakeIssue("T71")],
       }),
     }).split("\n");
-    expect(block[0]).toContain("bessemer: 'tasks/f' on branch 'bessemer-t3'");
+    expect(block[0]).toContain("speepobox: 'tasks/f' on branch 'speepobox-t3'");
     expect(block[1]).toBe("  mode:          feature");
     expect(block[2]).toBe("  issues:        T70 T71 (2)");
     expect(renderPlan(plan)).not.toContain("issues:");
@@ -5470,10 +5470,10 @@ describe("dispatch rendering", () => {
     const block = renderPlan(reset(Option.some(MERGE_BASE_SHA))).split("\n");
     expect(block[4]).toBe(`  diff boundary: ${BASE_SHA}`);
     expect(block[5]).toBe(
-      "  fork point:    hard reset to origin/master — discards 3 commit(s) on 'bessemer-t3' and origin/bessemer-t3 (reflog-recoverable only)",
+      "  fork point:    hard reset to origin/master — discards 3 commit(s) on 'speepobox-t3' and origin/speepobox-t3 (reflog-recoverable only)",
     );
     expect(renderPlan(reset(Option.none()))).toContain(
-      "  fork point:    hard reset to origin/master — discards 3 commit(s) on 'bessemer-t3' (reflog-recoverable only)",
+      "  fork point:    hard reset to origin/master — discards 3 commit(s) on 'speepobox-t3' (reflog-recoverable only)",
     );
     expect(renderPlan(plan)).not.toContain("fork point:");
   });
@@ -5498,8 +5498,8 @@ describe("dispatch rendering", () => {
     );
     // A held lock names its own subject, as a GuardRefused does; the lock file
     // we could not write does not, so the renderer supplies the column.
-    expect(renderFailure(new LockHeld({ detail: "another bessemer run (pid 42) …" }))).toEqual(
-      Option.some("!! another bessemer run (pid 42) …"),
+    expect(renderFailure(new LockHeld({ detail: "another speepobox run (pid 42) …" }))).toEqual(
+      Option.some("!! another speepobox run (pid 42) …"),
     );
     expect(renderFailure(new LockError({ detail: "locks/x.pid: EACCES" }))).toEqual(
       Option.some("!! lock: locks/x.pid: EACCES"),

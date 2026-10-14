@@ -1,4 +1,4 @@
-// The shim (T125, T126): `templates/bessemer` reads the served repo's pin
+// The shim (T125, T126): `templates/speepobox` reads the served repo's pin
 // and runs the package cache entry for it, building the entry when it is
 // missing. The cold path fetches from a fixture mirror on disk the release URL
 // is rewritten to, so every case is offline.
@@ -31,13 +31,13 @@ import { readStamp, STAMPED_TEMPLATES, stamp, TEMPLATE_VERSIONS } from "../src/i
 import { type PinRefusal, pinIn, RELEASE_URL, renderPinRefusal } from "../src/pin/pin.ts";
 import { type Credential, fakeGh, operatorHome, serveGitHttp } from "./support/git-http.ts";
 
-const TEMPLATE = readFileSync(join(templatesRoot, "bessemer"), "utf8");
-const CURRENT = stamp("bessemer", TEMPLATE_VERSIONS.bessemer, TEMPLATE);
+const TEMPLATE = readFileSync(join(templatesRoot, "speepobox"), "utf8");
+const CURRENT = stamp("speepobox", TEMPLATE_VERSIONS.speepobox, TEMPLATE);
 
 const PIN_FIXTURES = new URL("./fixtures/pin/", import.meta.url);
 const RELEASED_SHIMS = new URL("./fixtures/shim/", import.meta.url);
 
-const temp = (): string => mkdtempSync(join(tmpdir(), "bessemer-shim-"));
+const temp = (): string => mkdtempSync(join(tmpdir(), "speepobox-shim-"));
 
 // The host's own copy of a tool, found the way the shell would find it.
 const onHostPath = (name: string): string => {
@@ -61,24 +61,24 @@ const toolsDir = (omit: ReadonlyArray<string> = []): string => {
 
 const ALL_TOOLS = toolsDir();
 
-// A served repo: the shim under test at `.bessemer/bessemer`, beside a config.
+// A served repo: the shim under test at `.speepobox/speepobox`, beside a config.
 const fixtureRepo = (config: string, shim: string = CURRENT): string => {
   const repo = temp();
-  mkdirSync(join(repo, ".bessemer"));
-  writeFileSync(join(repo, ".bessemer", "config.toml"), config);
-  writeFileSync(join(repo, ".bessemer", "bessemer"), shim);
-  chmodSync(join(repo, ".bessemer", "bessemer"), 0o755);
+  mkdirSync(join(repo, ".speepobox"));
+  writeFileSync(join(repo, ".speepobox", "config.toml"), config);
+  writeFileSync(join(repo, ".speepobox", "speepobox"), shim);
+  chmodSync(join(repo, ".speepobox", "speepobox"), 0o755);
   return repo;
 };
 
-const pinned = (sha: string): string => `image = "acme-bessemer"\ntool-sha = "${sha}"\n`;
+const pinned = (sha: string): string => `image = "acme-speepobox"\ntool-sha = "${sha}"\n`;
 
 // A cache whose entries are stub packages: each `src/bin.ts` prints its argv
 // and its own location, which names the entry the shim ran.
 const stubCache = (shas: ReadonlyArray<string>): string => {
   const cache = temp();
   for (const sha of shas) {
-    const src = join(cache, "bessemer", sha, "src");
+    const src = join(cache, "speepobox", sha, "src");
     mkdirSync(src, { recursive: true });
     writeFileSync(
       join(src, "bin.ts"),
@@ -118,7 +118,7 @@ const runShim = (
     readonly env?: Readonly<Record<string, string>>;
   },
 ): Run => {
-  const result = spawnSync(join(repo, ".bessemer", "bessemer"), args, {
+  const result = spawnSync(join(repo, ".speepobox", "speepobox"), args, {
     cwd: options.cwd ?? repo,
     encoding: "utf8",
     env: shimEnv(options),
@@ -147,10 +147,10 @@ describe("the shim template", () => {
     const lines = CURRENT.split("\n");
     expect(lines[0]).toBe("#!/bin/sh");
     expect(readStamp(lines[1]!)).toEqual(
-      Option.some(expect.objectContaining({ name: "bessemer", version: 4 })),
+      Option.some(expect.objectContaining({ name: "speepobox", version: 5 })),
     );
-    expect((STAMPED_TEMPLATES as ReadonlyArray<string>).includes("bessemer")).toBe(true);
-    const syntax = spawnSync("sh", ["-n", join(templatesRoot, "bessemer")], { encoding: "utf8" });
+    expect((STAMPED_TEMPLATES as ReadonlyArray<string>).includes("speepobox")).toBe(true);
+    const syntax = spawnSync("sh", ["-n", join(templatesRoot, "speepobox")], { encoding: "utf8" });
     expect(syntax.stderr).toBe("");
     expect(syntax.status).toBe(0);
   });
@@ -173,7 +173,7 @@ describe("the warm path, against the current package (F18)", () => {
   const released = readdirSync(RELEASED_SHIMS)
     .filter((file) => file !== "README.md")
     .map((file) => ({ name: file, text: readFileSync(new URL(file, RELEASED_SHIMS), "utf8") }));
-  const shims = [{ name: `current (v${TEMPLATE_VERSIONS.bessemer})`, text: CURRENT }, ...released];
+  const shims = [{ name: `current (v${TEMPLATE_VERSIONS.speepobox})`, text: CURRENT }, ...released];
 
   it.each(shims)(
     "$name runs `init --diff` on the fixture repo",
@@ -181,15 +181,15 @@ describe("the warm path, against the current package (F18)", () => {
       expect(sha).toMatch(/^[0-9a-f]{40}$/);
       const repo = fixtureRepo(pinned(sha), text);
       const cache = temp();
-      mkdirSync(join(cache, "bessemer"));
-      symlinkSync(packageRoot, join(cache, "bessemer", sha));
+      mkdirSync(join(cache, "speepobox"));
+      symlinkSync(packageRoot, join(cache, "speepobox", sha));
       const run = runShim(repo, ["init", "--diff"], { cache });
       // The scaffold is not written, so `--diff` reports drift and exits 1;
       // what proves `--repo-root` arrived is that it describes this repo.
       expect(run.stderr).toBe("");
-      expect(run.stdout).toMatch(/^present +\.bessemer\/config\.toml$/m);
-      expect(run.stdout).toMatch(/^missing +\.bessemer\/\.gitignore /m);
-      expect(run.stdout).toMatch(/^missing +\.bessemer\/image\/Dockerfile /m);
+      expect(run.stdout).toMatch(/^present +\.speepobox\/config\.toml$/m);
+      expect(run.stdout).toMatch(/^missing +\.speepobox\/\.gitignore /m);
+      expect(run.stdout).toMatch(/^missing +\.speepobox\/image\/Dockerfile /m);
     },
     // A cold start of the full CLI on a loaded two-core runner; every released shim fixture adds another.
     60_000,
@@ -206,8 +206,8 @@ describe("the shim init writes refreshes itself", () => {
     expect(sha).toMatch(/^[0-9a-f]{40}$/);
     const repo = temp();
     const cache = temp();
-    mkdirSync(join(cache, "bessemer"));
-    symlinkSync(packageRoot, join(cache, "bessemer", sha));
+    mkdirSync(join(cache, "speepobox"));
+    symlinkSync(packageRoot, join(cache, "speepobox", sha));
     // The tools the refresh line itself runs, beside the shim's own.
     const path = `${ALL_TOOLS}${delimiter}${process.env["PATH"] ?? ""}`;
     const env = { PATH: path, HOME: temp(), XDG_CACHE_HOME: cache };
@@ -220,24 +220,24 @@ describe("the shim init writes refreshes itself", () => {
     );
     expect(bootstrap.stderr).toBe("");
     expect(bootstrap.status).toBe(0);
-    const shim = join(repo, ".bessemer", "bessemer");
+    const shim = join(repo, ".speepobox", "speepobox");
     expect(statSync(shim).mode & 0o777).toBe(0o755);
 
     // Pinned at the cache entry — a dirty tree writes an empty pin — and
     // the shim taken one version back, as an `upgrade` would leave it.
-    const config = join(repo, ".bessemer", "config.toml");
+    const config = join(repo, ".speepobox", "config.toml");
     writeFileSync(
       config,
       readFileSync(config, "utf8").replace(/^tool-sha = ".*"$/m, `tool-sha = "${sha}"`),
     );
-    writeFileSync(shim, stamp("bessemer", TEMPLATE_VERSIONS.bessemer - 1, TEMPLATE));
+    writeFileSync(shim, stamp("speepobox", TEMPLATE_VERSIONS.speepobox - 1, TEMPLATE));
 
     // No origin/HEAD here, and no --base: a kept config.toml asks nothing.
     const refresh = spawnSync("sh", ["-c", SHIM_REFRESH], { cwd: repo, encoding: "utf8", env });
     expect(refresh.stderr).toBe("");
     expect(refresh.status).toBe(0);
-    expect(refresh.stdout).toMatch(/^wrote {2}\.bessemer\/bessemer$/m);
-    expect(refresh.stdout).toMatch(/^kept {2}\.bessemer\/config\.toml$/m);
+    expect(refresh.stdout).toMatch(/^wrote {2}\.speepobox\/speepobox$/m);
+    expect(refresh.stdout).toMatch(/^kept {2}\.speepobox\/config\.toml$/m);
     expect(readFileSync(shim, "utf8")).toBe(CURRENT);
     expect(statSync(shim).mode & 0o777).toBe(0o755);
     expect(existsSync(`${shim}.old`)).toBe(false);
@@ -274,7 +274,7 @@ describe("the shim and the pin module agree (F7)", () => {
     const run = runShim(repo, [], { cache });
     Either.match(pinIn(text), {
       onRight: (sha) => {
-        expect(stubOutput(run).at).toBe(join(cache, "bessemer", sha, "src", "bin.ts"));
+        expect(stubOutput(run).at).toBe(join(cache, "speepobox", sha, "src", "bin.ts"));
       },
       onLeft: (refusal) => {
         expect(refusalOf(run)).toEqual({
@@ -334,7 +334,7 @@ describe("the shim's own warm path", () => {
     const run = runShim(repo, ["status"], { cache, cwd: elsewhere });
     const out = stubOutput(run);
     expect(out.argv).toEqual(["--repo-root", repo, "status"]);
-    expect(out.at).toBe(join(cache, "bessemer", SHA, "src", "bin.ts"));
+    expect(out.at).toBe(join(cache, "speepobox", SHA, "src", "bin.ts"));
   });
 
   it("refuses a node older than 26, naming node 26", () => {
@@ -364,7 +364,7 @@ describe("the shim's own warm path", () => {
 
   it("reads config.toml only, never config.local.toml", () => {
     const repo = fixtureRepo('image = "x"\n');
-    writeFileSync(join(repo, ".bessemer", "config.local.toml"), pinned(SHA));
+    writeFileSync(join(repo, ".speepobox", "config.local.toml"), pinned(SHA));
     expect(refusalOf(runShim(repo, [], { cache })).kind).toBe("no-line");
   });
 });
@@ -410,7 +410,7 @@ const rewrite = (source: string): Record<string, string> => ({
 });
 
 const leftovers = (cache: string): ReadonlyArray<string> =>
-  readdirSync(join(cache, "bessemer")).filter((name) => name.includes(".tmp."));
+  readdirSync(join(cache, "speepobox")).filter((name) => name.includes(".tmp."));
 
 const runShimAsync = (
   repo: string,
@@ -422,7 +422,7 @@ const runShimAsync = (
   },
 ): Promise<Run> =>
   new Promise((resolve, reject) => {
-    const child = spawn(join(repo, ".bessemer", "bessemer"), args, {
+    const child = spawn(join(repo, ".speepobox", "speepobox"), args, {
       cwd: repo,
       env: shimEnv(options),
     });
@@ -440,7 +440,7 @@ describe("the cold path (T126)", () => {
     const cache = temp();
     const repo = fixtureRepo(pinned(source.sha));
     const out = stubOutput(runShim(repo, ["status", "a b"], { cache, env: rewrite(source.path) }));
-    const entry = join(cache, "bessemer", source.sha);
+    const entry = join(cache, "speepobox", source.sha);
     expect(out.argv).toEqual(["--repo-root", repo, "status", "a b"]);
     expect(out.at).toBe(join(entry, "src", "bin.ts"));
     // SPEC §6's contract item 4: `HEAD` is the pin, `origin` the release.
@@ -473,9 +473,9 @@ describe("the cold path (T126)", () => {
       ["--repo-root", repo, "one"],
       ["--repo-root", repo, "two"],
     ]);
-    expect(readdirSync(join(cache, "bessemer"))).toEqual([source.sha]);
+    expect(readdirSync(join(cache, "speepobox"))).toEqual([source.sha]);
     expect(
-      readdirSync(join(cache, "bessemer", source.sha)).filter((name) => name.includes(".tmp.")),
+      readdirSync(join(cache, "speepobox", source.sha)).filter((name) => name.includes(".tmp.")),
     ).toEqual([]);
   }, 60_000);
 
@@ -484,8 +484,8 @@ describe("the cold path (T126)", () => {
     const cache = temp();
     // A pid that was alive a moment ago and is not now.
     const dead = spawnSync("node", ["-e", ""]).pid;
-    const deadTemp = join(cache, "bessemer", `${source.sha}.tmp.${dead}`);
-    const liveTemp = join(cache, "bessemer", `${source.sha}.tmp.${process.pid}`);
+    const deadTemp = join(cache, "speepobox", `${source.sha}.tmp.${dead}`);
+    const liveTemp = join(cache, "speepobox", `${source.sha}.tmp.${process.pid}`);
     for (const dir of [deadTemp, liveTemp]) {
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, "half-built"), "");
@@ -494,7 +494,7 @@ describe("the cold path (T126)", () => {
     stubOutput(runShim(repo, [], { cache, env: rewrite(source.path) }));
     expect(existsSync(deadTemp)).toBe(false);
     expect(existsSync(liveTemp)).toBe(true);
-    expect(existsSync(join(cache, "bessemer", source.sha))).toBe(true);
+    expect(existsSync(join(cache, "speepobox", source.sha))).toBe(true);
   }, 60_000);
 
   it("refuses an unreachable source in one line naming gh auth login, then setup-git", () => {
@@ -510,7 +510,7 @@ describe("the cold path (T126)", () => {
       sentence.indexOf("`gh auth setup-git`"),
     );
     expect(sentence).toContain("may also not exist upstream");
-    expect(existsSync(join(cache, "bessemer", sha))).toBe(false);
+    expect(existsSync(join(cache, "speepobox", sha))).toBe(false);
     expect(leftovers(cache)).toEqual([]);
   });
 });
@@ -528,10 +528,10 @@ describe("the cold path's credential (T132)", () => {
   ): Promise<{ readonly run: Run; readonly sha: string; readonly cache: string }> => {
     const source = mirror();
     const root = temp();
-    git(root, "clone", "-q", "--bare", source.path, join(root, "bessemer.git"));
+    git(root, "clone", "-q", "--bare", source.path, join(root, "speepobox.git"));
     const server = await serveGitHttp(root, CANNED);
     try {
-      const shim = CURRENT.replace(RELEASE_URL, server.url("bessemer.git"));
+      const shim = CURRENT.replace(RELEASE_URL, server.url("speepobox.git"));
       const repo = fixtureRepo(pinned(source.sha), shim);
       const cache = temp();
       const run = await runShimAsync(repo, ["status"], {
@@ -549,12 +549,12 @@ describe("the cold path's credential (T132)", () => {
     const gh = fakeGh(CANNED);
     const operator = operatorHome(undefined);
     const { run, sha, cache } = await served(gh, operator);
-    expect(stubOutput(run).at).toBe(join(cache, "bessemer", sha, "src", "bin.ts"));
+    expect(stubOutput(run).at).toBe(join(cache, "speepobox", sha, "src", "bin.ts"));
     expect(gh.calls()).toContain("auth git-credential get");
     // The scoped reset: no `get` before gh, and no `store` of gh's answer.
     expect(operator.actions()).toEqual([]);
     // Nothing written to the entry's config, or to the operator's.
-    expect(git(join(cache, "bessemer", sha), "config", "--local", "--list")).not.toMatch(
+    expect(git(join(cache, "speepobox", sha), "config", "--local", "--list")).not.toMatch(
       /credential/,
     );
     expect(readFileSync(join(operator.home, ".gitconfig"), "utf8")).not.toMatch(/gh/);
@@ -564,7 +564,7 @@ describe("the cold path's credential (T132)", () => {
     const gh = fakeGh(undefined);
     const operator = operatorHome(CANNED);
     const { run, sha, cache } = await served(gh, operator);
-    expect(stubOutput(run).at).toBe(join(cache, "bessemer", sha, "src", "bin.ts"));
+    expect(stubOutput(run).at).toBe(join(cache, "speepobox", sha, "src", "bin.ts"));
     expect(gh.calls()).toContain("auth git-credential get");
     expect(operator.actions()).toEqual(["get", "store"]);
   }, 60_000);
@@ -572,7 +572,7 @@ describe("the cold path's credential (T132)", () => {
   it("still builds the entry with no gh on the PATH", async () => {
     const operator = operatorHome(CANNED);
     const { run, sha, cache } = await served(undefined, operator);
-    expect(stubOutput(run).at).toBe(join(cache, "bessemer", sha, "src", "bin.ts"));
+    expect(stubOutput(run).at).toBe(join(cache, "speepobox", sha, "src", "bin.ts"));
     expect(operator.actions()).toEqual(["get", "store"]);
   }, 60_000);
 

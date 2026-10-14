@@ -9,7 +9,7 @@
 import { Data, Either, Option } from "effect";
 import { isReleaseTag } from "../git/releases.ts";
 
-export const UPGRADE_USAGE = "bessemer upgrade [--to vN]";
+export const UPGRADE_USAGE = "speepobox upgrade [--to vN]";
 
 // One line on stderr and exit 1, through the renderer every other refusal
 // uses (`dispatch/render.ts`).

@@ -1,6 +1,6 @@
 # The pin grammar's fixture lines (T121)
 
-One `.bessemer/config.toml` text per file, held to SPEC §6's grammar by both of its
+One `.speepobox/config.toml` text per file, held to SPEC §6's grammar by both of its
 implementations: `src/pin/pin.ts` (`test/pin.test.ts`) and the shim's `sed` (T125). Keep them as
 data — the shim's agreement test feeds these same files to a shell.
 

@@ -12,7 +12,7 @@ import { describe, expect } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { Cause, DateTime, Effect, Exit, Layer, Option, Ref } from "effect";
-import { BessemerConfig, defaultConfig } from "../../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../../src/config/config.ts";
 import { planFor, specDispatch } from "../../src/dispatch/plan.ts";
 import { runInScope } from "../../src/dispatch/run.ts";
 import { Ledger } from "../../src/ledger/ledger.ts";
@@ -33,7 +33,7 @@ import { PLAN_TIP } from "../support/plan.ts";
 // collide with this run's container name. The sweep below reaches only this
 // case's own labels, and a throwaway repo root means those labels are unique
 // to this run.
-const BRANCH = `bessemer-live-leak-${process.pid}`;
+const BRANCH = `speepobox-live-leak-${process.pid}`;
 
 // How the run ended, as a sentence rather than as a boolean. The tier is
 // written by an agent with no docker socket and run by a host that has one, so
@@ -57,7 +57,7 @@ describe("the sandbox against a real dockerd", () => {
     Effect.gen(function* () {
       yield* dockerdIsUp;
       const fs = yield* FileSystem.FileSystem;
-      // A throwaway repo root: `bessemer.repo` hashes it, so this case's label
+      // A throwaway repo root: `speepobox.repo` hashes it, so this case's label
       // scope is its own and its query can never see another run's containers —
       // nor another live case's, in either direction.
       const repoRoot = yield* fs.makeTempDirectoryScoped();
@@ -89,7 +89,7 @@ describe("the sandbox against a real dockerd", () => {
         ),
         Layer.mergeAll(
           NodeContext.layer,
-          Layer.succeed(BessemerConfig, {
+          Layer.succeed(SpeepoboxConfig, {
             ...defaultConfig,
             image: LIVE_IMAGE,
             runtimeRoot,

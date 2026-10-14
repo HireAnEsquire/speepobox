@@ -18,7 +18,7 @@
 // is the third and last, and it arrived the same way: beside the step that
 // writes a PR body (`dispatch/pr.ts`), never ahead of it.
 import { Clock, Context, Data, Duration, Effect, Layer, Option, Ref } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { logPathOrNote, type DispatchPlan } from "../dispatch/plan.ts";
 import { Sandbox, type SandboxError, type SandboxHandle } from "../sandbox/sandbox.ts";
 import { type AgentPass, Reporter, type ReporterEvent } from "../reporter.ts";
@@ -213,12 +213,12 @@ export interface AgentCliShape {
  */
 export class AgentCli extends Context.Tag("AgentCli")<AgentCli, AgentCliShape>() {}
 
-export const AgentCliLive: Layer.Layer<AgentCli, never, Sandbox | BessemerConfig | PromptSource> =
+export const AgentCliLive: Layer.Layer<AgentCli, never, Sandbox | SpeepoboxConfig | PromptSource> =
   Layer.effect(
     AgentCli,
     Effect.gen(function* () {
       const sandbox = yield* Sandbox;
-      const config = yield* BessemerConfig;
+      const config = yield* SpeepoboxConfig;
       // The prompts arrive through the tag rather than off a package path (T14):
       // which root won is the client's answer to give, and this layer stopped
       // being able to read one directly the moment there were two.
@@ -292,7 +292,7 @@ export const AgentCliLive: Layer.Layer<AgentCli, never, Sandbox | BessemerConfig
           const usageSoFar = Effect.map(Ref.get(state), (current) =>
             Option.map(finish(current), (result) => result.usage),
           );
-          // The pass budget, from the `BessemerConfig` tag (05 Q7), and one
+          // The pass budget, from the `SpeepoboxConfig` tag (05 Q7), and one
           // value for the two things that read it: the cap below, and the
           // watch's `cap 30m`. A second reading here would let the line a
           // dispatcher watches disagree with the kill they are waiting for.

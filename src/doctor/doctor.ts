@@ -5,8 +5,8 @@ import type { FileSystem, Path } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Effect, Either, Option } from "effect";
 import type { AgentCredential } from "../agent/credential.ts";
-import { type BessemerConfigShape, defaultConfigFor, loadConfig } from "../config/config.ts";
-import { bessemerDir } from "../config/paths.ts";
+import { type SpeepoboxConfigShape, defaultConfigFor, loadConfig } from "../config/config.ts";
+import { speepoboxDir } from "../config/paths.ts";
 import type { DispatcherRevision } from "../git/dispatcher-revision.ts";
 import { Git } from "../git/git.ts";
 import { parseRepoSlug } from "../git/repo-slug.ts";
@@ -59,7 +59,7 @@ export interface DoctorHost {
   // that row renders as unknown rather than failing on.
   readonly dispatcherRevision: Option.Option<DispatcherRevision>;
   // The agent credential, resolved once at the composition root against the
-  // served repo's bessemer directory (T23, T58) and reported on twice here:
+  // served repo's speepobox directory (T23, T58) and reported on twice here:
   // the roots row names where it came from, probe 3 says whether there is one
   // at all. One resolver call for the whole run — the rule T23 gave `doctor`
   // and the dispatch, taken one step further inside `doctor` itself, so the
@@ -120,7 +120,7 @@ export const doctor = (
     // to the committed defaults when it failed — doctor must keep working when
     // the thing it inspects is broken.
     const decoded = yield* Effect.either(loadConfig(host.repoRoot));
-    const config: BessemerConfigShape = Either.getOrElse(decoded, () =>
+    const config: SpeepoboxConfigShape = Either.getOrElse(decoded, () =>
       defaultConfigFor(host.repoRoot),
     );
 
@@ -143,11 +143,11 @@ export const doctor = (
 
     // 3: credential presence — presence reported, never the value, and
     // reported on the one the composition root resolved rather than a second
-    // resolution of its own (T62). The root is the served repo's bessemer
+    // resolution of its own (T62). The root is the served repo's speepobox
     // directory, the same one the dispatch hands the resolver (T58): a row
     // about the package's own `.env` reported on a file the shim re-clones on
     // every repin and every served repo shares.
-    yield* check("credential", credentialProbe(bessemerDir(host.repoRoot), host.credential));
+    yield* check("credential", credentialProbe(speepoboxDir(host.repoRoot), host.credential));
 
     // 4: host node >= 26.
     yield* check("node", nodeProbe(host.nodeVersion));

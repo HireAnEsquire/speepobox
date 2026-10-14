@@ -18,8 +18,8 @@ import { fuzzyScore, rankFuzzy } from "../src/prompt/fuzzy.ts";
 // of them the candidates that compete — including, for `tsf` and `hard`, the
 // names a plain substring filter would return.
 const BRANCHES = [
-  "bessemer-t80",
-  "bessemer-t76",
+  "speepobox-t80",
+  "speepobox-t76",
   "agentbox-hardening",
   "proto/clack-picker",
   "tseff",
@@ -90,9 +90,9 @@ describe("what breaks a tie", () => {
   // they arrived in stands — which is recency, and is why the caller sorts
   // before it ranks rather than after.
   it("keeps equally-scored candidates in input order", () => {
-    expect(fuzzyScore("bess", "bessemer-t80")).toEqual(fuzzyScore("bess", "bessemer-t76"));
-    expect(ranked("bess")).toEqual(["bessemer-t80", "bessemer-t76"]);
-    expect(ranked("bess", BRANCHES.toReversed())).toEqual(["bessemer-t76", "bessemer-t80"]);
+    expect(fuzzyScore("speep", "speepobox-t80")).toEqual(fuzzyScore("speep", "speepobox-t76"));
+    expect(ranked("speep")).toEqual(["speepobox-t80", "speepobox-t76"]);
+    expect(ranked("speep", BRANCHES.toReversed())).toEqual(["speepobox-t76", "speepobox-t80"]);
   });
 
   // At rest there is no query, so there is nothing to rank by and the list is

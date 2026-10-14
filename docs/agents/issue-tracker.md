@@ -21,7 +21,7 @@ run that consumed it, or is the stated output of a planning effort. Those live t
 document that produced them, and dispatch passes the path: `run.sh` uses any `--feature` value
 containing a slash as-is, so no dispatcher change and no gitignore surgery is needed.
 
-The bessemer T-bullets are the standing example — `docs/wayfinder/effect-agentbox/issues/`, beside
+The speepobox T-bullets are the standing example — `docs/wayfinder/effect-agentbox/issues/`, beside
 the map that produced them, numbered `T1`–`T6` after the roadmap bullets they implement rather than
 from `01` (ticket 04 §5).
 
@@ -72,7 +72,7 @@ and a squash carries that edit like any other hunk.
 **Caveat, unresolved.** For untracked queues the issue files are absent from every ref, so the
 blocker gate has no git answer and keeps reading the host tree. The *code* hazard is unchanged there
 — a blocker may be approved and unmerged — but the fix above cannot reach it. Not yet worked in
-bash. **The port answers it by refusing**: bessemer reads `<folder>/issues/` out of the branch tip
+bash. **The port answers it by refusing**: speepobox reads `<folder>/issues/` out of the branch tip
 and never off disk, so a folder no ref carries is a `GuardRefused` before anything is held rather
 than a gate quietly falling back to whichever branch the dev left checked out (T73).
 

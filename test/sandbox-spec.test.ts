@@ -34,12 +34,12 @@ import { fakeIssue } from "./support/issue-store-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
 const REPO_ROOT = "/srv/hae";
-const CHECKOUT = "/srv/bessemer/checkouts/bessemer-t6";
+const CHECKOUT = "/srv/speepobox/checkouts/speepobox-t6";
 
 const workspace = Schema.decodeSync(RepoUrl)(CHECKOUT);
 
 const spec = (overrides: Partial<SandboxSpec> = {}): SandboxSpec => ({
-  name: "bessemer-bessemer-t6",
+  name: "speepobox-speepobox-t6",
   image: "hae-agentbox",
   repoRoot: REPO_ROOT,
   workspace,
@@ -136,7 +136,7 @@ describe("the sandbox spec", () => {
     // The image is the last word, as `docker run` requires: nothing this
     // renderer emits can be read as the container's command.
     expect(args.at(-1)).toBe("hae-agentbox");
-    expect(valuesOf(args, "--name")).toEqual(["bessemer-bessemer-t6"]);
+    expect(valuesOf(args, "--name")).toEqual(["speepobox-speepobox-t6"]);
   });
 
   // **What a container holds, and nothing more** (T35). Writing a value into
@@ -222,12 +222,12 @@ describe("the spec a dispatch derives", () => {
   const SPEC_PATH = "/srv/hae/tasks/T6.md";
   const plan = planFor({
     ...specDispatch(SPEC_PATH),
-    branch: "bessemer-t6",
+    branch: "speepobox-t6",
     baseRef: "origin/master",
     baseSha: "1111111111111111111111111111111111111111",
     mergeBaseSha: "2222222222222222222222222222222222222222",
     tipSha: PLAN_TIP,
-    runtimeRoot: "/srv/bessemer",
+    runtimeRoot: "/srv/speepobox",
     startedAt: DateTime.unsafeMake("2026-01-01T00:00:00.000Z"),
   });
 
@@ -271,15 +271,15 @@ describe("the spec a dispatch derives", () => {
       plan,
       repoRoot: REPO_ROOT,
       workspace,
-      config: { ...defaultConfigFor(REPO_ROOT), sandboxEnvFile: ".bessemer/env.sandbox" },
+      config: { ...defaultConfigFor(REPO_ROOT), sandboxEnvFile: ".speepobox/env.sandbox" },
       credential: TEST_CREDENTIAL,
     });
-    expect(derived.envFile).toEqual(Option.some(`${REPO_ROOT}/.bessemer/env.sandbox`));
+    expect(derived.envFile).toEqual(Option.some(`${REPO_ROOT}/.speepobox/env.sandbox`));
     // The allowlist is untouched by it: the credential's name, and the trust.
     expect(derived.env).toEqual([{ name: TEST_CREDENTIAL.name }, ...TRUST_ENV]);
 
     const args = renderRunArgs(derived);
-    expect(valuesOf(args, "--env-file")).toEqual([`${REPO_ROOT}/.bessemer/env.sandbox`]);
+    expect(valuesOf(args, "--env-file")).toEqual([`${REPO_ROOT}/.speepobox/env.sandbox`]);
     expect(args.indexOf("--env-file")).toBeLessThan(args.indexOf("-e"));
     // A path, and only a path — this process never opened the file, so there
     // is nothing of its contents to render (19 §5).
@@ -331,8 +331,8 @@ describe("the spec a dispatch derives", () => {
   // resolves the *inside* arm and nothing else, so a value that slipped past
   // would be a spec with no env file rather than one pointing out of the repo.
   it("derives an env file only from a value inside the served repo", () => {
-    expect(envFileFor(REPO_ROOT, ".bessemer/env.sandbox")).toEqual(
-      Option.some(`${REPO_ROOT}/.bessemer/env.sandbox`),
+    expect(envFileFor(REPO_ROOT, ".speepobox/env.sandbox")).toEqual(
+      Option.some(`${REPO_ROOT}/.speepobox/env.sandbox`),
     );
     expect(defaultConfig.sandboxEnvFile).toBe("");
     for (const refused of ["", "   ", "/etc/secrets/.env", "../.env", "a/../../.env"]) {
@@ -572,7 +572,7 @@ describe("the spec a dispatch derives", () => {
   });
 });
 
-// **Bessemer never opens the file; docker reads it** (T61, 19 §5). Reading
+// **Speepobox never opens the file; docker reads it** (T61, 19 §5). Reading
 // source is the only way to assert an absence, and the absence is the whole
 // guarantee: a `readFile` of this path would typecheck, pass every case above,
 // and put about 250 of a repo's settings one interpolation away from argv, a
@@ -627,19 +627,19 @@ describe("the build spec", () => {
     expect(
       renderBuildArgs({
         tag: "hae-agentbox",
-        context: "/srv/hae/.bessemer/image",
-        dockerfile: "/srv/hae/.bessemer/image/Dockerfile",
+        context: "/srv/hae/.speepobox/image",
+        dockerfile: "/srv/hae/.speepobox/image/Dockerfile",
         buildArgs: { AGENT_UID: "501", AGENT_GID: "20" },
         labels: {
-          "bessemer.inputs": ".bessemer/image/Dockerfile,package.json",
-          "bessemer.inputs.digest": "abc123",
+          "speepobox.inputs": ".speepobox/image/Dockerfile,package.json",
+          "speepobox.inputs.digest": "abc123",
         },
         onOutput: () => Effect.void,
       }),
     ).toEqual([
       "build",
       "--file",
-      "/srv/hae/.bessemer/image/Dockerfile",
+      "/srv/hae/.speepobox/image/Dockerfile",
       "--tag",
       "hae-agentbox",
       "--build-arg",
@@ -647,10 +647,10 @@ describe("the build spec", () => {
       "--build-arg",
       "AGENT_GID=20",
       "--label",
-      "bessemer.inputs=.bessemer/image/Dockerfile,package.json",
+      "speepobox.inputs=.speepobox/image/Dockerfile,package.json",
       "--label",
-      "bessemer.inputs.digest=abc123",
-      "/srv/hae/.bessemer/image",
+      "speepobox.inputs.digest=abc123",
+      "/srv/hae/.speepobox/image",
     ]);
   });
 });

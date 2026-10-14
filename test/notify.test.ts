@@ -12,8 +12,8 @@ import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Duration, Effect, Either, Exit, Layer, Option, Ref } from "effect";
 import {
-  BessemerConfig,
-  type BessemerConfigShape,
+  SpeepoboxConfig,
+  type SpeepoboxConfigShape,
   defaultConfig,
   defaultConfigFor,
 } from "../src/config/config.ts";
@@ -50,7 +50,7 @@ import { fakeNotifier } from "./support/notifier-fake.ts";
 import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t13";
+const BRANCH = "speepobox-t13";
 const BASE_REF = "origin/master";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
@@ -93,7 +93,7 @@ const rowWith = (fields: Partial<RunRecord>): RunRecord => ({
   ...fields,
 });
 
-const TITLE = "bessemer: bessemer-t13";
+const TITLE = "speepobox: speepobox-t13";
 // A body carrying what an interpolated AppleScript string would break on. It
 // travels as argv, so it arrives whole.
 const BODY = `approved — PR: https://example.test/pull/1 "don't" 'quote' me`;
@@ -467,8 +467,8 @@ interface Sent {
 }
 
 const withNotifier = <A>(
-  notify: BessemerConfigShape["notify"],
-  use: (reporter: ReporterShape) => Effect.Effect<A, never, Notifier | BessemerConfig | Reporter>,
+  notify: SpeepoboxConfigShape["notify"],
+  use: (reporter: ReporterShape) => Effect.Effect<A, never, Notifier | SpeepoboxConfig | Reporter>,
   options: { readonly fails?: string } = {},
 ): Effect.Effect<Sent> =>
   Effect.gen(function* () {
@@ -481,7 +481,7 @@ const withNotifier = <A>(
       Effect.provide(
         Layer.mergeAll(
           fakeNotifier({ sent: notifications, ...options }),
-          Layer.succeed(BessemerConfig, { ...defaultConfigFor("/repo"), notify }),
+          Layer.succeed(SpeepoboxConfig, { ...defaultConfigFor("/repo"), notify }),
           Layer.succeed(Reporter, base),
         ),
       ),
@@ -595,7 +595,7 @@ describe("the notify verbosity", () => {
 // notifier that fails is measured against the three observables SPEC §11
 // names: the event stream, the ledger rows, and the failure channel.
 interface RunWorldOptions {
-  readonly notify?: BessemerConfigShape["notify"];
+  readonly notify?: SpeepoboxConfigShape["notify"];
   // The notifier the run gets. It is the fake by default; the missing-binary
   // case below hands it the real layer over an executor that spawns nothing.
   readonly notifier?: Layer.Layer<Notifier>;
@@ -655,7 +655,7 @@ const runWorld = (options: RunWorldOptions = {}) =>
         NodeFileSystem.layer,
         NodePath.layer,
         scriptedExecutor({}),
-        Layer.succeed(BessemerConfig, {
+        Layer.succeed(SpeepoboxConfig, {
           ...defaultConfig,
           runtimeRoot,
           notify: options.notify ?? defaultConfig.notify,

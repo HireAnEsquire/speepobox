@@ -98,7 +98,7 @@ export const serveGitHttp = (root: string, credential: Credential): Promise<GitH
       request.on("data", (chunk: Buffer) => chunks.push(chunk));
       request.on("end", () => {
         if (request.headers.authorization !== expected) {
-          response.writeHead(401, { "WWW-Authenticate": 'Basic realm="bessemer"' }).end();
+          response.writeHead(401, { "WWW-Authenticate": 'Basic realm="speepobox"' }).end();
           return;
         }
         backend(root, request, Buffer.concat(chunks)).then(
@@ -126,7 +126,7 @@ export const serveGitHttp = (root: string, credential: Credential): Promise<GitH
 export const fakeGh = (
   credential: Credential | undefined,
 ): { readonly dir: string; readonly calls: () => ReadonlyArray<string> } => {
-  const dir = mkdtempSync(join(tmpdir(), "bessemer-fake-gh-"));
+  const dir = mkdtempSync(join(tmpdir(), "speepobox-fake-gh-"));
   const log = join(dir, "calls.log");
   writeFileSync(log, "");
   const answer =
@@ -161,7 +161,7 @@ export const fakeGh = (
 export const operatorHome = (
   credential: Credential | undefined,
 ): { readonly home: string; readonly actions: () => ReadonlyArray<string> } => {
-  const home = mkdtempSync(join(tmpdir(), "bessemer-home-"));
+  const home = mkdtempSync(join(tmpdir(), "speepobox-home-"));
   const log = join(home, "helper.log");
   writeFileSync(log, "");
   const helper = join(home, "helper");

@@ -57,7 +57,7 @@ const DISPATCH_ENTRYPOINT = join(packageRoot, "src", "bin.ts");
 // is the harness's proof that the lock, the checkout, and the container are
 // all held. The two sides name one place: the container's from the mount
 // target the spec renders, this side's from the checkout it is mounted from.
-const HOLD_MARKER = ".bessemer-live-held";
+const HOLD_MARKER = ".speepobox-live-held";
 
 const HOLD_SCRIPT = `#!/usr/bin/env bash
 # Live case 5's hold point (T19): a config-declared setup hook that parks the
@@ -159,7 +159,7 @@ const world = (what: string) =>
 
     // The pid keeps two runs of this file, or a container a hard kill left
     // behind, from colliding on a branch, a lock, or a container name.
-    const branch = `bessemer-live-${what}-${process.pid}`;
+    const branch = `speepobox-live-${what}-${process.pid}`;
     const baseSha = yield* git("-C", repoRoot, "rev-parse", "HEAD");
     // A branch of this repo's own tip, deleted again by `cleanup`. It has to
     // exist and it may not be checked out: the guards say so, and the clone
@@ -235,13 +235,13 @@ const spawnDispatch = (
             env: {
               PATH: process.env["PATH"] ?? "",
               HOME: process.env["HOME"] ?? "",
-              BESSEMER_SETUP_HOOK: scratch.hookPath,
-              BESSEMER_RUNTIME_ROOT: scratch.runtimeRoot,
-              BESSEMER_IMAGE: LIVE_IMAGE,
+              SPEEPOBOX_SETUP_HOOK: scratch.hookPath,
+              SPEEPOBOX_RUNTIME_ROOT: scratch.runtimeRoot,
+              SPEEPOBOX_IMAGE: LIVE_IMAGE,
               // Explicit, and empty: env beats the file layers, so a host's
               // own `cap-add` cannot hand this container capabilities the case
               // never asked for.
-              BESSEMER_CAP_ADD: "",
+              SPEEPOBOX_CAP_ADD: "",
             },
             stdio: ["ignore", "pipe", "pipe"],
           },

@@ -14,7 +14,7 @@ import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Deferred, Effect, Exit, Fiber, Layer, Option, Ref } from "effect";
 import { AgentPassFailed } from "../src/agent/agent-cli.ts";
 import { CAPPED_UNREVIEWED_FIX } from "../src/agent/verdict.ts";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import {
   APPROVED_OUTCOME,
   boundaryIn,
@@ -46,7 +46,7 @@ import { TEST_FORGE_REPO } from "./support/repo-slug.ts";
 import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t76";
+const BRANCH = "speepobox-t76";
 const FOLDER = "docs/wayfinder/effect-agentbox";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
 
@@ -137,12 +137,12 @@ describe("what a feature run records", () => {
     const identity: RunIdentity = {
       _tag: "FeedbackResume",
       resumed: { _tag: "Feature", feature: FOLDER, issues: [] },
-      resumedRunId: Option.some("bessemer-t76-1"),
+      resumedRunId: Option.some("speepobox-t76-1"),
     };
     expect(withIssueOutcomes(identity, [outcome("T70", APPROVED_OUTCOME)])).toEqual({
       _tag: "FeedbackResume",
       resumed: { _tag: "Feature", feature: FOLDER, issues: [outcome("T70", APPROVED_OUTCOME)] },
-      resumedRunId: Option.some("bessemer-t76-1"),
+      resumedRunId: Option.some("speepobox-t76-1"),
     });
   });
 
@@ -385,7 +385,7 @@ const world = (options: FeatureWorld = {}) =>
       Layer.mergeAll(
         NodeFileSystem.layer,
         NodePath.layer,
-        Layer.succeed(BessemerConfig, {
+        Layer.succeed(SpeepoboxConfig, {
           ...defaultConfig,
           runtimeRoot,
           ...(options.maxReviewRounds === undefined
@@ -714,7 +714,7 @@ describe("a feature run's sequence", () => {
     Effect.gen(function* () {
       const scratch = yield* world();
       expect(runStartHeader(scratch.plan)).toBe(
-        `== bessemer [${scratch.plan.slug}] run start: mode=feature issues=T70,T71,T72 branch=${BRANCH} boundary=${MERGE_BASE_SHA}`,
+        `== speepobox [${scratch.plan.slug}] run start: mode=feature issues=T70,T71,T72 branch=${BRANCH} boundary=${MERGE_BASE_SHA}`,
       );
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );

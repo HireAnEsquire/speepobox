@@ -24,7 +24,7 @@ export const formatParseError = (error: ParseResult.ParseError): string =>
     .join("; ");
 
 // The version stamped on every record this package writes. A line carrying
-// none is not a bessemer record, and the reader skips it (T135).
+// none is not a speepobox record, and the reader skips it (T135).
 //
 // **A field every reader can be absent stays on this version** (T31).
 // Bumping it for an addition every version-1 line already satisfies would
@@ -37,7 +37,7 @@ export const formatParseError = (error: ParseResult.ParseError): string =>
 // decodes as itself, because no existing line's shape changed — a third
 // `DispatchIdentity` arm is a value none of them holds. What the unchanged
 // number does *not* buy is the other direction: a row carrying the new arm
-// fails to decode under a bessemer older than that ticket. That bites exactly
+// fails to decode under a speepobox older than that ticket. That bites exactly
 // one case — rolling the tool back over a ledger it has since written to — and
 // it is named here so nobody reads this constant as a promise about older
 // readers.

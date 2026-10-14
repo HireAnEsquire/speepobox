@@ -1,4 +1,4 @@
-# Working in bessemer
+# Working in speepobox
 
 `npm run verify` catches everything it can. This file carries only what it cannot: naming rulings,
 the error taxonomy, and the calls where two shapes both typecheck and one is right.
@@ -54,7 +54,7 @@ the only thing standing between you and the wrong shape is having read the rule 
   lazily inside their own scoped constructors (05 Q21). Layer wiring is the top failure mode for
   agent-written Effect (06), so the issue hands you the composition expression to **copy, not
   derive** — reproduce it verbatim and put the resulting `app.ts` composition in the PR description.
-- **One layer decodes the provider chain once into `BessemerConfig`. Call sites read the tag.** A
+- **One layer decodes the provider chain once into `SpeepoboxConfig`. Call sites read the tag.** A
   `Config.*` read at a call site typechecks and is wrong (05 Q7).
 - **A list-valued config key is one comma-separated scalar, never a TOML array.** `Config.array`
   merges the provider chain **per index** rather than replacing, and a file that declares the key
@@ -62,7 +62,7 @@ the only thing standing between you and the wrong shape is having read the rule 
   the capability list, where a mixed answer is a container's privileges (T6).
 - **The read-only slice's config degrades; the dispatch surface's dies.** `status`, `doctor`, and
   `gc` are intercepted before any preflight so they work when the thing they inspect is broken.
-  Giving that slice `bessemerConfigLiveFor` lets a malformed `config.toml` kill the three commands that
+  Giving that slice `speepoboxConfigLiveFor` lets a malformed `config.toml` kill the three commands that
   exist to diagnose it, at layer build. The slice falls back to committed defaults; `doctor` reports
   the failed decode as probe 7.
 - **Nothing in `bin.ts` can be asserted, so nothing that owes an assertion stays there.** Importing
@@ -146,7 +146,7 @@ the only thing standing between you and the wrong shape is having read the rule 
 ### Probes
 
 - **A built artifact declares what it was built from, and the probe compares contents rather than
-  clocks.** Probe 2 reads `bessemer.inputs` / `bessemer.inputs.digest` off the image and recomputes
+  clocks.** Probe 2 reads `speepobox.inputs` / `speepobox.inputs.digest` off the image and recomputes
   the digest over those files; it reads no timestamp and names no dependency path of its own. Asking
   the clock typechecks and was wrong three ways at once (T30): git rewrites a file whenever it
   differs between two branches, so an mtime says "changed" on every branch hop while the contents
@@ -321,7 +321,7 @@ the only thing standing between you and the wrong shape is having read the rule 
   commits, never the clock**: the SHA is the clone's `HEAD`, so two failed runs on one branch leave
   two branches (they are different work) and a rerun at the same tip is a no-op rather than a
   collision. Two shapes that typecheck and are wrong: forcing into a fixed `<branch>-from-run`,
-  which silently destroys the previous run's commits; and hiding the ref under `refs/bessemer/…`,
+  which silently destroys the previous run's commits; and hiding the ref under `refs/speepobox/…`,
   which is a ref the human never sees and so never merges. **No `+` and no `--force` on either
   destination** — a rescue ref that exists and is not an ancestor must refuse. The rescue lives in
   the release and never in the land (a land that partially succeeded is worse than one that failed),
@@ -493,14 +493,14 @@ the only thing standing between you and the wrong shape is having read the rule 
   the call site, so a root said from the layer reaches the console alone. `PromptSource` therefore
   emits nothing at all: it answers `get` with the text *and* the root, and the pass that logs the
   prompt logs the root beside it.
-- **The two prompt roots are the served repo's bessemer directory and the package, and they cannot
+- **The two prompt roots are the served repo's speepobox directory and the package, and they cannot
   be one directory** (T59, retiring T14's guard). A prompt is a read location, so an override is
-  `<repoRoot>/.bessemer/prompts/<name>.md` and the layer takes the served repo rather than the
+  `<repoRoot>/.speepobox/prompts/<name>.md` and the layer takes the served repo rather than the
   config: the runtime root decides where this tool *writes*, and moving it moves writes only. T14
   had to guard the collision because the client root was the runtime root, which defaulted to the
   package — `<runtimeRoot>/prompts/implement.md` *was* then the file the package ships, and a
   bare "does it exist" reported an override nobody wrote in the one line a reader checks to confirm
-  theirs took. `.bessemer/prompts/` is never `<packageRoot>/prompts/`, self-hosted or not, so the
+  theirs took. `.speepobox/prompts/` is never `<packageRoot>/prompts/`, self-hosted or not, so the
   case cannot arise and **no guard stands there**. Putting one back — a `repoRoot === packageRoot`
   comparison, or the resolved-roots one that used to be here — typechecks, and makes this repo's own
   overrides unreadable while it dispatches into itself.
@@ -573,7 +573,7 @@ the only thing standing between you and the wrong shape is having read the rule 
   bumping would either drop all of them (`Schema.Literal` admits exactly one) or buy a second literal
   nothing branches on. The unchanged number buys nothing in the other direction, and the comment on the
   constant says so rather than leaving it read as a promise: a row carrying the new arm fails to
-  decode under a bessemer older than this ticket, which bites a rollback over a ledger the tool has
+  decode under a speepobox older than this ticket, which bites a rollback over a ledger the tool has
   since written to and nothing else.
 - **The *resuming* framing comes from the identity, never from the arm** (T66). A run resumes iff
   its identity is a `FeedbackResume` — true of a spec resume as much as of an inline one, false of
@@ -724,7 +724,7 @@ credentials leak into agent containers (05 Q3).
 with `node:child_process` to signal a child mid-run — the chokepoint's contract is "run it to
 completion and hand me the output", the opposite of holding a live pid — and pays the allowlist
 itself, writing the child's env variable by variable (T19). The shim tests (`test/shim.test.ts`)
-spawn `.bessemer/bessemer` the same way **not for that reason**: their children run to completion
+spawn `.speepobox/speepobox` the same way **not for that reason**: their children run to completion
 and nothing holds a live pid. What they need is a whole environment written by hand — `PATH`,
 `HOME`, `XDG_CACHE_HOME`, and nothing inherited — which the chokepoint has no spelling for
 (`execUnder` carries one variable), and growing `src/` a way to hand a child a whole environment
@@ -738,7 +738,7 @@ back (T9).
 
 **And the value that child reads is one we resolved, never one we inherited.** `agent/credential.ts`
 is the single answer to "is there a credential, under which name, and what is its value" —
-`<repoRoot>/.bessemer/.env` then the process environment, either accepted name — resolved at the
+`<repoRoot>/.speepobox/.env` then the process environment, either accepted name — resolved at the
 composition root and passed down, so `doctor`'s probe 3 and the dispatch read the *same* answer,
 against the *same* root. Three places it deliberately does not read, each for its own reason (T58):
 the package, because the shim re-clones its cache on every repin and one cache serves every repo;
@@ -772,7 +772,7 @@ structurally cannot catch it: the container satisfies every prerequisite, so a h
 is green there and red on a host one version behind (T1).
 
 Filesystem-derived facts count too, and the repo root is the one that bites: it is what the
-`bessemer.repo` ownership label hashes, and `status` may run **no git commands** (SPEC §7), so it is
+`speepobox.repo` ownership label hashes, and `status` may run **no git commands** (SPEC §7), so it is
 resolved by walking up for `.git` at the composition root and passed in. Resolving it inside the
 command makes the label depend on where the process happened to start.
 
@@ -857,7 +857,7 @@ check that proves the distribution model.
 (`npm run verify:live`, against a real dockerd) and the agent writing the code has no docker socket,
 so the failure mode to design against is a case that reports green without asking a daemon anything.
 Hence: `verify` excludes the directory by path, `test/live/live.ts` throws at import when the live
-config's `BESSEMER_LIVE` marker is unset, and nothing in the tier is `skipIf`-guarded. The marker
+config's `SPEEPOBOX_LIVE` marker is unset, and nothing in the tier is `skipIf`-guarded. The marker
 is set by `vitest.live.config.ts` rather than a `VAR=1` prefix in the npm script, so the one config
 that admits live cases is the only thing that can. Import `itLive` from that module; writing `it`
 directly typechecks and silently opts out (T6).

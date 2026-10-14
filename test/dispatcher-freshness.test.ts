@@ -314,10 +314,10 @@ describe("the package's tracked top-level entries", () => {
   //   `LICENSE`       the terms the repository is published under (T143).
   //   `docs`          the map and its tickets.
   //   `image`         the agent image's inputs — the image probe (T30) tracks those itself.
-  //   `.bessemer`     the served repo's own directory: its config, and by default its runtime state (T57).
+  //   `.speepobox`     the served repo's own directory: its config, and by default its runtime state (T57).
   //   `setup-hook.sh` the served repo's hook, read from the working tree (19 §7).
   const notSource = new Set([
-    ".bessemer",
+    ".speepobox",
     ".github",
     ".gitignore",
     ".oxfmtrc.json",

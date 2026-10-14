@@ -33,15 +33,15 @@ import { imageNameFor } from "../src/init/values.ts";
 import { Reporter, type ReporterEvent } from "../src/reporter.ts";
 import { fakeGit, type GitCall } from "./support/git-fake.ts";
 
-const ARGV = ["--base", "origin/main", "--image", "acme-bessemer"];
+const ARGV = ["--base", "origin/main", "--image", "acme-speepobox"];
 
 const SCAFFOLD = [
-  ".bessemer/config.toml",
-  ".bessemer/.gitignore",
-  ".bessemer/image/Dockerfile",
-  ".bessemer/image/inputs",
-  ".bessemer/bessemer",
-  ".bessemer/tasks/.gitkeep",
+  ".speepobox/config.toml",
+  ".speepobox/.gitignore",
+  ".speepobox/image/Dockerfile",
+  ".speepobox/image/inputs",
+  ".speepobox/speepobox",
+  ".speepobox/tasks/.gitkeep",
 ];
 
 const SHA = "abc1234000000000000000000000000000000000";
@@ -119,7 +119,7 @@ const actions = (events: ReadonlyArray<ReporterEvent>) =>
 // The values the written `config.toml` carries on its `wrote` line (T127):
 // the only file that can carry any.
 const valuesOf = (events: ReadonlyArray<ReporterEvent>): InitValues => {
-  const config = written(events).files.find((file) => file.path === ".bessemer/config.toml");
+  const config = written(events).files.find((file) => file.path === ".speepobox/config.toml");
   if (config?.action !== "wrote" || config.values === undefined) {
     throw new Error("config.toml was not written with values");
   }
@@ -157,7 +157,7 @@ const servedRepo = (originHead: Option.Option<string>) =>
 
 const configIn = (repoRoot: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fs) =>
-    fs.readFileString(join(repoRoot, ".bessemer/config.toml")),
+    fs.readFileString(join(repoRoot, ".speepobox/config.toml")),
   );
 
 // Every entry under the served repo, so "writes nothing" is a listing that
@@ -170,7 +170,7 @@ describe("parseInitArgv", () => {
     expect(parseInitArgv(ARGV)).toEqual(
       Either.right({
         base: Option.some("origin/main"),
-        image: Option.some("acme-bessemer"),
+        image: Option.some("acme-speepobox"),
         diff: false,
       }),
     );
@@ -214,27 +214,27 @@ describe("init", () => {
       expect(Exit.isSuccess(exit)).toBe(true);
       expect(actions(events)).toEqual(SCAFFOLD.map((path) => ({ path, action: "wrote" })));
 
-      const config = yield* fs.readFileString(join(repoRoot, ".bessemer/config.toml"));
+      const config = yield* fs.readFileString(join(repoRoot, ".speepobox/config.toml"));
       expect(config).not.toContain("{{");
       expect(config).toContain('base = "origin/main"');
-      expect(config).toContain('image = "acme-bessemer"');
+      expect(config).toContain('image = "acme-speepobox"');
       expect(config).toContain(`tool-sha = "${SHA}"`);
 
       for (const name of STAMPED_TEMPLATES) {
-        const text = yield* fs.readFileString(join(repoRoot, ".bessemer", name));
+        const text = yield* fs.readFileString(join(repoRoot, ".speepobox", name));
         const found = Option.getOrThrow(readStamp(text));
         expect(found.name).toBe(name);
         expect(found.digest).toBe(bodyDigest(text));
       }
-      expect(yield* fs.readFileString(join(repoRoot, ".bessemer/tasks/.gitkeep"))).toBe("");
+      expect(yield* fs.readFileString(join(repoRoot, ".speepobox/tasks/.gitkeep"))).toBe("");
       // The shim is the one file that is executed (T127).
-      const shim = yield* fs.stat(join(repoRoot, ".bessemer/bessemer"));
+      const shim = yield* fs.stat(join(repoRoot, ".speepobox/speepobox"));
       expect(shim.mode & 0o777).toBe(0o755);
       expect(
         Option.getOrThrow(
-          readStamp(yield* fs.readFileString(join(repoRoot, ".bessemer/bessemer"))),
+          readStamp(yield* fs.readFileString(join(repoRoot, ".speepobox/speepobox"))),
         ),
-      ).toMatchObject({ name: "bessemer", version: TEMPLATE_VERSIONS.bessemer });
+      ).toMatchObject({ name: "speepobox", version: TEMPLATE_VERSIONS.speepobox });
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -261,11 +261,11 @@ describe("init", () => {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
       const mine = 'image = "mine"\n# an adopter\'s own words, {{not a placeholder}}\n';
-      yield* fs.makeDirectory(join(repoRoot, ".bessemer"));
-      yield* fs.writeFileString(join(repoRoot, ".bessemer/config.toml"), mine);
+      yield* fs.makeDirectory(join(repoRoot, ".speepobox"));
+      yield* fs.writeFileString(join(repoRoot, ".speepobox/config.toml"), mine);
       const { exit, events } = yield* run(repoRoot, ARGV);
       expect(Exit.isSuccess(exit)).toBe(true);
-      expect(yield* fs.readFileString(join(repoRoot, ".bessemer/config.toml"))).toBe(mine);
+      expect(yield* fs.readFileString(join(repoRoot, ".speepobox/config.toml"))).toBe(mine);
       expect(actions(events)).toEqual(
         SCAFFOLD.map((path, index) => ({ path, action: index === 0 ? "kept" : "wrote" })),
       );
@@ -284,11 +284,11 @@ describe("init works out its values (T115)", () => {
 
         const config = yield* configIn(repoRoot);
         expect(config).toContain('base = "origin/trunk"');
-        expect(config).toContain('image = "my-app-bessemer"');
+        expect(config).toContain('image = "my-app-speepobox"');
         expect(config).toContain(`tool-sha = "${SHA}"`);
         expect(valuesOf(events)).toEqual({
           base: { value: "origin/trunk", source: "origin/HEAD" },
-          image: { value: "my-app-bessemer", source: "directory name" },
+          image: { value: "my-app-speepobox", source: "directory name" },
           "tool-sha": { value: SHA, source: "package revision" },
         });
         expect(written(events).warnings).toEqual([]);
@@ -303,9 +303,9 @@ describe("init works out its values (T115)", () => {
 
       const config = yield* configIn(repoRoot);
       expect(config).toContain('base = "origin/main"');
-      expect(config).toContain('image = "acme-bessemer"');
+      expect(config).toContain('image = "acme-speepobox"');
       expect(valuesOf(events).base).toEqual({ value: "origin/main", source: "flag" });
-      expect(valuesOf(events).image).toEqual({ value: "acme-bessemer", source: "flag" });
+      expect(valuesOf(events).image).toEqual({ value: "acme-speepobox", source: "flag" });
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -315,13 +315,13 @@ describe("init works out its values (T115)", () => {
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const repoRoot = yield* servedRepo(Option.none());
-        const { exit, events } = yield* run(repoRoot, ["--image", "acme-bessemer"]);
+        const { exit, events } = yield* run(repoRoot, ["--image", "acme-speepobox"]);
         const detail = refusalOf(exit);
         expect(detail).toContain("--base");
         expect(detail).toContain("git remote set-head origin --auto");
         expect(detail.split("\n")).toHaveLength(1);
         expect(events).toEqual([]);
-        expect(yield* fs.exists(join(repoRoot, ".bessemer"))).toBe(false);
+        expect(yield* fs.exists(join(repoRoot, ".speepobox"))).toBe(false);
       }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -433,17 +433,17 @@ describe("init works out its values (T115)", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
-      yield* fs.makeDirectory(join(repoRoot, ".bessemer"));
-      yield* fs.writeFileString(join(repoRoot, ".bessemer/config.toml"), 'image = "mine"\n');
+      yield* fs.makeDirectory(join(repoRoot, ".speepobox"));
+      yield* fs.writeFileString(join(repoRoot, ".speepobox/config.toml"), 'image = "mine"\n');
       const calls = yield* Ref.make<ReadonlyArray<GitCall>>([]);
       const { exit, events } = yield* run(repoRoot, [], { git: fakeGit(calls) });
       expect(Exit.isSuccess(exit)).toBe(true);
       expect(yield* Ref.get(calls)).toEqual([]);
       const files = written(events).files;
-      expect(files[0]).toEqual({ path: ".bessemer/config.toml", action: "kept" });
+      expect(files[0]).toEqual({ path: ".speepobox/config.toml", action: "kept" });
       expect(files.slice(1).every((file) => file.action === "wrote")).toBe(true);
-      expect(files).toContainEqual({ path: ".bessemer/bessemer", action: "wrote" });
-      expect(renderInit(written(events)).split("\n")[0]).toBe("kept  .bessemer/config.toml");
+      expect(files).toContainEqual({ path: ".speepobox/speepobox", action: "wrote" });
+      expect(renderInit(written(events)).split("\n")[0]).toBe("kept  .speepobox/config.toml");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -490,18 +490,18 @@ describe("init, refused", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
-      yield* fs.makeDirectory(join(repoRoot, ".bessemer/image/inputs"), { recursive: true });
+      yield* fs.makeDirectory(join(repoRoot, ".speepobox/image/inputs"), { recursive: true });
       const { exit } = yield* run(repoRoot, ARGV);
       expect(Exit.isFailure(exit)).toBe(true);
-      expect(refusalOf(exit)).toContain(".bessemer/image/inputs is a directory");
-      expect(yield* fs.exists(join(repoRoot, ".bessemer/config.toml"))).toBe(false);
+      expect(refusalOf(exit)).toContain(".speepobox/image/inputs is a directory");
+      expect(yield* fs.exists(join(repoRoot, ".speepobox/config.toml"))).toBe(false);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 });
 
 const VALUES = {
   base: { value: "origin/trunk", source: "origin/HEAD" },
-  image: { value: "my-app-bessemer", source: "directory name" },
+  image: { value: "my-app-speepobox", source: "directory name" },
   "tool-sha": { value: "", source: "package revision" },
 } as const;
 
@@ -510,14 +510,14 @@ describe("renderInit", () => {
     const text = renderInit({
       _tag: "Write",
       files: [
-        { path: ".bessemer/config.toml", action: "kept" },
-        { path: ".bessemer/.gitignore", action: "wrote" },
+        { path: ".speepobox/config.toml", action: "kept" },
+        { path: ".speepobox/.gitignore", action: "wrote" },
       ],
       warnings: [],
     });
     expect(text.split("\n")).toEqual([
-      "kept  .bessemer/config.toml",
-      "wrote  .bessemer/.gitignore",
+      "kept  .speepobox/config.toml",
+      "wrote  .speepobox/.gitignore",
       "",
       "Next steps:",
       ...NEXT_STEPS.map((step, index) => `  ${index + 1}. ${step}`),
@@ -532,15 +532,15 @@ describe("renderInit", () => {
       _tag: "Write",
       files: [
         {
-          path: ".bessemer/config.toml",
+          path: ".speepobox/config.toml",
           action: "wrote",
-          values: { ...VALUES, image: { value: "acme-bessemer", source: "flag" } },
+          values: { ...VALUES, image: { value: "acme-speepobox", source: "flag" } },
         },
       ],
       warnings: ["tool-sha is written empty: why"],
     });
     expect(text.split("\n").slice(0, 3)).toEqual([
-      'wrote  .bessemer/config.toml  base = "origin/trunk" (origin/HEAD), image = "acme-bessemer" (flag), tool-sha = "" (package revision)',
+      'wrote  .speepobox/config.toml  base = "origin/trunk" (origin/HEAD), image = "acme-speepobox" (flag), tool-sha = "" (package revision)',
       "WARN  tool-sha is written empty: why",
       "",
     ]);
@@ -552,7 +552,7 @@ describe("renderInit", () => {
       _tag: "Write",
       files: [
         {
-          path: ".bessemer/config.toml",
+          path: ".speepobox/config.toml",
           action: "wrote",
           values: { ...VALUES, "tool-sha": { value: SHA, source: "package revision" } },
         },
@@ -634,14 +634,22 @@ const olderTemplate = (repoRoot: string, name: StampedTemplate) =>
     const current = yield* fs.readFileString(join(templatesRoot, name));
     const older = current.replace(/\n$/, "\n# a line the newer template dropped\n");
     yield* fs.writeFileString(
-      join(repoRoot, ".bessemer", name),
+      join(repoRoot, ".speepobox", name),
       stamp(name, TEMPLATE_VERSIONS[name] - 1, older),
     );
   });
 
-// The v2 Dockerfile template, recovered from v3 by putting back the "No sudo"
-// sentence T136 turned into the commented-out root block.
-const dockerfileV2 = (v3: string) => {
+// The templates before v4 were written under the tool's name from T63 to T144,
+// so a text one of them shipped is recovered from the current template with
+// the name put back.
+const RETIRED_NAME = "bessemer";
+const underRetiredName = (text: string) => text.replaceAll("speepobox", RETIRED_NAME);
+
+// The v2 Dockerfile template, recovered from v4 by putting back the old name
+// (T144) and the "No sudo" sentence T136 turned into the commented-out root
+// block.
+const dockerfileV2 = (v4: string) => {
+  const v3 = underRetiredName(v4);
   const v2 = v3
     .replace(
       "# certificates, because the agent CLI's installer below needs them.\n",
@@ -661,11 +669,11 @@ describe("init --diff", () => {
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(0);
       expect(standing(snapshot)).toEqual([
-        [".bessemer/config.toml", "present"],
-        [".bessemer/.gitignore", "current", "pristine"],
-        [".bessemer/image/Dockerfile", "current", "pristine"],
-        [".bessemer/image/inputs", "current", "pristine"],
-        [".bessemer/bessemer", "current", "pristine"],
+        [".speepobox/config.toml", "present"],
+        [".speepobox/.gitignore", "current", "pristine"],
+        [".speepobox/image/Dockerfile", "current", "pristine"],
+        [".speepobox/image/inputs", "current", "pristine"],
+        [".speepobox/speepobox", "current", "pristine"],
       ]);
       expect(text).toContain("No drift.");
       expect(text).not.toContain("tasks");
@@ -676,12 +684,12 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      const dockerfile = join(repoRoot, ".bessemer/image/Dockerfile");
+      const dockerfile = join(repoRoot, ".speepobox/image/Dockerfile");
       const text = yield* fs.readFileString(dockerfile);
       yield* fs.writeFileString(dockerfile, `${text}RUN echo mine\n`);
       const { drifted, snapshot } = yield* diff(repoRoot);
       expect(drifted).toBe(0);
-      expect(standing(snapshot)[2]).toEqual([".bessemer/image/Dockerfile", "current", "edited"]);
+      expect(standing(snapshot)[2]).toEqual([".speepobox/image/Dockerfile", "current", "edited"]);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -691,11 +699,11 @@ describe("init --diff", () => {
       yield* olderTemplate(repoRoot, "image/inputs");
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[3]).toEqual([".bessemer/image/inputs", "behind", "pristine"]);
+      expect(standing(snapshot)[3]).toEqual([".speepobox/image/inputs", "behind", "pristine"]);
       expect(text).toContain("includes your own edits");
       expect(text).toContain("-# a line the newer template dropped");
-      expect(text).toContain("+++ templates/image/inputs v1");
-      expect(text).toContain("rm .bessemer/image/inputs && .bessemer/bessemer init");
+      expect(text).toContain("+++ templates/image/inputs v2");
+      expect(text).toContain("rm .speepobox/image/inputs && .speepobox/speepobox init");
       expect(text).toContain("nothing of yours is lost");
       expect(text).toContain("Drift: 1 file missing or behind.");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -706,11 +714,11 @@ describe("init --diff", () => {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
       yield* olderTemplate(repoRoot, "image/inputs");
-      const inputs = join(repoRoot, ".bessemer/image/inputs");
+      const inputs = join(repoRoot, ".speepobox/image/inputs");
       yield* fs.writeFileString(inputs, `${yield* fs.readFileString(inputs)}package.json\n`);
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[3]).toEqual([".bessemer/image/inputs", "behind", "edited"]);
+      expect(standing(snapshot)[3]).toEqual([".speepobox/image/inputs", "behind", "edited"]);
       expect(text).toContain("-package.json");
       expect(text).not.toContain("nothing of yours is lost");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -719,27 +727,27 @@ describe("init --diff", () => {
   // The upgrade an adopter scaffolded before T136 sees: the v2 Dockerfile is
   // the v3 template with its "No sudo" sentence where the commented-out root
   // block is now, and the digest pins that it is the text v2 actually shipped.
-  it.scoped("reports a v2 Dockerfile behind the v3 template, showing the root block", () =>
+  it.scoped("reports a v2 Dockerfile behind the v4 template, showing the root block", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
       const v2 = dockerfileV2(yield* fs.readFileString(join(templatesRoot, "image/Dockerfile")));
       expect(bodyDigest(v2)).toBe("e1efef7d16c5");
       yield* fs.writeFileString(
-        join(repoRoot, ".bessemer/image/Dockerfile"),
+        join(repoRoot, ".speepobox/image/Dockerfile"),
         stamp("image/Dockerfile", 2, v2),
       );
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[2]).toEqual([".bessemer/image/Dockerfile", "behind", "pristine"]);
-      expect(text).toContain("+++ templates/image/Dockerfile v3");
+      expect(standing(snapshot)[2]).toEqual([".speepobox/image/Dockerfile", "behind", "pristine"]);
+      expect(text).toContain("+++ templates/image/Dockerfile v4");
       expect(text).toContain(
         "-# certificates, because the agent CLI's installer below needs them. No sudo:",
       );
       expect(text).toContain(
-        '+# section "Setup that needs root" in bessemer\'s README walks through it. To',
+        '+# section "Setup that needs root" in speepobox\'s README walks through it. To',
       );
-      expect(text).toContain("+# COPY root-setup.sh /usr/local/libexec/bessemer/root-setup.sh");
+      expect(text).toContain("+# COPY root-setup.sh /usr/local/libexec/speepobox/root-setup.sh");
       expect(text).toContain("nothing of yours is lost");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -747,7 +755,7 @@ describe("init --diff", () => {
   // The upgrade an adopter scaffolded before T118 sees: the v1 Dockerfile is
   // the v2 template without its model block, and the digest pins that it is
   // the text v1 actually shipped.
-  it.scoped("reports a v1 Dockerfile behind the v3 template, showing the model lines", () =>
+  it.scoped("reports a v1 Dockerfile behind the v4 template, showing the model lines", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
@@ -759,13 +767,13 @@ describe("init --diff", () => {
       expect(v1).not.toBe(v2);
       expect(bodyDigest(v1)).toBe("b0faff370f7d");
       yield* fs.writeFileString(
-        join(repoRoot, ".bessemer/image/Dockerfile"),
+        join(repoRoot, ".speepobox/image/Dockerfile"),
         stamp("image/Dockerfile", 1, v1),
       );
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[2]).toEqual([".bessemer/image/Dockerfile", "behind", "pristine"]);
-      expect(text).toContain("+++ templates/image/Dockerfile v3");
+      expect(standing(snapshot)[2]).toEqual([".speepobox/image/Dockerfile", "behind", "pristine"]);
+      expect(text).toContain("+++ templates/image/Dockerfile v4");
       expect(text).toContain("+# ENV ANTHROPIC_MODEL=<model id>");
       expect(text).toContain("nothing of yours is lost");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -774,25 +782,30 @@ describe("init --diff", () => {
   // The upgrade an adopter scaffolded before T119 sees: the v1 .gitignore is
   // the v2 template with its runtime state unanchored, and the digest pins
   // that it is the text v1 actually shipped.
-  it.scoped("reports a v1 .gitignore behind the v2 template, showing the anchors", () =>
+  it.scoped("reports a v1 .gitignore behind the v3 template, showing the anchors", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      const v2 = yield* fs.readFileString(join(templatesRoot, ".gitignore"));
+      const v2 = underRetiredName(yield* fs.readFileString(join(templatesRoot, ".gitignore")));
       const v1 = v2
         .replace(/^\/(config\.local\.toml|logs\/|locks\/|checkouts\/|runs\.jsonl)$/gm, "$1")
         .replace(/^# The agent credential;.*$/m, "# The agent credential.");
       expect(v1).not.toBe(v2);
       expect(bodyDigest(v1)).toBe("e5a02c8cfb04");
-      yield* fs.writeFileString(join(repoRoot, ".bessemer/.gitignore"), stamp(".gitignore", 1, v1));
+      yield* fs.writeFileString(
+        join(repoRoot, ".speepobox/.gitignore"),
+        stamp(".gitignore", 1, v1),
+      );
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[1]).toEqual([".bessemer/.gitignore", "behind", "pristine"]);
-      expect(text).toContain("+++ templates/.gitignore v2");
+      expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "behind", "pristine"]);
+      expect(text).toContain("+++ templates/.gitignore v3");
       expect(text).toContain("+/logs/");
       expect(text).toContain("-logs/");
       expect(text).toContain("nothing of yours is lost");
-      expect(text).toContain("To refresh it: rm .bessemer/.gitignore && .bessemer/bessemer init");
+      expect(text).toContain(
+        "To refresh it: rm .speepobox/.gitignore && .speepobox/speepobox init",
+      );
       expect(text).not.toContain(".old");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -803,14 +816,14 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      yield* fs.chmod(join(repoRoot, ".bessemer/bessemer"), 0o644);
+      yield* fs.chmod(join(repoRoot, ".speepobox/speepobox"), 0o644);
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[4]).toEqual([".bessemer/bessemer", "current", "pristine"]);
-      expect(text).toMatch(/^current, pristine, not executable +\.bessemer\/bessemer$/m);
-      expect(text).toContain("To fix it: chmod +x .bessemer/bessemer");
+      expect(standing(snapshot)[4]).toEqual([".speepobox/speepobox", "current", "pristine"]);
+      expect(text).toMatch(/^current, pristine, not executable +\.speepobox\/speepobox$/m);
+      expect(text).toContain("To fix it: chmod +x .speepobox/speepobox");
       expect(text).toContain("No drift.");
-      expect(text).toContain("Not executable: .bessemer/bessemer.");
+      expect(text).toContain("Not executable: .speepobox/speepobox.");
       expect(text).not.toContain("is behind");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -819,7 +832,7 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      yield* fs.chmod(join(repoRoot, ".bessemer/.gitignore"), 0o644);
+      yield* fs.chmod(join(repoRoot, ".speepobox/.gitignore"), 0o644);
       const { drifted, text } = yield* diff(repoRoot);
       expect(drifted).toBe(0);
       expect(text).not.toContain("not executable");
@@ -830,16 +843,16 @@ describe("init --diff", () => {
   it.scoped("refreshes a behind shim by moving it aside, with the restore line beside it", () =>
     Effect.gen(function* () {
       const repoRoot = yield* scaffolded;
-      yield* olderTemplate(repoRoot, "bessemer");
+      yield* olderTemplate(repoRoot, "speepobox");
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[4]).toEqual([".bessemer/bessemer", "behind", "pristine"]);
+      expect(standing(snapshot)[4]).toEqual([".speepobox/speepobox", "behind", "pristine"]);
       expect(text).toContain(
-        "To refresh it: mv .bessemer/bessemer .bessemer/bessemer.old && .bessemer/bessemer.old init && rm .bessemer/bessemer.old",
+        "To refresh it: mv .speepobox/speepobox .speepobox/speepobox.old && .speepobox/speepobox.old init && rm .speepobox/speepobox.old",
       );
-      expect(text).toContain("mv .bessemer/bessemer.old .bessemer/bessemer");
+      expect(text).toContain("mv .speepobox/speepobox.old .speepobox/speepobox");
       expect(text).toContain("hand clone");
-      expect(text).not.toContain("rm .bessemer/bessemer &&");
+      expect(text).not.toContain("rm .speepobox/speepobox &&");
       expect(text).not.toContain("not executable");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -848,11 +861,11 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      yield* fs.remove(join(repoRoot, ".bessemer/.gitignore"));
+      yield* fs.remove(join(repoRoot, ".speepobox/.gitignore"));
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[1]).toEqual([".bessemer/.gitignore", "missing", "pristine"]);
-      expect(text).toMatch(/^missing +\.bessemer\/\.gitignore  \(init would write it\)$/m);
+      expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "missing", "pristine"]);
+      expect(text).toMatch(/^missing +\.speepobox\/\.gitignore  \(init would write it\)$/m);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -860,20 +873,20 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      const gitignore = join(repoRoot, ".bessemer/.gitignore");
+      const gitignore = join(repoRoot, ".speepobox/.gitignore");
       const text = yield* fs.readFileString(gitignore);
       yield* fs.writeFileString(
         gitignore,
         text
           .split("\n")
-          .filter((line) => !line.startsWith("# bessemer-template:"))
+          .filter((line) => !line.startsWith("# speepobox-template:"))
           .join("\n"),
       );
       const { drifted, snapshot, text: rendered } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[1]).toEqual([".bessemer/.gitignore", "behind", "edited"]);
+      expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "behind", "edited"]);
       expect(rendered).toContain("no stamp, read as v0");
-      expect(rendered).toContain("+# bessemer-template: .gitignore v2");
+      expect(rendered).toContain("+# speepobox-template: .gitignore v3");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -882,12 +895,12 @@ describe("init --diff", () => {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
       yield* fs.copyFile(
-        join(repoRoot, ".bessemer/.gitignore"),
-        join(repoRoot, ".bessemer/image/inputs"),
+        join(repoRoot, ".speepobox/.gitignore"),
+        join(repoRoot, ".speepobox/image/inputs"),
       );
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[3]).toEqual([".bessemer/image/inputs", "behind", "edited"]);
+      expect(standing(snapshot)[3]).toEqual([".speepobox/image/inputs", "behind", "edited"]);
       expect(text).toContain("its stamp names template .gitignore, not image/inputs");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -896,10 +909,10 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      yield* fs.remove(join(repoRoot, ".bessemer/config.toml"));
+      yield* fs.remove(join(repoRoot, ".speepobox/config.toml"));
       const { drifted, snapshot } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
-      expect(standing(snapshot)[0]).toEqual([".bessemer/config.toml", "missing"]);
+      expect(standing(snapshot)[0]).toEqual([".speepobox/config.toml", "missing"]);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -913,18 +926,18 @@ describe("init --diff", () => {
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
-  it.scoped("runs self-hosted, naming the template instead of rm … && bessemer init", () =>
+  it.scoped("runs self-hosted, naming the template instead of rm … && speepobox init", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
       yield* olderTemplate(repoRoot, "image/Dockerfile");
-      yield* fs.remove(join(repoRoot, ".bessemer/.gitignore"));
+      yield* fs.remove(join(repoRoot, ".speepobox/.gitignore"));
       const { drifted, text } = yield* diff(repoRoot, true);
       expect(drifted).toBe(2);
-      expect(text).not.toContain("bessemer init");
+      expect(text).not.toContain("speepobox init");
       expect(text).not.toContain("init would write it");
       expect(text).toMatch(
-        /^missing +\.bessemer\/\.gitignore  \(absent; init does not write here\)$/m,
+        /^missing +\.speepobox\/\.gitignore  \(absent; init does not write here\)$/m,
       );
       expect(text).toContain(
         `bring it up to date by hand from ${join(templatesRoot, "image/Dockerfile")}`,
@@ -939,11 +952,11 @@ describe("init --diff", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      yield* fs.remove(join(repoRoot, ".bessemer/bessemer"));
+      yield* fs.remove(join(repoRoot, ".speepobox/speepobox"));
       const { drifted, text } = yield* diff(repoRoot, true);
       expect(drifted).toBe(0);
       expect(text).toMatch(
-        /^missing +\.bessemer\/bessemer  \(absent; this repo has no shim by design\)$/m,
+        /^missing +\.speepobox\/speepobox  \(absent; this repo has no shim by design\)$/m,
       );
       expect(text).toContain("No drift.");
       // In a served repo the same absence still counts.
@@ -968,7 +981,7 @@ describe("init --diff", () => {
 describe("driftOf", () => {
   it("names the template path it was handed", () => {
     const drift = driftOf({
-      path: ".bessemer/image/inputs",
+      path: ".speepobox/image/inputs",
       template: "image/inputs",
       templatePath: "templates/image/inputs",
       templateText: "# new\n",

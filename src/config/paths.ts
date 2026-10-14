@@ -13,23 +13,23 @@ export const packageRoot: string = dirname(dirname(dirname(fileURLToPath(import.
 // parameter rather than imported where it is read (SPEC §9).
 export const templatesRoot: string = join(packageRoot, "templates");
 
-// The bessemer directory (CONTEXT.md): the one directory bessemer keeps inside
+// The speepobox directory (CONTEXT.md): the one directory speepobox keeps inside
 // a served repo — its committed config, the operator's private settings and
 // credential, and by default its runtime state. The name is spelled once,
 // here, so no caller writes the literal a second time, and it is derived from
 // the **served repo** and never from the package: under the clone-run shim the
-// package is a cache clone every served repo shares, so one `.bessemer` beside
+// package is a cache clone every served repo shares, so one `.speepobox` beside
 // it would be every adopter's at once (19 §2).
-export const BESSEMER_DIRNAME = ".bessemer";
+export const SPEEPOBOX_DIRNAME = ".speepobox";
 
-export const bessemerDir = (repoRoot: string): string => join(repoRoot, BESSEMER_DIRNAME);
+export const speepoboxDir = (repoRoot: string): string => join(repoRoot, SPEEPOBOX_DIRNAME);
 
 // Where write locations resolve against: the configured `runtime-root`, taken
 // as-is when it is absolute and resolved against the **repo root** otherwise.
 // `resolveTasksDir` below is the precedent, and 19 §1 is the reason — a
 // relative value used unresolved means "against the working directory", and
 // the working directory is retired from every answer this tool gives. The
-// default is `bessemerDir(repoRoot)`, which the descriptor supplies.
+// default is `speepoboxDir(repoRoot)`, which the descriptor supplies.
 export const resolveRuntimeRoot = (repoRoot: string, runtimeRoot: string): string =>
   isAbsolute(runtimeRoot) ? runtimeRoot : join(repoRoot, runtimeRoot);
 
@@ -107,7 +107,7 @@ export const resolveSetupHookPath = (
 // a resolver that folded "outside" into "none" would hand the container a
 // silently empty environment instead of a refusal.
 //
-// **Bessemer never opens the file; docker reads it.** That is *why* its values
+// **Speepobox never opens the file; docker reads it.** That is *why* its values
 // cannot reach argv, a log, the ledger, or an event — the path may appear in
 // any of them, the contents never. This resolver answers a path and nothing
 // else, and nothing under `src/` reads what is in it (19 §5).
@@ -144,7 +144,7 @@ export const resolveSandboxEnvFile = (repoRoot: string, declared: string): Sandb
 // back to the starting directory when nothing above it is a repo.
 //
 // Why a path walk and not `git rev-parse --show-toplevel`: this is what the
-// `bessemer.repo` ownership label hashes, and `status` runs no git commands
+// `speepobox.repo` ownership label hashes, and `status` runs no git commands
 // (SPEC §7). It is a host read, so it is called from the composition root and
 // reaches commands as a parameter.
 export const findRepoRoot = (from: string): string => {

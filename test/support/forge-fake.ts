@@ -21,7 +21,7 @@ export const openPullRequest: PullRequest = {
 
 // What the branch's open PR says today, which is what a resuming run quotes
 // into its implement prompt (T17).
-export const PR_TITLE = "[bessemer] bessemer-t17";
+export const PR_TITLE = "[speepobox] speepobox-t17";
 export const PR_BODY = "## Overview\n\nWhat the run before this one said it did.";
 
 export const viewedPullRequest: ViewedPr = {

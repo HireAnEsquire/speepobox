@@ -29,7 +29,7 @@ import { exec, type ExecResult } from "../../src/internal/exec.ts";
 import { ownershipFilterArgs } from "../../src/ownership/labels.ts";
 import { dockerRows } from "../../src/reconcile/wreckage.ts";
 
-export const LIVE_MARKER = "BESSEMER_LIVE";
+export const LIVE_MARKER = "SPEEPOBOX_LIVE";
 
 if (process.env[LIVE_MARKER] !== "1") {
   throw new Error(
@@ -53,7 +53,7 @@ export const itLive = it;
 //
 // A literal, not `defaultConfig.image`: the package ships no image name since
 // T40, and reading one from there put `''` into docker's argv.
-export const LIVE_IMAGE = process.env.BESSEMER_LIVE_IMAGE ?? "bessemer";
+export const LIVE_IMAGE = process.env.SPEEPOBOX_LIVE_IMAGE ?? "speepobox";
 
 // Every docker call in this tier goes through the subprocess chokepoint, as
 // the tool's own do. A docker CLI that will not run at all is a defect here
@@ -92,7 +92,7 @@ export const dockerdIsUp: Effect.Effect<void, never, CommandExecutor> = Effect.g
     "{{.ServerVersion}}",
   );
   yield* succeeding(
-    `verify:live needs the image '${LIVE_IMAGE}' on this host (build it with 'node src/bin.ts image build', or set BESSEMER_LIVE_IMAGE to any image whose default command stays up)`,
+    `verify:live needs the image '${LIVE_IMAGE}' on this host (build it with 'node src/bin.ts image build', or set SPEEPOBOX_LIVE_IMAGE to any image whose default command stays up)`,
     "image",
     "inspect",
     LIVE_IMAGE,

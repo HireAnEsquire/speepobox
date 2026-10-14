@@ -29,7 +29,7 @@
 // the lock's pair belongs to the console at both ends (AGENTS.md).
 import { FileSystem } from "@effect/platform";
 import { Effect, Layer, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { lockPathFor } from "../dispatch/plan.ts";
 import { ownerIsAlive, parsePid } from "../lock/liveness.ts";
 import { LockError, LockHeld, RunLock, type RunLockShape } from "../lock/run-lock.ts";
@@ -60,7 +60,7 @@ export const recordingRunLock = (
       );
       if (ownerIsAlive(owner)) {
         return yield* new LockHeld({
-          detail: `another bessemer run (pid ${Option.getOrElse(owner, () => pid)}) is already working '${slug}' — wait for it or kill it`,
+          detail: `another speepobox run (pid ${Option.getOrElse(owner, () => pid)}) is already working '${slug}' — wait for it or kill it`,
         });
       }
 
@@ -95,11 +95,11 @@ export const recordingRunLock = (
 export const RunLockRecordingLive: Layer.Layer<
   RunLock,
   never,
-  BessemerConfig | Reporter | FileSystem.FileSystem
+  SpeepoboxConfig | Reporter | FileSystem.FileSystem
 > = Layer.effect(
   RunLock,
   Effect.map(
-    Effect.all([BessemerConfig, Reporter, FileSystem.FileSystem]),
+    Effect.all([SpeepoboxConfig, Reporter, FileSystem.FileSystem]),
     ([config, reporter, fs]) => recordingRunLock(config.runtimeRoot, process.pid, reporter, fs),
   ),
 );

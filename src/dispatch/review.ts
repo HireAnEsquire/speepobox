@@ -16,7 +16,7 @@ import { AgentCli, type AgentPassFailed } from "../agent/agent-cli.ts";
 import type { CurrentIssue } from "../agent/prompt.ts";
 import type { PromptUnusable } from "../agent/prompt-source.ts";
 import type { ReviewVerdict } from "../agent/verdict.ts";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { Reporter } from "../reporter.ts";
 import type { SandboxHandle } from "../sandbox/sandbox.ts";
 import type { DispatchPlan } from "./plan.ts";
@@ -32,10 +32,10 @@ export const reviewRounds = (
 ): Effect.Effect<
   ReviewVerdict,
   AgentPassFailed | PromptUnusable,
-  AgentCli | BessemerConfig | Reporter
+  AgentCli | SpeepoboxConfig | Reporter
 > =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const agent = yield* AgentCli;
     const reporter = yield* Reporter;
     const of = config.maxReviewRounds;

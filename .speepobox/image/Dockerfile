@@ -1,4 +1,4 @@
-# bessemer-template: image/Dockerfile v3 sha256:c67338b251dc
+# speepobox-template: image/Dockerfile v4 sha256:042fd1f6f5c0
 # The agent image for this repo, built by `node src/bin.ts image build` (which
 # supplies AGENT_UID/GID and stamps the T30 input labels — always build through
 # it).
@@ -7,7 +7,7 @@
 # until T137 deleted it, and never built here. That one is FROM the served app's compose-built image; this
 # repo has no compose, so this starts from the node image directly.
 
-# Node >= 26 is what lets bessemer's TS run under plain node type stripping,
+# Node >= 26 is what lets speepobox's TS run under plain node type stripping,
 # which is how it is executed — the package has no build step.
 ARG NODE_IMAGE=node:26-bookworm-slim
 

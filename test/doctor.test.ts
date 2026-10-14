@@ -4,7 +4,7 @@ import { NodeContext, NodeFileSystem, NodePath } from "@effect/platform-node";
 import { ConfigProvider, Effect, Either, Layer, Option, Redacted, Ref } from "effect";
 import { type AgentCredential, resolveCredential } from "../src/agent/credential.ts";
 import { defaultConfig } from "../src/config/config.ts";
-import { bessemerDir, findRepoRoot, packagePathspec, packageRoot } from "../src/config/paths.ts";
+import { speepoboxDir, findRepoRoot, packagePathspec, packageRoot } from "../src/config/paths.ts";
 import { doctor } from "../src/doctor/doctor.ts";
 import {
   credentialProbe,
@@ -94,7 +94,7 @@ const runDoctor = (
     // `doctor` is handed one answer for the whole screen, so the roots row and
     // probe 3 report on the same credential and the run makes one resolver
     // call. The canary below is what that resolution finds.
-    const resolved = yield* resolveCredential(bessemerDir(REPO_ROOT)).pipe(
+    const resolved = yield* resolveCredential(speepoboxDir(REPO_ROOT)).pipe(
       Effect.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer)),
     );
     // The repo root is doctor's other host fact, and probe 8 resolves the
@@ -143,7 +143,7 @@ const withCredentialCanary = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.acquireUseRelease(
     Effect.sync(() => {
       const previous = process.env["ANTHROPIC_API_KEY"];
-      process.env["ANTHROPIC_API_KEY"] = "bessemer-credential-canary";
+      process.env["ANTHROPIC_API_KEY"] = "speepobox-credential-canary";
       return previous;
     }),
     () => effect,
@@ -223,7 +223,7 @@ describe("doctor", () => {
         const credential = events.find((event) => event.probe === "credential");
         expect(credential?.status).toBe("ok");
         for (const event of events) {
-          expect(renderProbeRow(event)).not.toContain("bessemer-credential-canary");
+          expect(renderProbeRow(event)).not.toContain("speepobox-credential-canary");
         }
       }),
     ),
@@ -245,11 +245,11 @@ describe("doctor", () => {
           },
           // Stated rather than resolved: which of the two places answers is a
           // fact about the host running the suite — this checkout may or may
-          // not have a `.bessemer/.env` — and the row's own rendering is what
+          // not have a `.speepobox/.env` — and the row's own rendering is what
           // this case is about.
           credential: Option.some({
             name: "CLAUDE_CODE_OAUTH_TOKEN",
-            value: Redacted.make("bessemer-credential-canary"),
+            value: Redacted.make("speepobox-credential-canary"),
             source: "file",
           }),
         });
@@ -257,7 +257,7 @@ describe("doctor", () => {
         expect(roots?.probe).toBe("roots");
         expect(roots?.status).toBe("ok");
         expect(roots?.detail).toBe(
-          `serving ${REPO_ROOT}; package ${packageRoot} at 6345f52; config ${bessemerDir(REPO_ROOT)}/config.toml; credential from ${bessemerDir(REPO_ROOT)}/.env; self-hosted`,
+          `serving ${REPO_ROOT}; package ${packageRoot} at 6345f52; config ${speepoboxDir(REPO_ROOT)}/config.toml; credential from ${speepoboxDir(REPO_ROOT)}/.env; self-hosted`,
         );
       }),
     ),
@@ -266,12 +266,12 @@ describe("doctor", () => {
   // The canary is exported in the *environment*, so the row says so — the
   // place, and never the value, which is the rule probe 3 keeps and the reason
   // this row prints a source rather than a credential. (The committed
-  // `.bessemer/.env` would win if this checkout had one, which is what the
+  // `.speepobox/.env` would win if this checkout had one, which is what the
   // case above reads; this one states the environment arm outright.)
   it("the roots row names where the credential came from, never what it is", () => {
     const environment = rootsRow({
       repoRoot: "/srv/hae",
-      packageRoot: "/home/me/.cache/bessemer/abc123",
+      packageRoot: "/home/me/.cache/speepobox/abc123",
       dispatcherRevision: Option.some({
         sha: "abc1230000000000000000000000000000000000",
         revision: "abc123",
@@ -279,15 +279,15 @@ describe("doctor", () => {
       }),
       credential: Option.some({
         name: "CLAUDE_CODE_OAUTH_TOKEN",
-        value: Redacted.make("bessemer-credential-canary"),
+        value: Redacted.make("speepobox-credential-canary"),
         source: "environment",
       }),
       selfHosted: false,
     });
     expect(environment.detail).toBe(
-      "serving /srv/hae; package /home/me/.cache/bessemer/abc123 at abc123; config /srv/hae/.bessemer/config.toml; credential from the environment; not self-hosted",
+      "serving /srv/hae; package /home/me/.cache/speepobox/abc123 at abc123; config /srv/hae/.speepobox/config.toml; credential from the environment; not self-hosted",
     );
-    expect(environment.detail).not.toContain("bessemer-credential-canary");
+    expect(environment.detail).not.toContain("speepobox-credential-canary");
   });
 
   // No credential is `none` here and a FAIL on probe 3, which is where a host
@@ -303,7 +303,7 @@ describe("doctor", () => {
         selfHosted: true,
       }).detail,
     ).toBe(
-      "serving /srv/hae; package /srv/hae at revision unknown; config /srv/hae/.bessemer/config.toml; credential none; self-hosted",
+      "serving /srv/hae; package /srv/hae at revision unknown; config /srv/hae/.speepobox/config.toml; credential none; self-hosted",
     );
   });
 
@@ -526,13 +526,13 @@ describe("doctor", () => {
       Effect.gen(function* () {
         const unreachable = {
           ...allGreenScript,
-          "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --tags origin": {
+          "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --tags origin": {
             exit: 128,
             stderr:
               "fatal: unable to access 'https://github.com/x/y.git/': Could not resolve host\n",
           },
         };
-        const host = { selfHosted: false, packageRepoRoot: "/srv/bessemer" };
+        const host = { selfHosted: false, packageRepoRoot: "/srv/speepobox" };
         const green = yield* runDoctor(unreachable, "26.0.0", host);
         const upstream = green.events.find((event) => event.probe === "upstream");
         expect(upstream?.status).toBe("ok");
@@ -604,10 +604,10 @@ describe("credential probe", () => {
   it.effect("still renders its row when .env cannot be read at all", () =>
     Effect.gen(function* () {
       const credential = yield* resolveCredential(
-        "/nowhere/bessemer",
+        "/nowhere/speepobox",
         ConfigProvider.fromMap(new Map([["CLAUDE_CODE_OAUTH_TOKEN", "from-the-shell"]])),
       );
-      const rows = yield* credentialProbe("/nowhere/bessemer", credential);
+      const rows = yield* credentialProbe("/nowhere/speepobox", credential);
       expect(rows[0]?.status).toBe("ok");
       expect(rows[0]?.detail).toContain("CLAUDE_CODE_OAUTH_TOKEN set from the environment");
     }).pipe(Effect.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))),
@@ -711,8 +711,8 @@ describe("image probe", () => {
       expect(rows[0]?.status).toBe("ok");
       expect(rows[0]?.detail).toContain("built against the current dependency files");
       // The argv itself: two labels, and no timestamp anywhere in it.
-      expect(commands[0]).toContain("bessemer.inputs");
-      expect(commands[0]).toContain("bessemer.inputs.digest");
+      expect(commands[0]).toContain("speepobox.inputs");
+      expect(commands[0]).toContain("speepobox.inputs.digest");
       expect(commands[0]).not.toContain(".Created");
     }).pipe(Effect.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))),
   );
@@ -813,7 +813,7 @@ describe("image probe", () => {
 // Probe 9's two red arms (T57). They are one status and two fixes — `mkdir`
 // for a root nobody has created, `chmod` for one the host will not let this
 // user write — and a row that named only the second would send an adopter
-// whose `.bessemer/` does not exist yet to the wrong command.
+// whose `.speepobox/` does not exist yet to the wrong command.
 const configAt = (runtimeRoot: string) => ({ ...defaultConfig, runtimeRoot });
 
 describe("runtime root probe", () => {
@@ -831,7 +831,7 @@ describe("runtime root probe", () => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const absent = path.join(yield* fs.makeTempDirectoryScoped(), ".bessemer");
+      const absent = path.join(yield* fs.makeTempDirectoryScoped(), ".speepobox");
       const outcome = yield* Effect.either(runtimeRootProbe(configAt(absent)));
       expect(Either.isLeft(outcome)).toBe(true);
       if (Either.isLeft(outcome)) {
@@ -909,7 +909,7 @@ describe("pure probe helpers", () => {
 
 // Probe 11's row (T129) against real repositories: a temp package repo whose
 // `origin` is a local bare repo carrying an annotated v1 and a lightweight v2,
-// and a temp served repo whose `.bessemer/config.toml` holds the pin.
+// and a temp served repo whose `.speepobox/config.toml` holds the pin.
 const HAND = ["-c", "user.email=t@example.com", "-c", "user.name=Test"];
 const realGit = (...args: ReadonlyArray<string>) =>
   exec("git", ...HAND, ...args).pipe(
@@ -938,9 +938,9 @@ const upstreamWorld = Effect.gen(function* () {
   const packageRepoRoot = `${root}/package`;
   yield* realGit("clone", "-q", bare, packageRepoRoot);
   const served = `${root}/served`;
-  yield* fs.makeDirectory(bessemerDir(served), { recursive: true });
+  yield* fs.makeDirectory(speepoboxDir(served), { recursive: true });
   const pinTo = (line: string) =>
-    fs.writeFileString(`${bessemerDir(served)}/config.toml`, `image = "x"\n${line}\n`);
+    fs.writeFileString(`${speepoboxDir(served)}/config.toml`, `image = "x"\n${line}\n`);
   return { root, packageRepoRoot, served, pinTo, v1, v2, untagged };
 }).pipe(Effect.orDie);
 

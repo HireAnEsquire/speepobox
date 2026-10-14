@@ -1,4 +1,4 @@
-// `gc` (SPEC §7, P4): what this host holds from bessemer runs, and what
+// `gc` (SPEC §7, P4): what this host holds from speepobox runs, and what
 // `gc --force` would do with each piece of it. The listing changes nothing and
 // exits 0 — including when dockerd will not answer, where it lists what the
 // disk holds and says liveness went unverified.
@@ -28,7 +28,7 @@ import { FileSystem, Path } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import type { PlatformError } from "@effect/platform/Error";
 import { Clock, Effect, Either, Option } from "effect";
-import { BessemerConfig, loadConfig } from "../config/config.ts";
+import { SpeepoboxConfig, loadConfig } from "../config/config.ts";
 import { LOCKS_DIRNAME, LOGS_DIRNAME, lockPathFor } from "../dispatch/plan.ts";
 import type { Git } from "../git/git.ts";
 import { isProcessAlive, ownerIsAlive, parsePid } from "../lock/liveness.ts";
@@ -97,10 +97,10 @@ const snapshotOf = (
 ): Effect.Effect<
   GcSnapshot,
   never,
-  BessemerConfig | Reporter | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Reporter | FileSystem.FileSystem | Path.Path
 > =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const reporter = yield* Reporter;
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -339,7 +339,7 @@ export const gcSnapshot = (
 ): Effect.Effect<
   GcSnapshot,
   never,
-  BessemerConfig | Reporter | CommandExecutor | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Reporter | CommandExecutor | FileSystem.FileSystem | Path.Path
 > => Effect.flatMap(scanWreckage(repoRoot), snapshotOf);
 
 export interface GcOptions {
@@ -358,7 +358,7 @@ export const gc = (
   | Sandbox
   | RunLock
   | Git
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | CommandExecutor
   | FileSystem.FileSystem

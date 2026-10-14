@@ -7,7 +7,7 @@
 // The real layer over a real filesystem, deliberately: the tag earns itself on
 // the precedence logic, so a fake `FileSystem` here would leave the one thing
 // under test asserted against our own fixture of it (05 Q9). A temp directory
-// is the served repo, and dropping a file into its `.bessemer/prompts/` is
+// is the served repo, and dropping a file into its `.speepobox/prompts/` is
 // what an adopter does.
 import { describe, expect, it } from "@effect/vitest";
 import { readFileSync } from "node:fs";
@@ -29,8 +29,8 @@ import {
   PromptUnusable,
   promptRootLabel,
 } from "../src/agent/prompt-source.ts";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
-import { bessemerDir, packageRoot } from "../src/config/paths.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
+import { speepoboxDir, packageRoot } from "../src/config/paths.ts";
 
 // A served repo, with whatever it chose to override in place. The layer takes
 // the repo root and nothing else (T59): there is no config to build, because
@@ -42,11 +42,11 @@ const clientAt = (
 
 const OVERRIDE = "# TASK\n\nThe served repo's own implement prompt.\n";
 
-// Where an override goes: `<repoRoot>/.bessemer/prompts/<name>.md`, derived
+// Where an override goes: `<repoRoot>/.speepobox/prompts/<name>.md`, derived
 // the way the chain derives it so a case cannot pin a path the code does not
 // use.
 const overridePath = (repoRoot: string, name: string): string =>
-  promptPathIn(bessemerDir(repoRoot), name);
+  promptPathIn(speepoboxDir(repoRoot), name);
 
 const writePrompt = (
   repoRoot: string,
@@ -63,7 +63,7 @@ const writePrompt = (
   }).pipe(Effect.orDie);
 
 // The real filesystem with one path answered from memory, which is how the
-// self-hosted override below gets a file at `<packageRoot>/.bessemer/prompts/`
+// self-hosted override below gets a file at `<packageRoot>/.speepobox/prompts/`
 // without writing one there. That directory is the working tree of whatever
 // repo this suite is running in, and a real write into it would sit beside —
 // or on top of — an override an operator actually keeps. One method, one path,
@@ -83,7 +83,7 @@ const holding = (file: string, text: string): Layer.Layer<FileSystem.FileSystem>
 // of that one path is sent to a file inside an empty directory instead, so what
 // the chain sees is the platform's own `NotFound` and not an error this test
 // built. The absence is staged rather than asserted, because the path in
-// question is `<packageRoot>/.bessemer/prompts/<name>.md` — the working tree
+// question is `<packageRoot>/.speepobox/prompts/<name>.md` — the working tree
 // this suite runs in. Asserting the file is not there would mean `npm run
 // verify` goes red the moment this repo uses the feature T59 ships, and that
 // gate runs inside every dispatch's clone, so the override an operator wrote
@@ -116,7 +116,7 @@ describe("the prompt precedence chain", () => {
   // The tracer, in one case: the override takes, and removing it hands the
   // default back. Both halves matter — an override nobody can retract is a
   // served repo stuck on a prompt that stopped improving.
-  it.scoped("prefers a served repo's .bessemer/prompts/*.md, and gives it back", () =>
+  it.scoped("prefers a served repo's .speepobox/prompts/*.md, and gives it back", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
@@ -127,7 +127,7 @@ describe("the prompt precedence chain", () => {
 
       const overridden = yield* source;
       expect(overridden.root).toBe("client");
-      expect(overridden.path).toBe(`${repoRoot}/.bessemer/prompts/${IMPLEMENT_PROMPT}.md`);
+      expect(overridden.path).toBe(`${repoRoot}/.speepobox/prompts/${IMPLEMENT_PROMPT}.md`);
       expect(overridden.path).toBe(file);
       expect(overridden.text).toBe(OVERRIDE);
 
@@ -177,9 +177,9 @@ describe("the prompt precedence chain", () => {
   // **Self-hosted**, both ways round, and together they are why T59 could
   // delete the guard rather than move it. The guard existed for a client root
   // that *was* the package root, where every shipped default sat exactly where
-  // an override would. `.bessemer/prompts/` is never `<packageRoot>/prompts/`,
+  // an override would. `.speepobox/prompts/` is never `<packageRoot>/prompts/`,
   // so the shipped default is read as the package's with nothing comparing the
-  // two roots — and a file at the served repo's own `.bessemer/prompts/` is
+  // two roots — and a file at the served repo's own `.speepobox/prompts/` is
   // still an override when that repo is this package, which is the half a
   // guard on the roots would have refused to see.
   it.scoped("reads the package's own defaults as the package's when self-hosted", () =>
@@ -222,7 +222,7 @@ describe("the prompt precedence chain", () => {
   // read location, so a `runtime-root` naming somewhere else changes nothing
   // about which prompt wins — and the decoy sitting where the old chain looked
   // is what says so. The config layer is provided and goes unread, which is
-  // the point: `PromptSource` no longer requires `BessemerConfig` at all.
+  // the point: `PromptSource` no longer requires `SpeepoboxConfig` at all.
   it.scoped("reads nothing from a runtime root pointed somewhere else", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -239,7 +239,7 @@ describe("the prompt precedence chain", () => {
         Effect.provide(
           Layer.mergeAll(
             clientAt(repoRoot),
-            Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+            Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
           ),
         ),
       );
@@ -338,7 +338,7 @@ describe("the project-context fragment", () => {
 
   // Beside the overrides, through the same chain: one directory holds both
   // extension points (19 §2).
-  it.scoped("answers the served repo's fragment, from .bessemer/prompts/", () =>
+  it.scoped("answers the served repo's fragment, from .speepobox/prompts/", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
@@ -355,7 +355,7 @@ describe("the project-context fragment", () => {
       expect(Option.isSome(fragment)).toBe(true);
       if (Option.isSome(fragment)) {
         expect(fragment.value.root).toBe("client");
-        expect(fragment.value.path).toBe(`${repoRoot}/.bessemer/prompts/project-context.md`);
+        expect(fragment.value.path).toBe(`${repoRoot}/.speepobox/prompts/project-context.md`);
         expect(fragment.value.path).toBe(file);
         expect(fragment.value.text).toContain("npm run verify");
       }

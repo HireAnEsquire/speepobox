@@ -5,8 +5,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { Effect, Either, Exit, Layer, Option, Ref } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
-import { bessemerDir } from "../src/config/paths.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
+import { speepoboxDir } from "../src/config/paths.ts";
 import {
   CHECKOUTS_DIRNAME,
   checkoutPathFor,
@@ -57,9 +57,9 @@ const world = (dockerPs: ScriptedResult, options: WorldOptions = {}) =>
     const fs = yield* FileSystem.FileSystem;
     const runtimeRoot = yield* fs.makeTempDirectoryScoped();
     const repoRoot = yield* fs.makeTempDirectoryScoped();
-    yield* fs.makeDirectory(bessemerDir(repoRoot));
+    yield* fs.makeDirectory(speepoboxDir(repoRoot));
     yield* fs.writeFileString(
-      `${bessemerDir(repoRoot)}/config.toml`,
+      `${speepoboxDir(repoRoot)}/config.toml`,
       `image = "baseline-image"\nbase = "origin/main"\n`,
     );
     const events = yield* Ref.make<ReadonlyArray<ReporterEvent>>([]);
@@ -92,7 +92,7 @@ const world = (dockerPs: ScriptedResult, options: WorldOptions = {}) =>
           { "docker ps": dockerPs, "docker rm": options.dockerRm ?? { exit: 0 } },
           commands,
         ),
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) => Ref.update(events, (current) => [...current, event]),
         }),
@@ -121,7 +121,7 @@ const leaveCheckout = (runtimeRoot: string, slug: string, bytes = 0) =>
     yield* fs.writeFileString(`${checkout}/src/deep/work.txt`, "x".repeat(bytes - head.length));
   });
 
-const containerRow = (slug: string, state: string) => `c-${slug}\tbessemer-${slug}\t${state}`;
+const containerRow = (slug: string, state: string) => `c-${slug}\tspeepobox-${slug}\t${state}`;
 
 // Every path under a directory with its contents, so "wrote nothing" is a
 // comparison of two values rather than a spot check.
@@ -236,7 +236,7 @@ describe("the gc snapshot", () => {
       expect(snapshot.leftovers).toEqual([]);
       expect(snapshot.logs).toEqual({ count: 0, bytes: { _tag: "Measured", value: 0 } });
       expect(renderGc(snapshot).split("\n")).toEqual([
-        "What this host holds from bessemer runs",
+        "What this host holds from speepobox runs",
         `  ${NOTHING_TO_RECLAIM}`,
         "  logs: 0 run logs, 0B total — kept (audit trail, gc never deletes logs)",
       ]);
@@ -251,8 +251,8 @@ describe("the gc snapshot", () => {
       const scratch = yield* world({ exit: 0, stdout: "" });
       const logs = `${scratch.runtimeRoot}/${LOGS_DIRNAME}`;
       yield* fs.makeDirectory(`${logs}/nested`, { recursive: true });
-      yield* fs.writeFileString(`${logs}/bessemer-t8-1786000000000.log`, "a".repeat(1000));
-      yield* fs.writeFileString(`${logs}/bessemer-t8-1786000000001.log`, "b".repeat(1000));
+      yield* fs.writeFileString(`${logs}/speepobox-t8-1786000000000.log`, "a".repeat(1000));
+      yield* fs.writeFileString(`${logs}/speepobox-t8-1786000000001.log`, "b".repeat(1000));
       yield* fs.writeFileString(`${logs}/feature-foo-1786000000002.log`, "c".repeat(48));
       // Neither of these is a run log directly in the directory.
       yield* fs.writeFileString(`${logs}/notes.txt`, "d".repeat(500));
@@ -411,13 +411,13 @@ describe("the gc leftovers", () => {
   );
 
   it("reads a claim's name as claim.ts writes it, and nothing else", () => {
-    expect(parseClaimName("bessemer-t8.pid.4321.2.claim")).toEqual(
-      Option.some({ lockFile: "bessemer-t8.pid", pid: 4321 }),
+    expect(parseClaimName("speepobox-t8.pid.4321.2.claim")).toEqual(
+      Option.some({ lockFile: "speepobox-t8.pid", pid: 4321 }),
     );
     // No attempt serial: not a name the claim writes.
-    expect(parseClaimName("bessemer-t8.pid.4321.claim")).toEqual(Option.none());
-    expect(parseClaimName("bessemer-t8.pid.x.2.claim")).toEqual(Option.none());
-    expect(parseClaimName("bessemer-t8.pid")).toEqual(Option.none());
+    expect(parseClaimName("speepobox-t8.pid.4321.claim")).toEqual(Option.none());
+    expect(parseClaimName("speepobox-t8.pid.x.2.claim")).toEqual(Option.none());
+    expect(parseClaimName("speepobox-t8.pid")).toEqual(Option.none());
   });
 });
 
@@ -480,7 +480,7 @@ describe("gc --force", () => {
 
       const events = yield* Ref.get(scratch.events);
       expect(events[0]?._tag).toBe("GcReported");
-      expect(said(events, "reclaimed the container 'bessemer-dead-run'")).toBe(true);
+      expect(said(events, "reclaimed the container 'speepobox-dead-run'")).toBe(true);
       expect(said(events, "removed checkout dead-run (its commits are on 'dead-run')")).toBe(true);
       expect(said(events, "swept a stranded eviction witness")).toBe(true);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
@@ -563,7 +563,7 @@ describe("gc --force", () => {
       expect(yield* fs.readDirectory(`${scratch.runtimeRoot}/${LOCKS_DIRNAME}`)).toEqual([]);
       const events = yield* Ref.get(scratch.events);
       expect(
-        said(events, "skip kept-run — its container 'bessemer-kept-run' is running and no lock"),
+        said(events, "skip kept-run — its container 'speepobox-kept-run' is running and no lock"),
       ).toBe(true);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -586,7 +586,7 @@ describe("gc --force", () => {
               path: lockPathFor(scratch.runtimeRoot, "dead-run"),
               owner: Option.some(DEAD_PID),
             }),
-            sandbox: Option.some({ id: "c-dead-run", name: "bessemer-dead-run", running: true }),
+            sandbox: Option.some({ id: "c-dead-run", name: "speepobox-dead-run", running: true }),
             checkout: Option.some({ path: checkout, branch: Option.some("dead-run") }),
           },
         ]),
@@ -602,7 +602,7 @@ describe("gc --force", () => {
         (yield* Ref.get(scratch.commands)).filter((command) => command.startsWith("docker rm")),
       ).toEqual([]);
       const events = yield* Ref.get(scratch.events);
-      expect(said(events, "skip dead-run — another bessemer run")).toBe(true);
+      expect(said(events, "skip dead-run — another speepobox run")).toBe(true);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
 
@@ -795,7 +795,7 @@ describe("gc --force", () => {
       const fs = yield* FileSystem.FileSystem;
       const scratch = yield* world({ exit: 0, stdout: containerRow("dead-run", "running") });
       yield* fs.writeFileString(
-        `${bessemerDir(scratch.repoRoot)}/config.toml`,
+        `${speepoboxDir(scratch.repoRoot)}/config.toml`,
         `image = "baseline-image"\nbase = "origin/main"\nnotify = "loud"\n`,
       );
       yield* leaveLock(scratch.runtimeRoot, "dead-run", DEAD_PID);
@@ -1009,7 +1009,7 @@ describe("gc --force on the leftovers", () => {
       expect(failures).toBe(0);
       expect(yield* fs.exists(index)).toBe(true);
       const events = yield* Ref.get(scratch.events);
-      expect(said(events, "skip held-run — another bessemer run")).toBe(true);
+      expect(said(events, "skip held-run — another speepobox run")).toBe(true);
       expect(said(events, "removed index")).toBe(false);
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
@@ -1045,7 +1045,7 @@ describe("gc's argv", () => {
     if (Either.isLeft(refused)) {
       expect(refused.left).toBeInstanceOf(GcRefused);
       expect(renderFailure(refused.left)).toEqual(
-        Option.some("!! unknown gc flag: --bogus (usage: bessemer gc [--force])"),
+        Option.some("!! unknown gc flag: --bogus (usage: speepobox gc [--force])"),
       );
     }
     // bash's alias spelling is not carried.
@@ -1140,7 +1140,7 @@ describe("the gc renderer", () => {
 
   it("renders the table, the witness, the leftovers, and the logs line", () => {
     expect(renderGc(snapshot).split("\n")).toEqual([
-      "What this host holds from bessemer runs",
+      "What this host holds from speepobox runs",
       "  CLASS      SLUG      AGE  SIZE  WOULD",
       "  container  dead-run  -    -     remove the container",
       "  checkout   dead-run  3h   5.0M  salvage then remove",
@@ -1157,7 +1157,7 @@ describe("the gc renderer", () => {
 
   it("carries the daemon-down warning in the header", () => {
     expect(renderGc({ ...snapshot, daemonAnswered: false }).split("\n")[0]).toBe(
-      `What this host holds from bessemer runs  ${DAEMON_DOWN_NOTE}`,
+      `What this host holds from speepobox runs  ${DAEMON_DOWN_NOTE}`,
     );
   });
 
@@ -1170,7 +1170,7 @@ describe("the gc renderer", () => {
   });
 
   it("names the slug a witness is evicting for", () => {
-    expect(slugOfWitness("bessemer-t8.pid.4321.evicting")).toBe("bessemer-t8");
+    expect(slugOfWitness("speepobox-t8.pid.4321.evicting")).toBe("speepobox-t8");
     expect(slugOfWitness("odd")).toBe("odd");
   });
 });

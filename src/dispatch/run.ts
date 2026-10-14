@@ -20,7 +20,7 @@ import type { AgentCredential } from "../agent/credential.ts";
 import type { PrContext } from "../agent/prompt.ts";
 import type { PromptUnusable } from "../agent/prompt-source.ts";
 import { outcomeFor, type ReviewVerdict } from "../agent/verdict.ts";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import type { Forge, ForgeError } from "../forge/forge.ts";
 import type { Git, GitError } from "../git/git.ts";
 import type { RepoSlug } from "../git/repo-slug.ts";
@@ -64,7 +64,7 @@ import { type RunUsage, usageFields, withUsageTally } from "./usage.ts";
 // before the first pass, and a reader opening the log afterwards reads them
 // against the outcomes the row carries.
 export const runStartHeader = (plan: DispatchPlan): string =>
-  `== bessemer [${plan.slug}] run start: mode=${modeNamed(plan.task)} branch=${plan.branch} boundary=${plan.mergeBaseSha}`;
+  `== speepobox [${plan.slug}] run start: mode=${modeNamed(plan.task)} branch=${plan.branch} boundary=${plan.mergeBaseSha}`;
 
 // A spec run and an inline one are both `one-off` here, as they are on the
 // plan block's own mode line (`render.ts`): what this header says is which
@@ -257,7 +257,7 @@ const recordTerminal = (
   // the way.
   usage: Ref.Ref<Option.Option<RunUsage>>,
   exit: Exit.Exit<unknown, unknown>,
-): Effect.Effect<void, never, Ledger | Reporter | Notifier | BessemerConfig> =>
+): Effect.Effect<void, never, Ledger | Reporter | Notifier | SpeepoboxConfig> =>
   Effect.gen(function* () {
     const ledger = yield* Ledger;
     const reporter = yield* Reporter;
@@ -318,9 +318,9 @@ const startSandbox = (
   plan: DispatchPlan,
   repoRoot: string,
   credential: AgentCredential,
-): Effect.Effect<SandboxHandle, SandboxError, Scope.Scope | Sandbox | BessemerConfig | Reporter> =>
+): Effect.Effect<SandboxHandle, SandboxError, Scope.Scope | Sandbox | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const sandbox = yield* Sandbox;
     const workspace = yield* workspaceUrl(plan.checkoutPath);
     return yield* sandbox.run(sandboxSpecFor({ plan, repoRoot, workspace, config, credential }));
@@ -342,7 +342,7 @@ const onePassThenRounds = (
   plan: DispatchPlan,
   prContext: Option.Option<PrContext>,
   outcome: Ref.Ref<Option.Option<string>>,
-): Effect.Effect<void, FailedAtStage, AgentCli | BessemerConfig | Reporter> =>
+): Effect.Effect<void, FailedAtStage, AgentCli | SpeepoboxConfig | Reporter> =>
   Effect.flatMap(AgentCli, (agent) =>
     // No issue on this arm (T75): a spec run and an inline one are one pass
     // for one task, and the loop that walks a selection is below.
@@ -381,7 +381,7 @@ const featureIssues = (
   task: Extract<Task, { readonly _tag: "Feature" }>,
   prContext: Option.Option<PrContext>,
   outcomes: Ref.Ref<ReadonlyArray<IssueOutcome>>,
-): Effect.Effect<void, FailedAtStage, AgentCli | Sandbox | BessemerConfig | Reporter> =>
+): Effect.Effect<void, FailedAtStage, AgentCli | Sandbox | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
     const agent = yield* AgentCli;
     for (const issue of task.selection.issues) {
@@ -482,7 +482,7 @@ export const runInScope = <A, E, R>(
   | RunLock
   | Ledger
   | Notifier
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | FileSystem.FileSystem
   | Path.Path

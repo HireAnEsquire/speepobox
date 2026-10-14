@@ -12,7 +12,7 @@ import {
   CREDENTIAL_NAMES,
   resolveCredential,
 } from "../src/agent/credential.ts";
-import { bessemerDir } from "../src/config/paths.ts";
+import { speepoboxDir } from "../src/config/paths.ts";
 
 const [OAUTH_TOKEN = "", API_KEY = ""] = CREDENTIAL_NAMES;
 
@@ -142,28 +142,28 @@ describe("the credential resolver", () => {
     }).pipe(Effect.provide(platform)),
   );
 
-  // The root the readers hand this resolver is the served repo's bessemer
+  // The root the readers hand this resolver is the served repo's speepobox
   // directory (T58), so the file it finds is the one beside `config.toml` and
   // not the served repo's own top-level `.env` — that file belongs to the
   // application, and in any repo that is not hae it means something else.
-  it.scoped("reads <repoRoot>/.bessemer/.env and not the repo's own top-level .env", () =>
+  it.scoped("reads <repoRoot>/.speepobox/.env and not the repo's own top-level .env", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
-      yield* fs.makeDirectory(bessemerDir(repoRoot));
+      yield* fs.makeDirectory(speepoboxDir(repoRoot));
       yield* fs.writeFileString(
-        path.join(bessemerDir(repoRoot), ".env"),
-        `${OAUTH_TOKEN}=from-the-bessemer-directory\n`,
+        path.join(speepoboxDir(repoRoot), ".env"),
+        `${OAUTH_TOKEN}=from-the-speepobox-directory\n`,
       );
       yield* fs.writeFileString(path.join(repoRoot, ".env"), `${OAUTH_TOKEN}=from-the-repo\n`);
-      const credential = yield* resolveCredential(bessemerDir(repoRoot), environment({}));
-      expect(found(credential)).toEqual([OAUTH_TOKEN, "from-the-bessemer-directory"]);
+      const credential = yield* resolveCredential(speepoboxDir(repoRoot), environment({}));
+      expect(found(credential)).toEqual([OAUTH_TOKEN, "from-the-speepobox-directory"]);
     }).pipe(Effect.provide(platform)),
   );
 
   // The other half of that root, and the half the test above cannot show: with
-  // nothing in the bessemer directory, a token in the repo's own top-level
+  // nothing in the speepobox directory, a token in the repo's own top-level
   // `.env` is not found *at all* — not merely outranked. The resolver is never
   // handed the repo root and never walks up to it, so the file the application
   // owns is invisible here.
@@ -172,9 +172,9 @@ describe("the credential resolver", () => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const repoRoot = yield* fs.makeTempDirectoryScoped();
-      yield* fs.makeDirectory(bessemerDir(repoRoot));
+      yield* fs.makeDirectory(speepoboxDir(repoRoot));
       yield* fs.writeFileString(path.join(repoRoot, ".env"), `${OAUTH_TOKEN}=from-the-repo\n`);
-      const credential = yield* resolveCredential(bessemerDir(repoRoot), environment({}));
+      const credential = yield* resolveCredential(speepoboxDir(repoRoot), environment({}));
       expect(credential).toEqual(Option.none());
     }).pipe(Effect.provide(platform)),
   );
@@ -224,7 +224,7 @@ describe("the credential resolver", () => {
   it.scoped("degrades to the environment when .env cannot be read", () =>
     Effect.gen(function* () {
       const credential = yield* resolveCredential(
-        "/nowhere/bessemer",
+        "/nowhere/speepobox",
         environment({ [OAUTH_TOKEN]: "from-the-shell" }),
       );
       expect(found(credential)).toEqual([OAUTH_TOKEN, "from-the-shell"]);

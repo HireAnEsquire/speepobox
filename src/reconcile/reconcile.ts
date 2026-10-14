@@ -43,7 +43,7 @@ import { FileSystem, Path } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import type { PlatformError } from "@effect/platform/Error";
 import { Effect, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import {
   CHECKOUTS_DIRNAME,
   checkoutPathFor,
@@ -141,10 +141,10 @@ export const scanWreckage = (
 ): Effect.Effect<
   WreckageScan,
   never,
-  BessemerConfig | Reporter | CommandExecutor | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Reporter | CommandExecutor | FileSystem.FileSystem | Path.Path
 > =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const reporter = yield* Reporter;
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -345,7 +345,7 @@ export const reconcile = (
   // already have (T38): the removal below is authorized by a read, and `Git`
   // is where every question about a repository is asked.
   | Git
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | CommandExecutor
   | FileSystem.FileSystem

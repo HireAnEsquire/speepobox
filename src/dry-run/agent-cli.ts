@@ -32,7 +32,7 @@
 // agent CLI prints is behind *this* tag (ticket 20 §1).
 import { type AgentCli, AgentCliLive } from "../agent/agent-cli.ts";
 import type { PromptSource } from "../agent/prompt-source.ts";
-import type { BessemerConfig } from "../config/config.ts";
+import type { SpeepoboxConfig } from "../config/config.ts";
 import { Effect, Layer } from "effect";
 import { Reporter } from "../reporter.ts";
 import { Sandbox, type SandboxShape } from "../sandbox/sandbox.ts";
@@ -84,5 +84,5 @@ export const SandboxAgentPassRecordingLive: Layer.Layer<Sandbox, never, Reporter
 export const AgentCliRecordingLive: Layer.Layer<
   AgentCli,
   never,
-  BessemerConfig | PromptSource | Reporter
+  SpeepoboxConfig | PromptSource | Reporter
 > = AgentCliLive.pipe(Layer.provide(SandboxAgentPassRecordingLive));

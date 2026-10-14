@@ -1,13 +1,13 @@
 # Committed config layer: defaults that travel with the repo.
-# Precedence: flags > BESSEMER_* env > config.local.toml (gitignored) > this
+# Precedence: flags > SPEEPOBOX_* env > config.local.toml (gitignored) > this
 # file > code defaults. Secrets never go here — the agent credential lives in
 # a gitignored .env beside this file.
 
-# The pin: the full 40-hex SHA of the bessemer release this repo runs. The
+# The pin: the full 40-hex SHA of the speepobox release this repo runs. The
 # clone-run shim reads this line and runs the tool at exactly that commit.
-# `bessemer upgrade` moves it from one release to the next; change it by hand
+# `speepobox upgrade` moves it from one release to the next; change it by hand
 # only to another full SHA. A SHA is fit to pin when a `v<N>` tag marks it:
-# the tag is a human's check that it is on bessemer's default branch with CI
+# the tag is a human's check that it is on speepobox's default branch with CI
 # green, which is what makes it a release. Keep the line as written: unindented,
 # double-quoted, no trailing comment, or the shim cannot read it.
 tool-sha = "{{tool-sha}}"
@@ -20,13 +20,13 @@ base = "{{base}}"
 
 # Where one-off specs and feature issue folders live, relative to the *repo*
 # root. Tracked on purpose: `.gitignore` beside this file never ignores it.
-tasks-dir = ".bessemer/tasks"
+tasks-dir = ".speepobox/tasks"
 
 # The command `doctor` and the dispatch preflight name when the agent image is
 # missing or stale. It builds `image/Dockerfile` beside this file, with the
 # paths `image/inputs` lists. A repo whose image needs more wraps it and names
 # the wrapper here.
-image-build-command = ".bessemer/bessemer image build"
+image-build-command = ".speepobox/speepobox image build"
 
 # Capabilities added back after the sandbox's unconditional `--cap-drop ALL`,
 # as ONE comma-separated value — never a TOML array, which merges per index
@@ -39,10 +39,10 @@ image-build-command = ".bessemer/bessemer image build"
 # read-only into the container and run there before the agent pass. Unset, a
 # run has no setup step at all — which is not the same as a hook that does
 # nothing. How long it may run is `setup-timeout`, in seconds.
-# setup-hook = ".bessemer/setup-hook.sh"
+# setup-hook = ".speepobox/setup-hook.sh"
 
 # The container's environment file, relative to the *repo* root and inside
 # it: docker reads its contents into the container (`docker run --env-file`),
-# and bessemer never opens it. Settings only — the credential is forwarded by
+# and speepobox never opens it. Settings only — the credential is forwarded by
 # name, never through this file.
-# sandbox-env-file = ".bessemer/env.sandbox"
+# sandbox-env-file = ".speepobox/env.sandbox"

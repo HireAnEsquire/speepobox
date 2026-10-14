@@ -4,7 +4,7 @@
 // `--diff` (T116) is one line per file, then each behind file's diff and its
 // remedy, then a shim that cannot run and its `chmod` (T127).
 import { Option } from "effect";
-import { BESSEMER_DIRNAME } from "../config/paths.ts";
+import { SPEEPOBOX_DIRNAME } from "../config/paths.ts";
 import {
   countsAsDrift,
   isNotExecutable,
@@ -20,7 +20,7 @@ import {
 import { SHIM } from "./stamp.ts";
 
 // The shim, as every command printed for an adopter to paste spells it (F2).
-const SHIM_PATH = `${BESSEMER_DIRNAME}/${SHIM}`;
+const SHIM_PATH = `${SPEEPOBOX_DIRNAME}/${SHIM}`;
 
 // The values a written `config.toml` holds, each with where it came from
 // (T115) — an adopter reads them before committing the file.
@@ -35,11 +35,11 @@ const fileLine = (file: InitFile): string =>
     : `${file.action}  ${file.path}`;
 
 export const NEXT_STEPS: ReadonlyArray<string> = [
-  "put your own stack's base image in .bessemer/image/Dockerfile",
-  "run `.bessemer/bessemer image build`",
-  "put the agent credential in .bessemer/.env",
-  "run `.bessemer/bessemer doctor`",
-  "commit .bessemer/, the shim .bessemer/bessemer included",
+  "put your own stack's base image in .speepobox/image/Dockerfile",
+  "run `.speepobox/speepobox image build`",
+  "put the agent credential in .speepobox/.env",
+  "run `.speepobox/speepobox doctor`",
+  "commit .speepobox/, the shim .speepobox/speepobox included",
 ];
 
 const renderWrite = (snapshot: InitWrite): string =>
@@ -87,7 +87,7 @@ const refreshLines = (file: StampedDrift): ReadonlyArray<string> =>
     ? [
         `To refresh it: ${SHIM_REFRESH}`,
         `If that init fails partway, put the old shim back: ${SHIM_RESTORE}`,
-        "Failing both, run init from a hand clone of bessemer.",
+        "Failing both, run init from a hand clone of speepobox.",
       ]
     : [`To refresh it: rm ${file.path} && ${SHIM_PATH} init`];
 

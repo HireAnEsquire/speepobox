@@ -154,19 +154,19 @@ const T71_TIP = "5555555555555555555555555555555555555555";
 const T72_TIP = "6666666666666666666666666666666666666666";
 
 const REFS = [
-  `${T71_TIP} refs/heads/bessemer-t71`,
-  `${T72_TIP} refs/remotes/origin/bessemer-t72`,
+  `${T71_TIP} refs/heads/speepobox-t71`,
+  `${T72_TIP} refs/remotes/origin/speepobox-t72`,
   "",
 ].join("\n");
 
 describe("parseRefs", () => {
   // The full name, because that is what a refusal quotes back (T74): a local
   // branch and its remote-tracking copy are two refs a dispatcher fixes
-  // differently, and short names would spell both of them `bessemer-t71`.
+  // differently, and short names would spell both of them `speepobox-t71`.
   it("answers each ref's full name and the object it points at", () => {
     expect(parseRefs(REFS)).toEqual([
-      { name: "refs/heads/bessemer-t71", sha: T71_TIP },
-      { name: "refs/remotes/origin/bessemer-t72", sha: T72_TIP },
+      { name: "refs/heads/speepobox-t71", sha: T71_TIP },
+      { name: "refs/remotes/origin/speepobox-t72", sha: T72_TIP },
     ]);
   });
 
@@ -192,16 +192,16 @@ const T80_COMMITTED = 1_757_000_000;
 const T81_COMMITTED = 1_758_000_000;
 
 const BRANCH_LINES = [
-  `${T80_COMMITTED} refs/heads/bessemer-t80`,
-  `${T81_COMMITTED} refs/heads/bessemer-t81`,
+  `${T80_COMMITTED} refs/heads/speepobox-t80`,
+  `${T81_COMMITTED} refs/heads/speepobox-t81`,
   "",
 ].join("\n");
 
 describe("parseBranches", () => {
   it("answers each branch bare, with the instant its tip was committed", () => {
     expect(parseBranches(BRANCH_LINES)).toEqual([
-      { name: "bessemer-t80", committedAt: DateTime.unsafeMake(T80_COMMITTED * 1000) },
-      { name: "bessemer-t81", committedAt: DateTime.unsafeMake(T81_COMMITTED * 1000) },
+      { name: "speepobox-t80", committedAt: DateTime.unsafeMake(T80_COMMITTED * 1000) },
+      { name: "speepobox-t81", committedAt: DateTime.unsafeMake(T81_COMMITTED * 1000) },
     ]);
   });
 
@@ -1212,8 +1212,8 @@ describe("Git", () => {
       }).pipe(Effect.provide(gitLayer({ "git -C": { exit: 0, stdout: REFS } }, recorded)));
 
       expect(refs).toEqual([
-        { name: "refs/heads/bessemer-t71", sha: T71_TIP },
-        { name: "refs/remotes/origin/bessemer-t72", sha: T72_TIP },
+        { name: "refs/heads/speepobox-t71", sha: T71_TIP },
+        { name: "refs/remotes/origin/speepobox-t72", sha: T72_TIP },
       ]);
       expect(yield* Ref.get(recorded)).toEqual([
         `${inRepo(REPO_ROOT)} for-each-ref --format=%(objectname) %(refname)`,
@@ -1231,7 +1231,7 @@ describe("Git", () => {
         return yield* git.branches({ repo: REPO_ROOT });
       }).pipe(Effect.provide(gitLayer({ "git -C": { exit: 0, stdout: BRANCH_LINES } }, recorded)));
 
-      expect(branches.map((branch) => branch.name)).toEqual(["bessemer-t80", "bessemer-t81"]);
+      expect(branches.map((branch) => branch.name)).toEqual(["speepobox-t80", "speepobox-t81"]);
       expect(yield* Ref.get(recorded)).toEqual([
         `${inRepo(REPO_ROOT)} for-each-ref --format=%(committerdate:unix) %(refname) refs/heads/`,
       ]);
@@ -1842,11 +1842,11 @@ describe("Git against a real repository", () => {
       const git = yield* Git;
       const tip = yield* git.revParse({ repo, rev: `refs/heads/${BRANCH}` });
       yield* exec("git", "-C", repo, "update-ref", `refs/remotes/origin/${BRANCH}`, tip);
-      yield* exec("git", "-C", repo, "branch", "bessemer-t81");
+      yield* exec("git", "-C", repo, "branch", "speepobox-t81");
 
       const branches = yield* git.branches({ repo });
 
-      expect(branches.map((branch) => branch.name)).toEqual(["bessemer-t81", BRANCH]);
+      expect(branches.map((branch) => branch.name)).toEqual([BRANCH, "speepobox-t81"]);
       // A real date, not the epoch: the format answered with the seconds the
       // commit carries.
       expect(branches.every((branch) => DateTime.toEpochMillis(branch.committedAt) > 0)).toBe(true);

@@ -2,5 +2,5 @@
 
 tool-sha = "abc1234"
 
-image = "acme-bessemer"
+image = "acme-speepobox"
 base = "origin/main"

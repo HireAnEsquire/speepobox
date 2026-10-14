@@ -13,7 +13,7 @@ import { DateTime, Effect, Option } from "effect";
 import type { AgentCli, AgentPassFailed } from "../agent/agent-cli.ts";
 import type { AgentCredential } from "../agent/credential.ts";
 import type { PromptUnusable } from "../agent/prompt-source.ts";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { resolveTasksDir } from "../config/paths.ts";
 import type { DockerUnavailable, GhUnavailable, ImageUnavailable } from "../doctor/probes.ts";
 import type { Forge, ForgeError } from "../forge/forge.ts";
@@ -198,9 +198,9 @@ export const issuesRequested = (issues: Option.Option<string>): Option.Option<Se
 // degrades the chain to the fallback and never fails the run.
 const defaultBase = (
   branch: string,
-): Effect.Effect<string, never, Ledger | BessemerConfig | Reporter> =>
+): Effect.Effect<string, never, Ledger | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const ledger = yield* Ledger;
     const reporter = yield* Reporter;
     const recorded = yield* ledger.lastBaseForBranch(branch).pipe(
@@ -394,7 +394,7 @@ export const dispatch = (
   | AgentPassFailed
   | PromptUnusable
   | ForgeError,
-  | BessemerConfig
+  | SpeepoboxConfig
   | Ledger
   | RunLock
   | Git
@@ -422,7 +422,7 @@ export const dispatch = (
   | Prompt
 > =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const reporter = yield* Reporter;
 
     const tasksDir = resolveTasksDir(repoRoot, config.tasksDir);

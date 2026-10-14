@@ -20,7 +20,7 @@ import { type Git, GitLive } from "../src/git/git.ts";
 import type { RepoSlug } from "../src/git/repo-slug.ts";
 import { type ScriptedResult, scriptedExecutor } from "./support/exec-fake.ts";
 
-const BRANCH = "bessemer-t12";
+const BRANCH = "speepobox-t12";
 const URL = "https://github.com/acme/hae/pull/101";
 const BODY = "## Overview\n\nA body with `backticks` and $(not a command).\n";
 // The repo every call below names (T39) — this is the argv assertion that
@@ -43,7 +43,7 @@ const gitLayer = (script: Record<string, ScriptedResult>): Layer.Layer<Git> =>
   GitLive.pipe(Layer.provide(scriptedExecutor(script)));
 
 // What the PR says today, and what a resuming run quotes out of it (T17).
-const TITLE = "[bessemer] bessemer-t12";
+const TITLE = "[speepobox] speepobox-t12";
 const PR_BODY = "## Overview\n\nWhat the run before this one said it did.";
 
 const openPr: Record<string, ScriptedResult> = {
@@ -148,7 +148,7 @@ describe("Forge", () => {
           repo: REPO,
           branch: BRANCH,
           base: "origin/master",
-          title: `[bessemer] ${BRANCH}`,
+          title: `[speepobox] ${BRANCH}`,
           body: BODY,
         }),
       ).pipe(Effect.provide(forgeLayer(noPr, commands, fed)));
@@ -157,7 +157,7 @@ describe("Forge", () => {
       // `--repo`, `--draft`, the base with its remote-tracking prefix off, and
       // both ends of the PR named.
       expect(yield* Ref.get(commands)).toEqual([
-        `gh pr create --repo ${REPO.owner}/${REPO.name} --draft --base master --head ${BRANCH} --title [bessemer] ${BRANCH} --body-file -`,
+        `gh pr create --repo ${REPO.owner}/${REPO.name} --draft --base master --head ${BRANCH} --title [speepobox] ${BRANCH} --body-file -`,
       ]);
       // **The property this seam rests on**: the body is in the pipe and
       // nowhere in argv, so backticks and `$(…)` in an agent-written
@@ -192,7 +192,7 @@ describe("Forge", () => {
             repo: REPO,
             branch: BRANCH,
             base: "origin/master",
-            title: "[bessemer]",
+            title: "[speepobox]",
             body: BODY,
           }),
         ),

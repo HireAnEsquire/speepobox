@@ -1,7 +1,7 @@
 node_modules/
-# The operator's credential. The read has moved to `<repoRoot>/.bessemer/.env`
-# (T58), where `.bessemer/.gitignore` already ignores it; this entry stays until
-# the operator's own `mv .env .bessemer/.env` on the host, so no `git add -A` in
-# the gap can commit a token (19 §3). Everything else bessemer keeps out of the
-# tree is `.bessemer/.gitignore`'s now (T57).
+# The operator's credential. The read has moved to `<repoRoot>/.speepobox/.env`
+# (T58), where `.speepobox/.gitignore` already ignores it; this entry stays until
+# the operator's own `mv .env .speepobox/.env` on the host, so no `git add -A` in
+# the gap can commit a token (19 §3). Everything else speepobox keeps out of the
+# tree is `.speepobox/.gitignore`'s now (T57).
 .env
