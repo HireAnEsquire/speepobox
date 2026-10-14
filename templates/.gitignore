@@ -1,0 +1,17 @@
+# Everything in the bessemer directory that is not committed: the operator's
+# private settings, the agent credential, and runtime state. Ignored by name,
+# so the tasks dir and env.sandbox stay tracked.
+
+# The operator's own config layer, which beats the committed one.
+/config.local.toml
+# The agent credential; unanchored, so one anywhere below is never committed.
+.env
+# Runtime state: the runtime root defaults to this directory, so the logs,
+# the locks, the checkouts, and the ledger land here.
+/logs/
+/locks/
+/checkouts/
+/runs.jsonl
+# The editor's session directories, `<purpose>-edit-<pid>-XXXXXX/` at the
+# runtime root. Anchored, so nothing under the tasks dir can match.
+/*-edit-*/

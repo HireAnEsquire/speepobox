@@ -1,0 +1,43 @@
+{
+  "name": "@hireanesquire/bessemer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AFK agent dispatcher — agentbox ported to Effect/TypeScript (ADR 0007)",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "bessemer": "./src/bin.ts"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "verify": "npm run typecheck && npm run lint && npm run test",
+    "typecheck": "effect-tsgo patch && tsc --noEmit",
+    "lint": "oxlint --deny-warnings && oxfmt --check . && node scripts/check-bans.ts",
+    "test": "vitest run",
+    "verify:live": "vitest run --config vitest.live.config.ts",
+    "prepare": "effect-tsgo patch --typescript"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.7.0",
+    "@effect/cli": "^0.77.0",
+    "@effect/platform": "^0.97.1",
+    "@effect/platform-node": "^0.108.1",
+    "effect": "3.22.1",
+    "picocolors": "1.1.1"
+  },
+  "devDependencies": {
+    "@effect/tsgo": "0.35.0",
+    "@effect/vitest": "^0.30.0",
+    "@types/node": "^26.0.0",
+    "oxfmt": "0.62.0",
+    "oxlint": "1.77.0",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "@parcel/watcher@2.6.0": true
+  }
+}

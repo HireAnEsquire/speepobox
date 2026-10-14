@@ -1,0 +1,12 @@
+# The files this repo's agent image is built from, beyond the Dockerfile.
+# `bessemer image build` hashes them into the image's labels, and `doctor`
+# recomputes that digest to tell whether the image is stale.
+#
+# One exact repo-relative path per line. No globs. Blank lines and `#`
+# comments are ignored, and a listed path that does not exist refuses the
+# build. The Dockerfile beside this file is always an input and is not listed.
+#
+# An image that bakes in its dependencies lists the manifest they come from,
+# for example:
+#
+# package-lock.json

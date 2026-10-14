@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "import", "oxc", "unicorn", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "options": {
+    "typeAware": false,
+    "reportUnusedDisableDirectives": "warn"
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["**/node_modules/**", "docs/**", "image/**", ".claude/**"],
+  "rules": {
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "error",
+    "no-console": "error",
+    "no-underscore-dangle": ["warn", { "allow": ["_tag"] }]
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

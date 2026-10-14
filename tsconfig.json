@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/@effect/tsgo/schema.json",
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["esnext"],
+    "types": ["node"],
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    // Node's type stripping is the distribution model (ticket 01): stay inside
+    // what the stripper accepts — no enums, namespaces, parameter properties,
+    // decorators, or path-alias rewriting.
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // Severity ruling (ticket 06, non-negotiable): errors AND warnings
+        // break the build; suggestions print. Errors-only would let
+        // scopeInLayerEffect (silently dropped finalizers) through.
+        "ignoreEffectErrorsInTscExitCode": false,
+        "ignoreEffectWarningsInTscExitCode": false,
+        "ignoreEffectSuggestionsInTscExitCode": true,
+        "includeSuggestionsInTsc": true
+      }
+    ]
+  },
+  "include": ["src", "test", "scripts", "vitest.config.ts", "vitest.live.config.ts"]
+}

@@ -1,0 +1,4 @@
+# Committed config layer.
+
+image = "acme-bessemer"
+base = "origin/main"

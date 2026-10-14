@@ -1,0 +1,6 @@
+# Committed config layer.
+
+tool-sha = "abc1234"
+
+image = "acme-bessemer"
+base = "origin/main"

@@ -1,0 +1,3 @@
+{"type":"system","subtype":"init","cwd":"/work","model":"claude-haiku-4-5-20251001"}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"text","text":"hit a wall"}]}}
+{"type":"result","subtype":"error_during_execution","is_error":true,"num_turns":1,"result":"Error: the sandbox went away mid-exec","total_cost_usd":0,"usage":{"input_tokens":12,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":9}}

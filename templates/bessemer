@@ -1,0 +1,229 @@
+#!/bin/sh
+# The bessemer shim (T125, T126): reads this repo's pin and runs the package
+# cache entry for it, building the entry first when it is missing. Commit it at
+# .bessemer/bessemer; the repo it serves is the directory above that
+# .bessemer/, wherever you run it from.
+#
+# POSIX sh only. Every refusal is one line on stderr, `!! [<kind>] <fix>`, and
+# exit 1. The pin grammar is SPEC §6's, the same one the package reads.
+set -u
+
+# The release this shim fetches. A fork edits this line.
+RELEASE_URL='https://github.com/HireAnEsquire/speepobox.git'
+# Its parts, derived rather than written twice: the origin git looks a
+# credential up under, its host, and the `owner/name` the GitHub API spells.
+release_rest=${RELEASE_URL#*://}
+release_host=${release_rest%%/*}
+release_origin=${RELEASE_URL%%://*}://$release_host
+release_repo=${release_rest#*/}
+release_repo=${release_repo%.git}
+
+refuse() {
+  printf '!! [%s] %s\n' "$1" "$2" >&2
+  exit 1
+}
+
+# 1. Prerequisites.
+command -v node >/dev/null 2>&1 ||
+  refuse node 'node is not on the PATH — install node 26 or later'
+node_version=$(node -v 2>/dev/null) || node_version=
+node_major=${node_version#v}
+node_major=${node_major%%.*}
+case $node_major in
+  '' | *[!0123456789]*)
+    refuse node "node -v answered '$node_version', not a version — install node 26 or later" ;;
+esac
+[ "$node_major" -ge 26 ] ||
+  refuse node "node $node_version is too old — install node 26 or later"
+command -v git >/dev/null 2>&1 ||
+  refuse git 'git is not on the PATH — install git'
+command -v npm >/dev/null 2>&1 ||
+  refuse npm 'npm is not on the PATH — install npm (it ships with node)'
+
+# 2. The served repo: the directory above this shim's own .bessemer/, made
+# absolute. Never the working directory, and nothing walks up.
+case $0 in
+  */*) shim_dir=${0%/*} ;;
+  *) shim_dir=. ;;
+esac
+repo=$(CDPATH='' cd -- "$shim_dir/.." && pwd) ||
+  refuse repo "cannot enter the directory above $shim_dir"
+
+# 3. The pin, from the committed config only. One sed: each grammar line
+# prints its number then `pin <value>`; the first line that starts as the pin
+# does but fails the grammar prints its number then `malformed <line>`, and
+# stops the scan, because a malformed line wins over everything. LC_ALL=C:
+# in a UTF-8 locale `[[:blank:]]` also matches Unicode spaces the package's
+# grammar does not, and the two must never disagree.
+config=$repo/.bessemer/config.toml
+[ -f "$config" ] && [ -r "$config" ] ||
+  refuse no-config "no readable .bessemer/config.toml in $repo — run \`init\` (from a hand clone, on a fresh repo)"
+scan=$(LC_ALL=C sed -n '
+/^tool-sha[[:blank:]]*=[[:blank:]]*"[^"]*"[[:blank:]]*$/{
+=
+s/^tool-sha[[:blank:]]*=[[:blank:]]*"\([^"]*\)"[[:blank:]]*$/pin \1/p
+b
+}
+/^[[:blank:]]*tool-sha[[:blank:]]*=/{
+=
+s/^/malformed /p
+q
+}
+' "$config") || refuse no-config "cannot read $config"
+
+count=0
+lines=
+sha=
+pin_line=
+malformed_line=
+malformed_text=
+while IFS= read -r number && IFS= read -r verdict; do
+  case $verdict in
+    'pin '*)
+      count=$((count + 1))
+      sha=${verdict#pin }
+      pin_line=$number
+      lines="$lines${lines:+, }line $number"
+      ;;
+    'malformed '*)
+      malformed_line=$number
+      malformed_text=${verdict#malformed }
+      ;;
+  esac
+done <<EOF
+$scan
+EOF
+
+expected='tool-sha = "<40-hex sha>"'
+unfetchable="find a release's full SHA with \`gh api --paginate repos/$release_repo/tags --jq '.[] | \"\\(.commit.sha) \\(.name)\"'\` and copy the SHA on its \`vN\` line onto the tool-sha line, or run \`upgrade --to vN\` from a hand clone of bessemer"
+
+[ -z "$malformed_line" ] ||
+  refuse malformed "line $malformed_line of .bessemer/config.toml is a tool-sha line the pin grammar cannot read (\`$malformed_text\`) — write it exactly as \`$expected\`: unindented, double-quoted, with no trailing comment"
+[ "$count" -gt 0 ] ||
+  refuse no-line "no tool-sha line in .bessemer/config.toml — run \`init\` (from a hand clone, on a fresh repo), or add the line \`$expected\`"
+[ "$count" -eq 1 ] ||
+  refuse duplicated "$count tool-sha lines in .bessemer/config.toml ($lines) — keep one"
+[ -n "$sha" ] ||
+  refuse empty "the tool-sha pin on line $pin_line of .bessemer/config.toml is empty — $unfetchable"
+case $sha in
+  *[!0123456789abcdef]*) short=yes ;;
+  *) [ ${#sha} -eq 40 ] && short= || short=yes ;;
+esac
+[ -z "$short" ] ||
+  refuse short "the tool-sha pin on line $pin_line of .bessemer/config.toml (\`$sha\`) is not a full 40-hex SHA — $unfetchable"
+
+# 4. The cache entry. One that exists is complete: only a complete entry is
+# ever given this name.
+if [ -n "${XDG_CACHE_HOME:-}" ]; then
+  cache=$XDG_CACHE_HOME
+elif [ -n "${HOME:-}" ]; then
+  cache=$HOME/.cache
+else
+  refuse cache 'neither XDG_CACHE_HOME nor HOME is set — set HOME'
+fi
+root=$cache/bessemer
+entry=$root/$sha
+
+# Every file operation below goes through node: the shim's external commands
+# are node, git, npm, and sed, and nothing else is assumed on the PATH — gh
+# is used where it is found (step 5), and never required.
+remove() {
+  node -e 'require("fs").rmSync(process.argv[1], { recursive: true, force: true })' "$1"
+}
+
+# A command's output folded onto one line, so a refusal quoting it stays one.
+one_line() {
+  folded=
+  while IFS= read -r line; do
+    [ -n "$line" ] && folded="$folded${folded:+ }$line"
+  done <<EOF_ONE_LINE
+$1
+EOF_ONE_LINE
+  printf '%s' "$folded"
+}
+
+# 5. The cold path (T126): build the entry under a temp name, then rename(2)
+# it into place, so a directory named for the SHA is always complete.
+if [ ! -d "$entry" ]; then
+  # Sweep every `<anything>.tmp.<pid>` whose pid is dead — judged by the pid
+  # in its name, never by age. ESRCH is dead; EPERM is someone else's live
+  # process. The warm path never gets here, so it touches nothing.
+  out=$(node -e '
+const fs = require("fs");
+const path = require("path");
+const root = process.argv[1];
+fs.mkdirSync(root, { recursive: true });
+for (const name of fs.readdirSync(root)) {
+  const match = /\.tmp\.([0-9]+)$/.exec(name);
+  if (match === null) continue;
+  try {
+    process.kill(Number(match[1]), 0);
+    continue;
+  } catch (error) {
+    if (error.code !== "ESRCH") continue;
+  }
+  fs.rmSync(path.join(root, name), { recursive: true, force: true });
+}' "$root" 2>&1) ||
+    refuse cache "cannot prepare the package cache at $root: $(one_line "$out")"
+
+  # Prepare under this shim's own pid. A leftover of that name belonged to a
+  # dead process that had our pid before us.
+  tmp=$root/$sha.tmp.$$
+  remove "$tmp"
+  trap 'remove "$tmp"' EXIT
+  trap 'exit 1' HUP INT TERM
+
+  out=$(git init -q "$tmp" 2>&1 &&
+    git -C "$tmp" remote add origin "$RELEASE_URL" 2>&1) ||
+    refuse build "cannot prepare a clone at $tmp: $(one_line "$out")"
+  # T132: gh is the credential first, for this one call and only when it is
+  # on the PATH. The empty value resets every helper the operator's config
+  # contributed for the release's origin — without it git asks them first and
+  # then hands each gh's answer to `store` — and the second is gh's own helper,
+  # by the path found here, the pair gh adds to its own fetches. Then the
+  # operator's own chain, exactly as before. Nothing here reads a credential,
+  # nothing is written to any git config, and a missing one fails, never prompts.
+  gh=$(command -v gh 2>/dev/null) || gh=
+  fetched=
+  if [ -n "$gh" ]; then
+    via_gh=$(GIT_TERMINAL_PROMPT=0 git -C "$tmp" \
+      -c "credential.$release_origin.helper=" \
+      -c "credential.$release_origin.helper=!\"$gh\" auth git-credential" \
+      fetch -q --depth 1 origin "$sha" 2>&1) && fetched=yes
+  fi
+  if [ -z "$fetched" ]; then
+    out=$(GIT_TERMINAL_PROMPT=0 git -C "$tmp" fetch -q --depth 1 origin "$sha" 2>&1) || {
+      if [ -n "$gh" ]; then
+        tried="through gh: $(one_line "$via_gh"); through git's own credentials: $(one_line "$out")"
+      else
+        tried="gh is not on the PATH; through git's own credentials: $(one_line "$out")"
+      fi
+      refuse fetch "cannot fetch $sha from $RELEASE_URL ($tried) — run \`gh auth login\` (installing gh if it is missing), then \`gh auth setup-git\` if git still has no credential for $release_host; the SHA may also not exist upstream, which fails the same way"
+    }
+  fi
+  out=$(git -C "$tmp" checkout -q --detach "$sha" 2>&1) ||
+    refuse build "cannot check out $sha in $tmp: $(one_line "$out")"
+  out=$(cd "$tmp" && npm ci --omit=dev --ignore-scripts --no-audit --no-fund 2>&1) ||
+    refuse npm-ci "\`npm ci\` failed in $tmp: $(one_line "$out")"
+
+  # rename(2), never `mv`: onto an existing directory `mv` moves the temp
+  # directory inside it and succeeds. ENOTEMPTY or EEXIST is the lost race —
+  # another shim's entry is in place, and it is the one to run.
+  out=$(node -e '
+const fs = require("fs");
+try {
+  fs.renameSync(process.argv[1], process.argv[2]);
+} catch (error) {
+  if (error.code === "ENOTEMPTY" || error.code === "EEXIST") process.exit(3);
+  console.error(error.message);
+  process.exit(1);
+}' "$tmp" "$entry" 2>&1)
+  case $? in
+    0) ;;
+    3) remove "$tmp" ;;
+    *) refuse rename "cannot move $tmp into place at $entry: $(one_line "$out")" ;;
+  esac
+  trap - EXIT HUP INT TERM
+fi
+
+exec node "$entry/src/bin.ts" --repo-root "$repo" "$@"

@@ -1,0 +1,12 @@
+{"type":"system","subtype":"init","cwd":"/work","model":"claude-haiku-4-5-20251001"}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"thinking","thinking":"","signature":"…"}]}}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Read","input":{"file_path":"/work/src/run-log.ts"}}]}}
+{"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_1","type":"tool_result","content":"1\t// The per-run log file…"}]}}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"tool_use","id":"toolu_2","name":"Bash","input":{"command":"ls src","description":"List files"}}]}}
+{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","overageStatus":"rejected"}}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"text","text":"done"}]}}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"tool_use","id":"toolu_3","name":"Bash","input":{"command":"find /work/src -type f -name \"*.test.ts\" -exec grep -l describe_agent_stream {} ; | xargs -I{} sh -c \"wc -l {} && echo --- && cat {}\" | tee /tmp/agent-stream-fixture-audit.log","description":"Audit fixture usage"}}]}}
+{"type":"assistant","message":{"model":"claude-haiku-4-5-20251001","role":"assistant","content":[{"type":"text","text":"first line\n\nthird line"}]}}
+not json at all {
+{"type":"future_event","detail":"forward compatibility placeholder"}
+{"type":"result","subtype":"success","is_error":false,"num_turns":3,"result":"done","total_cost_usd":0.0214608,"usage":{"input_tokens":18,"cache_creation_input_tokens":8068,"cache_read_input_tokens":40768,"output_tokens":246},"modelUsage":{"claude-haiku-4-5-20251001":{}}}

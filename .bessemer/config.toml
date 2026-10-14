@@ -1,0 +1,87 @@
+# Committed config layer (05 Q4): defaults that travel with the repo.
+# Precedence: flags > BESSEMER_* env > config.local.toml (gitignored) > this
+# file > code defaults. Secrets never go here — they live in a gitignored
+# .env beside this file.
+
+# No `tool-sha` here (T120): this repo is the package, so it gets no shim and
+# the checked-out branch is the dispatcher. Nothing self-hosted reads a pin.
+
+# Where one-off specs live, relative to the *repo* root — the read location
+# bash anchors the same way (`run.sh:235-236`, `TASKS_DIR="$BOX/tasks"`). The
+# package sits at the repo root now (18), so a repo-root-relative value names
+# the package's own `tasks/` and agrees with the code default ("tasks") for the
+# first time; a repo that adopts the tool has the scaffold write its own.
+tasks-dir = "tasks"
+
+# This repo's agent image, and the ref a dispatch diffs and branches from. The
+# package ships no default for either (T40): both are one repo's answers, and a
+# config declaring neither is refused by name. That this repo's tag is now the
+# package's own word is T65's coincidence and not a default the package
+# supplies — an image belongs to the repo whose image it is, and an adopter
+# names its own whatever it likes. `image build` tags what it builds with this
+# key, so there is no second spelling of the tag to keep in step.
+image = "bessemer"
+base = "origin/main"
+
+# The command `doctor` and the dispatch preflight name when the agent image is
+# missing or stale (T30). The package ships no default: how a repo builds its
+# image is that repo's to say, and a default baked in would name one host's
+# layout from inside every repo that adopts it. This repo's image needs nothing
+# beyond the package's own build of `.bessemer/image/` (T111, T112), and it
+# runs the package from its own tree, so this is the package's command.
+#
+# NOT `.agentbox/build-image.sh`: that directory was hae's bash dispatcher,
+# carried in whole as the parity oracle until T137 deleted it.
+image-build-command = "node src/bin.ts image build"
+
+# Capabilities added back after the sandbox's unconditional `--cap-drop ALL`
+# (T6), as ONE comma-separated value — a TOML array merges per index across the
+# config layers instead of replacing them (AGENTS.md). Unset on purpose: caps
+# drop to none, and the first entry is earned by what the setup hook's root
+# path demonstrably needs (`run.sh:1260`), which arrives with the hook in T7.
+# cap-add = "CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL"
+#
+# Still unset with a hook declared below, which is the test of that sentence:
+# this repo's hook runs `npm ci` as the `agent` user into a directory that user
+# already owns, so it earns nothing.
+
+# The setup hook (T7): one host script, mounted read-only into the container
+# and run there before the agent pass. Relative to the *repo* root, as a spec
+# path is. Unset *by default* — the step is generic, so the script that fits a
+# repo is that repo's to declare, and a run whose config names none simply has
+# no setup step. hae's own `.agentbox/setup-db.sh` is an example of what one
+# looks like, not a value this package ships; the caps such a script's root
+# path needs are the `cap-add` line above.
+#
+# This repo declares one, and it is a single `npm ci` (T40): `node_modules/` is
+# gitignored, so the agent's checkout is a clone without it, and every ticket
+# here ends on `npm run verify`. The image cannot carry the modules instead —
+# the checkout is bind-mounted at /workspace, masking whatever is underneath.
+#
+# How long the hook may run is `setup-timeout`, in seconds (T90): unset here,
+# so the code default of 600 applies. Past it the run kills the hook's
+# `docker exec` and fails at stage `setup`; nothing inside the container wraps
+# the script in `timeout`.
+setup-hook = "setup-hook.sh"
+
+# The container's environment file (T61): one file, inside this repo, whose
+# contents docker reads into the container — `docker run --env-file <path>`.
+# Bessemer never opens it. That is why its values cannot reach argv, a log, the
+# ledger, or an event: the path may appear in any of them, the contents never.
+#
+# Relative to the *repo* root, like `setup-hook` above — and unlike it, an
+# absolute value, or one that leaves this repo once normalized, is *refused*
+# rather than resolved, because this is the only key whose file's contents
+# cross into the sandbox and so the file stays where review sees it. A declared
+# file this host does not have refuses before the lock, on the hook's rule.
+#
+# This repo's file carries one setting, the model pin: `ANTHROPIC_MODEL` names the
+# model every pass runs on, rather than whichever default the CLI baked into the
+# image had. No secret goes in it — the credential is forwarded by name, never
+# through this file. hae's `.agentbox/.env.sandbox` is an adopter's example.
+sandbox-env-file = ".bessemer/env.sandbox"
+
+# Runtime root (05 Q19) intentionally NOT set here: unset, it defaults to this
+# directory — the bessemer directory of the repo being served. Set it only to
+# move *writes* somewhere else: the checkouts, the locks, the logs, and the
+# ledger follow it, and every read location stays exactly where it is.

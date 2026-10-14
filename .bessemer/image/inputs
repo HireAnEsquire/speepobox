@@ -1,0 +1,20 @@
+# bessemer-template: image/inputs v1 sha256:dbbcbcae3528
+# The files this repo's agent image is built from, beyond the Dockerfile.
+# `bessemer image build` hashes them into the image's labels, and `doctor`
+# recomputes that digest to tell whether the image is stale.
+#
+# One exact repo-relative path per line. No globs. Blank lines and `#`
+# comments are ignored, and a listed path that does not exist refuses the
+# build. The Dockerfile beside this file is always an input and is not listed.
+#
+# An image that bakes in its dependencies lists the manifest they come from,
+# for example:
+#
+# package-lock.json
+#
+# This one lists nothing, because this image bakes in no dependency manifest:
+# `node_modules/` arrives at run time through setup-hook.sh, into the
+# bind-mounted checkout. Listing package-lock.json would therefore put an
+# uncleanable stale warning on the image after every dependency bump — the T30
+# failure in a new costume. setup-hook.sh is not an input either: it is
+# mounted at run time, never copied into the image.

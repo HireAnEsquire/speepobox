@@ -1,0 +1,24 @@
+# bessemer-template: .gitignore v2 sha256:a9e318cc8980
+# Everything in the bessemer directory except the committed config layer and
+# this file: the operator's private settings, the agent credential, and this
+# repo's runtime state. `config.toml` is the layer that travels with the repo
+# (05 Q4); nothing below does.
+#
+# Committed before T58 moved the credential read here (19 §3), so that no
+# `git add -A` in the gap between the two can commit a token.
+
+# The operator's own config layer, which beats the committed one and is
+# nobody else's business.
+/config.local.toml
+# The agent credential; unanchored, so one anywhere below is never committed.
+.env
+# Runtime state: the runtime root defaults to this directory (T57), so the
+# logs, the locks, the checkouts, and the ledger land here.
+/logs/
+/locks/
+/checkouts/
+/runs.jsonl
+# The editor's session directories, `<purpose>-edit-<pid>-XXXXXX/` at the
+# runtime root (T84, T108). They hold the dispatcher's own text while it is
+# being written. Anchored, so nothing under the tasks dir can match.
+/*-edit-*/
