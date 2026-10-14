@@ -1,5 +1,5 @@
 # This repo's agent image: the sandbox every agent pass runs in. Built by
-# `bessemer image build`, which supplies AGENT_UID/GID and stamps the input
+# `speepobox image build`, which supplies AGENT_UID/GID and stamps the input
 # labels `doctor` checks — always build through it. This file is yours to edit.
 
 # Replace this with your own stack's image — the one your tests and tooling
@@ -18,13 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Setup that needs root, such as starting a database: one script baked into
 # this image, and sudo scoped to exactly the command line that runs it. The
-# section "Setup that needs root" in bessemer's README walks through it. To
+# section "Setup that needs root" in speepobox's README walks through it. To
 # take it, write the script beside this file, list it in `inputs`, and
 # uncomment the block below. Left commented, there is no sudo in the image.
 # RUN apt-get update && apt-get install -y --no-install-recommends sudo \
 #     && rm -rf /var/lib/apt/lists/*
-# COPY root-setup.sh /usr/local/libexec/bessemer/root-setup.sh
-# RUN echo "agent ALL=(ALL) NOPASSWD: /usr/bin/bash /usr/local/libexec/bessemer/root-setup.sh" \
+# COPY root-setup.sh /usr/local/libexec/speepobox/root-setup.sh
+# RUN echo "agent ALL=(ALL) NOPASSWD: /usr/bin/bash /usr/local/libexec/speepobox/root-setup.sh" \
 #       > /etc/sudoers.d/agent \
 #     && chmod 0440 /etc/sudoers.d/agent
 
@@ -52,7 +52,7 @@ ENV PATH="/home/agent/.local/bin:$PATH"
 # model. Set ANTHROPIC_MODEL in one of two places: in the file config.toml's
 # `sandbox-env-file` names, which needs no rebuild; or by uncommenting the
 # line below with the model id you want and rebuilding through
-# `bessemer image build`. Set in both, the env file wins.
+# `speepobox image build`. Set in both, the env file wins.
 # ENV ANTHROPIC_MODEL=<model id>
 
 # The dispatcher overrides the workdir to /workspace and keeps the container

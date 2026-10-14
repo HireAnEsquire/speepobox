@@ -24,7 +24,7 @@ const CANARY = "not-a-real-token";
 
 // And the one variable this package gives a child rather than forwarding
 // (T77), as a path under a runtime root would look.
-const SCRATCH_INDEX = "/runtime/bessemer-t77.index";
+const SCRATCH_INDEX = "/runtime/speepobox-t77.index";
 
 // A child that reads its stdin to EOF before answering. Every streamed case
 // below uses one: the half of `execStreamed` under test is the pipe, and a
@@ -44,13 +44,13 @@ const into =
 describe("the subprocess chokepoint", () => {
   it.effect("extendEnv: false — the parent environment does not leak into children", () =>
     Effect.gen(function* () {
-      process.env["BESSEMER_LEAK_CANARY"] = "leaked";
+      process.env["SPEEPOBOX_LEAK_CANARY"] = "leaked";
       try {
-        const result = yield* exec("node", "-p", 'process.env.BESSEMER_LEAK_CANARY ?? "ABSENT"');
+        const result = yield* exec("node", "-p", 'process.env.SPEEPOBOX_LEAK_CANARY ?? "ABSENT"');
         expect(result.exitCode).toBe(0);
         expect(result.stdout.trim()).toBe("ABSENT");
       } finally {
-        delete process.env["BESSEMER_LEAK_CANARY"];
+        delete process.env["SPEEPOBOX_LEAK_CANARY"];
       }
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -183,7 +183,7 @@ describe("the subprocess chokepoint", () => {
   it.effect("forwards exactly the allowlist to a child, and nothing else", () =>
     Effect.gen(function* () {
       const exported: Readonly<Record<string, string>> = {
-        BESSEMER_LEAK_CANARY: "leaked",
+        SPEEPOBOX_LEAK_CANARY: "leaked",
         GIT_EDITOR: "ed",
         VISUAL: "ed",
         EDITOR: "ed",
@@ -233,11 +233,11 @@ describe("the subprocess chokepoint", () => {
 
   it.effect("a missing binary fails with a typed ExecError", () =>
     Effect.gen(function* () {
-      const outcome = yield* Effect.either(exec("bessemer-no-such-binary-xyz"));
+      const outcome = yield* Effect.either(exec("speepobox-no-such-binary-xyz"));
       expect(Either.isLeft(outcome)).toBe(true);
       if (Either.isLeft(outcome)) {
         expect(outcome.left._tag).toBe("ExecError");
-        expect(outcome.left.command).toBe("bessemer-no-such-binary-xyz");
+        expect(outcome.left.command).toBe("speepobox-no-such-binary-xyz");
       }
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -253,18 +253,18 @@ describe("the streamed chokepoint", () => {
   it.effect("extendEnv: false holds for the child that is talked to as well", () =>
     Effect.gen(function* () {
       const seen = yield* lines;
-      process.env["BESSEMER_LEAK_CANARY"] = "leaked";
+      process.env["SPEEPOBOX_LEAK_CANARY"] = "leaked";
       try {
         const outcome = yield* execStreamed(
           { stdin: "", onLine: into(seen) },
           "node",
           "-e",
-          readsStdinThen('process.stdout.write(process.env.BESSEMER_LEAK_CANARY ?? "ABSENT");'),
+          readsStdinThen('process.stdout.write(process.env.SPEEPOBOX_LEAK_CANARY ?? "ABSENT");'),
         );
         expect(outcome.exitCode).toBe(0);
         expect(yield* Ref.get(seen)).toEqual(["ABSENT"]);
       } finally {
-        delete process.env["BESSEMER_LEAK_CANARY"];
+        delete process.env["SPEEPOBOX_LEAK_CANARY"];
       }
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -332,18 +332,18 @@ describe("the streamed chokepoint", () => {
 describe("the fed chokepoint", () => {
   it.effect("extendEnv: false holds for the fed child too", () =>
     Effect.gen(function* () {
-      process.env["BESSEMER_LEAK_CANARY"] = "leaked";
+      process.env["SPEEPOBOX_LEAK_CANARY"] = "leaked";
       try {
         const result = yield* execFed(
           "",
           "node",
           "-e",
-          readsStdinThen('process.stdout.write(process.env.BESSEMER_LEAK_CANARY ?? "ABSENT");'),
+          readsStdinThen('process.stdout.write(process.env.SPEEPOBOX_LEAK_CANARY ?? "ABSENT");'),
         );
         expect(result.exitCode).toBe(0);
         expect(new TextDecoder().decode(result.stdout)).toBe("ABSENT");
       } finally {
-        delete process.env["BESSEMER_LEAK_CANARY"];
+        delete process.env["SPEEPOBOX_LEAK_CANARY"];
       }
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -427,24 +427,24 @@ describe("the interactive chokepoint", () => {
       const fs = yield* FileSystem.FileSystem;
       const dir = yield* fs.makeTempDirectoryScoped();
       const file = `${dir}/env`;
-      process.env["BESSEMER_LEAK_CANARY"] = "leaked";
+      process.env["SPEEPOBOX_LEAK_CANARY"] = "leaked";
       try {
         yield* execInteractive(
           "node",
           "-e",
-          'require("node:fs").writeFileSync(process.argv[1], process.env.BESSEMER_LEAK_CANARY ?? "ABSENT")',
+          'require("node:fs").writeFileSync(process.argv[1], process.env.SPEEPOBOX_LEAK_CANARY ?? "ABSENT")',
           file,
         );
         expect(yield* fs.readFileString(file)).toBe("ABSENT");
       } finally {
-        delete process.env["BESSEMER_LEAK_CANARY"];
+        delete process.env["SPEEPOBOX_LEAK_CANARY"];
       }
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
   it.effect("a missing editor binary fails with a typed ExecError", () =>
     Effect.gen(function* () {
-      const outcome = yield* Effect.either(execInteractive("bessemer-no-such-editor-xyz"));
+      const outcome = yield* Effect.either(execInteractive("speepobox-no-such-editor-xyz"));
       expect(Either.isLeft(outcome)).toBe(true);
       if (Either.isLeft(outcome)) {
         expect(outcome.left._tag).toBe("ExecError");

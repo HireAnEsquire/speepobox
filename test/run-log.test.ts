@@ -23,7 +23,7 @@ const USAGE: PassUsage = {
   models: ["claude-haiku-4-5-20251001"],
 };
 
-const HEADER = "== bessemer [bessemer-t4] run start";
+const HEADER = "== speepobox [speepobox-t4] run start";
 
 // The console subscriber, faked: the log is a *second* subscriber, so every
 // event must still reach this one.
@@ -43,7 +43,7 @@ const logDir = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const root = yield* fs.makeTempDirectoryScoped();
-  return { root, logPath: path.join(root, "logs", "bessemer-t4.log") };
+  return { root, logPath: path.join(root, "logs", "speepobox-t4.log") };
 });
 
 describe("the run log", () => {
@@ -73,8 +73,8 @@ describe("the run log", () => {
         const path = yield* Path.Path;
         const root = yield* fs.makeTempDirectoryScoped();
         // Two dispatches of the same branch: same slug, different run ids.
-        const first = path.join(root, "logs", "bessemer-t4-1700000000000.log");
-        const second = path.join(root, "logs", "bessemer-t4-1700000600000.log");
+        const first = path.join(root, "logs", "speepobox-t4-1700000000000.log");
+        const second = path.join(root, "logs", "speepobox-t4-1700000600000.log");
 
         const { reporter: firstReporter } = yield* open(first);
         yield* firstReporter.emit({ _tag: "Warned", detail: "first run's line" });
@@ -102,7 +102,7 @@ describe("the run log", () => {
       // non-directory parent, so nothing can be created under it.
       const blocked = path.join(root, "logs");
       yield* fs.writeFileString(blocked, "");
-      const logPath = path.join(blocked, "bessemer-t4.log");
+      const logPath = path.join(blocked, "speepobox-t4.log");
 
       const { reporter, seen } = yield* open(logPath);
       yield* reporter.emit({ _tag: "Warned", detail: "still running" });
@@ -408,13 +408,13 @@ describe("the run log", () => {
       issue: Option.none(),
       reason: "sandbox-gone",
       detail:
-        "the implement pass lost its sandbox: 'claude -p' exited 1 in the sandbox 'bessemer-t55': Error: connection reset\n    at Socket.onError\n    at emitErrorNT — read /tmp/t55.log",
+        "the implement pass lost its sandbox: 'claude -p' exited 1 in the sandbox 'speepobox-t55': Error: connection reset\n    at Socket.onError\n    at emitErrorNT — read /tmp/t55.log",
       elapsed: Duration.minutes(3),
       usage: Option.none(),
     });
     expect(line).not.toContain("\n");
     expect(line).toBe(
-      "2026-08-11T09:30:00.000Z implement pass failed (3m): sandbox-gone — the implement pass lost its sandbox: 'claude -p' exited 1 in the sandbox 'bessemer-t55': Error: connection reset at Socket.onError at emitErrorNT — read /tmp/t55.log",
+      "2026-08-11T09:30:00.000Z implement pass failed (3m): sandbox-gone — the implement pass lost its sandbox: 'claude -p' exited 1 in the sandbox 'speepobox-t55': Error: connection reset at Socket.onError at emitErrorNT — read /tmp/t55.log",
     );
   });
 

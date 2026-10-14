@@ -32,7 +32,7 @@ import { docker, dockerdIsUp, itLive, LIVE_IMAGE, sweepOwned } from "./live.ts";
 
 // The pid keeps two runs of this file — or a container a hard kill left
 // behind — from colliding on a container name.
-const CONTAINER = `bessemer-live-sandbox-gone-${process.pid}`;
+const CONTAINER = `speepobox-live-sandbox-gone-${process.pid}`;
 
 // The command standing in for a pass: it says one word and then outlives any
 // case here. The word is the point — the exec's own output is what says the
@@ -51,7 +51,7 @@ describe("a container removed while a command runs inside it", () => {
     Effect.gen(function* () {
       yield* dockerdIsUp;
       const fs = yield* FileSystem.FileSystem;
-      // A throwaway repo root: `bessemer.repo` hashes it, so this case's label
+      // A throwaway repo root: `speepobox.repo` hashes it, so this case's label
       // scope is its own and its sweep can never reach another run's
       // containers — nor another live case's.
       const repoRoot = yield* fs.makeTempDirectoryScoped();

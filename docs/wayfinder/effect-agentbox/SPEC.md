@@ -1,4 +1,4 @@
-# bessemer — implementation spec
+# speepobox — implementation spec
 
 Companion to [ADR 0007](../../adr/0007-agentbox-effect-typescript-port.md). The ADR records *what
 was decided and why*; this spec records *the shape an implementing session builds against*. Where
@@ -41,7 +41,7 @@ Sizes as of 2026-08-06: `run.sh` 1779 lines, `tasklib.py` 2325, `test_tasklib.py
     bin.ts                 <- the only entrypoint; NodeRuntime.runMain
     app.ts                 <- appLiveFor / appBaseLiveFor, the composition root; see §2
     reporter.ts            <- the Reporter tag and its event union
-    config/                <- BessemerConfig tag, schema, provider chain, repo/package roots
+    config/                <- SpeepoboxConfig tag, schema, provider chain, repo/package roots
     internal/exec.ts       <- the subprocess chokepoint; only file importing Command
     ownership/labels.ts    <- the label pair; creation and query read from one list
     doctor/  ledger/  status/
@@ -51,7 +51,7 @@ Sizes as of 2026-08-06: `run.sh` 1779 lines, `tasklib.py` 2325, `test_tasklib.py
 
 | Concern | Decision | Ticket |
 | --- | --- | --- |
-| Package name / bin | `@hireanesquire/bessemer` / `bessemer` | 07, 18 |
+| Package name / bin | `@hireanesquire/speepobox` / `speepobox` | 07, 18 |
 | Package manager | **npm** — the lockfile is what the shim consumes | 04 |
 | Node | **≥ 26**, `engines` enforced. A **dispatching-host** prerequisite; the task container may have no node | 04 |
 | `effect` | **`3.22.1` exact**, no `^`; v4 is a post-move decision, not a bump | 06 |
@@ -107,7 +107,7 @@ Twelve tags. Anything not listed is a plain function (05 §1).
 | `RunLock` | scoped `acquire` over a PID file | cross-process claim; see §4 |
 | `PromptSource` | `get(name)` → text **plus which root won** | the client-facing extension point; see §8 |
 | `Reporter` | structured in-flight events | the second-frontend seam; see §5 |
-| `BessemerConfig` | one decoded record | see §6 |
+| `SpeepoboxConfig` | one decoded record | see §6 |
 | `Prompt` | `select` / `autocomplete` (options as a **getter** of the query; the caller ranks, the tag never filters) / `multiselect` / `confirm` / `text` / `note`, every ask `Effect<A, PromptCancelled>` — **built** (T81) | the Promise boundary — fiber interrupt passes through as clack's `signal` option, never a manual raw-mode restore (13); see §7. `PromptClackLive` is the one importer of `@clack/prompts` (§9's bans) and is provided to the picker **and to the dispatch**, for `--hard-reset`'s confirm (T102); `status`, `doctor`, and `gc` still acquire none. A rehearsal's dispatch gets `PromptRecordingLive` instead, which records the confirm and answers yes. **What a picker produces is argv handed to `dispatchCli`, never a `DispatchRequest` built in place** |
 
 Effect's `FileSystem` / `Path` / `Clock` / `CommandExecutor` are used **directly**, no wrappers.
@@ -272,8 +272,8 @@ else — silently deleting a possibly-live run is how you kill a colleague's dis
 2. the lock's recorded PID is not alive,
 3. the sandbox is not running.
 
-**Ownership is declared, never inferred.** Every sandbox is labelled `bessemer.managed=true` +
-`bessemer.repo=<hash of repo root>`, and every reconcile/gc query filters on **both**. Unlabelled
+**Ownership is declared, never inferred.** Every sandbox is labelled `speepobox.managed=true` +
+`speepobox.repo=<hash of repo root>`, and every reconcile/gc query filters on **both**. Unlabelled
 containers are invisible regardless of name. Prefix sweeping (`agentbox-*`) is retired everywhere
 including `gc`; the container name survives for human readability only.
 
@@ -332,8 +332,8 @@ mode** and no per-item confirm (D9): gc stays scriptable, bash's reasoning at `r
 **Effect owns sourcing; we own shape** (05 Q7).
 
 - A `ConfigProvider` stack expresses the precedence chain
-  **flags > env (`BESSEMER_*`) > `config.local.toml` > `config.toml` > auto-detect / defaults**.
-- **One layer decodes it once** into a typed `BessemerConfig` record provided as a tag. Per-call-site
+  **flags > env (`SPEEPOBOX_*`) > `config.local.toml` > `config.toml` > auto-detect / defaults**.
+- **One layer decodes it once** into a typed `SpeepoboxConfig` record provided as a tag. Per-call-site
   `Config` reads are rejected: config would fail deep inside a dispatch instead of at startup, and
   the shape would be written down nowhere. Decode-once matches the guard invariant — a malformed
   config fails before the run exists.
@@ -341,7 +341,7 @@ mode** and no per-item confirm (D9): gc stays scriptable, bash's reasoning at `r
   `config.local.toml` gitignored, local wins. Secrets stay in a gitignored `.env` only.
 - The **committed** file carries the pin, `tool-sha`, which the shim reads before the package
   exists — so it must travel with the repo. It is **not a config key**: it is outside the four-layer
-  chain and `BessemerConfig` does not decode it (09, P6 F7). One line grammar reads it,
+  chain and `SpeepoboxConfig` does not decode it (09, P6 F7). One line grammar reads it,
   `^tool-sha[ \t]*=[ \t]*"([^"]*)"[ \t]*$`, exactly one matching line, its value a full 40-hex
   SHA (F6). The shim's `sed` and the one TS module `upgrade` and `doctor` share both implement it,
   and one test holds them to the same answers. A pin the shim cannot fetch (empty or short) refuses
@@ -376,15 +376,15 @@ A package release never stops accepting a call an earlier shim template makes. A
 and bumps the shim template's version. A test runs every shim template version that appeared in a
 release, on its warm path, against the current package (F18).
 
-**The package cache (F9, F10)** is `${XDG_CACHE_HOME:-$HOME/.cache}/bessemer/<sha>/`, shared by every
+**The package cache (F9, F10)** is `${XDG_CACHE_HOME:-$HOME/.cache}/speepobox/<sha>/`, shared by every
 served repo on the host and never a runtime root. An entry is prepared in `<sha>.tmp.<pid>/` and
 renamed into place with `fs.renameSync`, never `mv`, which nests a directory when the target exists.
 Dead-pid temp directories are swept by the pid in their name; entries are never pruned, and `gc` does
 not look there.
 
-**The bessemer directory (T57, 19 §2).** Everything the tool reads from or writes to a served repo
-lives in `<repoRoot>/.bessemer/`. The committed layer is `.bessemer/config.toml`, the operator's is
-`.bessemer/config.local.toml`, and secrets are `.bessemer/.env` (T58 moved the read there). **The
+**The speepobox directory (T57, 19 §2).** Everything the tool reads from or writes to a served repo
+lives in `<repoRoot>/.speepobox/`. The committed layer is `.speepobox/config.toml`, the operator's is
+`.speepobox/config.local.toml`, and secrets are `.speepobox/.env` (T58 moved the read there). **The
 search root is the served repo's, never the package's**: under the clone-run shim the package is a
 cache clone every served repo shares, so a chain that looked beside it would read one repo's config
 for all of them — and an adopter, whose checkout is not the package's, could configure nothing at
@@ -405,7 +405,7 @@ than resolved when it is absolute or leaves the repo after normalization — thi
 whose file's *contents* enter the sandbox, so the file stays inside the served repo, where review
 sees it. A declared file that is not on this host refuses before the lock, on the setup hook's rule.
 A single path and not a list, because a list-valued key merges per index across the layers.
-**Bessemer never opens the file; docker reads it.**
+**Speepobox never opens the file; docker reads it.**
 
 **Containment is lexical, and that is the limit of it** (T61, PR #20). `resolveSandboxEnvFile`
 (`src/config/paths.ts`) joins the declared value onto `repoRoot` and compares string prefixes with
@@ -471,7 +471,7 @@ nothing else:
 - **Off a terminal, or with `--no-input`, nothing changes.** `AnswerMissing` renders exactly as
   today's `GuardRefused` does: the same line and exit 1. A dispatch running in the background
   still cannot answer a prompt, which is the ground 09 settled unit 1 on. `--no-input` is a
-  boolean flag, and because it is not a modifier, `bessemer --no-input` alone is the refused
+  boolean flag, and because it is not a modifier, `speepobox --no-input` alone is the refused
   dispatch rather than usage.
 
 **Flags**
@@ -565,9 +565,9 @@ and a feedback-only resume are one arm of what the passes are for — text rathe
 | `status` | one screen: what's running, what just finished, where the PRs are. The Running section names each container's owner — `pid <N>`, `dead — next dispatch reclaims`, or `no lock — reported only` — as the reconciler's `classify` answers it, so `status` reads the lock directory (a filesystem read, as the ledger's is; an unreadable lock is no lock) (T138). No docker state changes, no writes, no git. Degrades to ledger-only if the daemon is down, and then reads no lock |
 | `doctor` | pass/fail preflight, read-only, never repairs. Exit 0 on warnings-only, exit 1 on any FAIL |
 | `gc` | list by default (touches nothing, exit 0); `--force` reclaims after re-verifying liveness. **Logs are never deleted.** Checkouts are salvaged before removal, by the release's own two-destination rule (T29): FF home, else onto a branch of the run's own, named from the commits — and a branch the served repo cannot read is not a destination, because the fetch would create it (T107). A checkout neither destination takes is skipped loudly, never discarded. A checkout whose branch the served repo no longer has goes to a rescue branch, and the branch is never recreated (T107). Daemon down → listing works with a warning, `--force` refuses. A `config.toml` that does not decode → listing works on the committed defaults, `--force` refuses (D8). Beside containers, checkouts, locks, and witnesses it lists three leftovers a kill can strand, each judged by a witness its name carries and never by age: a claim temp file `<slug>.pid.<pid>.<attempt>.claim` (dead when its pid is not alive), a scratch index `locks/<slug>.index` (dead when the slug holds no lock with a live owner — it is only written under that lock), and an editor session directory `<purpose>-edit-<pid>-XXXXXX` at the runtime root (dead when its pid is not alive; one from before the pid was in the name is listed as unwitnessed and left for a human). Live ones are not listed. The reconciler does **not** sweep them — they block nothing, and an editor directory is the dispatcher's text (T108). `--force` removes the dead ones after re-asking their witness — a claim or an editor directory by the pid in its name, right before the removal — removes an index only under its slug's lock (inside that slug's reclaim when it has one, under a lock of its own when not, and a lock it cannot take skips it), and leaves a pid-less editor directory to a human, printing its `rm -rf` (T109). Listing **built (T99, T108)**; `--force` **built (T100, T109)** |
-| `init` | writes the **scaffold** into the served repo from the package's **templates** (`<packageRoot>/templates/`, handed in as a parameter): `.bessemer/config.toml`, `.bessemer/.gitignore`, `.bessemer/image/Dockerfile`, `.bessemer/image/inputs`, and `.bessemer/tasks/` with the config's `tasks-dir` pointing there. It writes no setup hook, no sandbox env file, and no prompt file. It **does** write the shim, `.bessemer/bessemer`, stamped and mode 0755 (P6 F1); `--diff` reports a shim without its executable bit as *not executable*, apart from drift. A behind shim's fix is not delete-and-rerun, which would run the file it deleted: it is `mv .bessemer/bessemer .bessemer/bessemer.old && .bessemer/bessemer.old init && rm .bessemer/bessemer.old`, printed with the restore line `mv .bessemer/bessemer.old .bessemer/bessemer` (P6, amended). It writes **only files that are absent**, never overwrites, reports each file as `wrote`/`kept`, and has no `--force` and no `--dry-run`. `base` comes from `refs/remotes/origin/HEAD`, or else `--base`, or else a refusal — and, like every config value, is worked out only when `init` will write `config.toml`; a kept config asks nothing. `image` comes from `--image` (default `<dir>-bessemer`, lowercased). `tool-sha` is the running revision as a full SHA, left empty with a warning when the package is dirty, and with a warning when it carries no release (F6, F16). Placeholders are substituted in `config.toml` only. It refuses on a self-hosted repo and ends by printing next steps, every one spelled `.bessemer/bessemer …` (F2). Every scaffold file but `config.toml` carries a stamp line `# bessemer-template: <name> v<N> sha256:<12>` (the template's digest, stamp line excluded; a hand-stamped file carries the template's digest, never its own), `.gitignore` included. The `.gitignore` template ignores by name only, plus the anchored `/*-edit-*/`, and never ignores the tasks dir (tested with `git check-ignore`). **`init --diff`** is read-only and allowed self-hosted. It sorts each stamped file into missing / current / behind (template version) and, when present, pristine / edited (digest). An unstamped present file is version 0, so behind. For a behind file it prints the current template against the file plus the delete-and-rerun command. `config.toml` is checked for presence only. Exit 0 iff nothing is missing or behind. **P5** (09, 2026-09-30, E1–E9) |
-| `image build` | builds the image `config.toml`'s `image` names, through `Sandbox.build`. The context is `.bessemer/image/`, never the repo root. The inputs are the Dockerfile (implicit, first) plus `.bessemer/image/inputs`: one exact repo-relative path per line, `#` comments and blank lines ignored, no globs, and a missing path refuses. It stamps `bessemer.inputs` and `bessemer.inputs.digest` with **the same function probe 2 recomputes with** (one recipe). The uid and gid are read at the composition root, and there is no `--dry-run`. A repo whose build needs more wraps it and names the wrapper in `image-build-command`. **P5** (E10) |
-| `upgrade` | moves the pin to the newest release. Runs `git ls-remote --tags origin` in the package cache entry (10 s timeout, `GIT_TERMINAL_PROMPT=0`), takes each release's commit from its `^{}` line or else its bare line, and compares **tag numbers, never ancestry** — the entry is a depth-1 clone. A pin `vK` points at moves only to `vN` with N > K (two releases on one commit count as the higher); N = K is current; an untagged pin refuses and names `--to vN`, which also pins a release explicitly, rollbacks included. Reads and rewrites only the `tool-sha` line through the shared grammar, prints `.bessemer/bessemer init --diff` without running it, commits nothing, and refuses self-hosted. A network failure refuses with git's line and writes nothing. **P6** (F13, F15) |
+| `init` | writes the **scaffold** into the served repo from the package's **templates** (`<packageRoot>/templates/`, handed in as a parameter): `.speepobox/config.toml`, `.speepobox/.gitignore`, `.speepobox/image/Dockerfile`, `.speepobox/image/inputs`, and `.speepobox/tasks/` with the config's `tasks-dir` pointing there. It writes no setup hook, no sandbox env file, and no prompt file. It **does** write the shim, `.speepobox/speepobox`, stamped and mode 0755 (P6 F1); `--diff` reports a shim without its executable bit as *not executable*, apart from drift. A behind shim's fix is not delete-and-rerun, which would run the file it deleted: it is `mv .speepobox/speepobox .speepobox/speepobox.old && .speepobox/speepobox.old init && rm .speepobox/speepobox.old`, printed with the restore line `mv .speepobox/speepobox.old .speepobox/speepobox` (P6, amended). It writes **only files that are absent**, never overwrites, reports each file as `wrote`/`kept`, and has no `--force` and no `--dry-run`. `base` comes from `refs/remotes/origin/HEAD`, or else `--base`, or else a refusal — and, like every config value, is worked out only when `init` will write `config.toml`; a kept config asks nothing. `image` comes from `--image` (default `<dir>-speepobox`, lowercased). `tool-sha` is the running revision as a full SHA, left empty with a warning when the package is dirty, and with a warning when it carries no release (F6, F16). Placeholders are substituted in `config.toml` only. It refuses on a self-hosted repo and ends by printing next steps, every one spelled `.speepobox/speepobox …` (F2). Every scaffold file but `config.toml` carries a stamp line `# speepobox-template: <name> v<N> sha256:<12>` (the template's digest, stamp line excluded; a hand-stamped file carries the template's digest, never its own), `.gitignore` included. The `.gitignore` template ignores by name only, plus the anchored `/*-edit-*/`, and never ignores the tasks dir (tested with `git check-ignore`). **`init --diff`** is read-only and allowed self-hosted. It sorts each stamped file into missing / current / behind (template version) and, when present, pristine / edited (digest). An unstamped present file is version 0, so behind. For a behind file it prints the current template against the file plus the delete-and-rerun command. `config.toml` is checked for presence only. Exit 0 iff nothing is missing or behind. **P5** (09, 2026-09-30, E1–E9) |
+| `image build` | builds the image `config.toml`'s `image` names, through `Sandbox.build`. The context is `.speepobox/image/`, never the repo root. The inputs are the Dockerfile (implicit, first) plus `.speepobox/image/inputs`: one exact repo-relative path per line, `#` comments and blank lines ignored, no globs, and a missing path refuses. It stamps `speepobox.inputs` and `speepobox.inputs.digest` with **the same function probe 2 recomputes with** (one recipe). The uid and gid are read at the composition root, and there is no `--dry-run`. A repo whose build needs more wraps it and names the wrapper in `image-build-command`. **P5** (E10) |
+| `upgrade` | moves the pin to the newest release. Runs `git ls-remote --tags origin` in the package cache entry (10 s timeout, `GIT_TERMINAL_PROMPT=0`), takes each release's commit from its `^{}` line or else its bare line, and compares **tag numbers, never ancestry** — the entry is a depth-1 clone. A pin `vK` points at moves only to `vN` with N > K (two releases on one commit count as the higher); N = K is current; an untagged pin refuses and names `--to vN`, which also pins a release explicitly, rollbacks included. Reads and rewrites only the `tool-sha` line through the shared grammar, prints `.speepobox/speepobox init --diff` without running it, commits nothing, and refuses self-hosted. A network failure refuses with git's line and writes nothing. **P6** (F13, F15) |
 
 **`status`, `doctor`, and `gc` are intercepted before flag parsing and before any preflight**,
 deliberately, because they must work when the thing they inspect is broken (03 §1.1). **The
@@ -608,7 +608,7 @@ to check for.
 ## 8. Prompt packaging
 
 - **`PromptSource` tag** (05 Q6/Q9). It earns a tag on the **precedence logic** (a served repo's
-  `<repoRoot>/.bessemer/prompts/*.md` beats package defaults, and `project-context.md` lives there
+  `<repoRoot>/.speepobox/prompts/*.md` beats package defaults, and `project-context.md` lives there
   beside them — T59, 19 §2) and on being the surface a served repo extends — not on file reading,
   which `FileSystem.layerNoop` already fakes.
 - It returns the resolved text **and which root won**. The assembled prompt is logged verbatim
@@ -642,7 +642,7 @@ is a security property, not tidiness.
 
 **That allowlist governs inherited parent environment, which stays banned; a declared
 `sandbox-env-file` is the served repo's own explicit act, carried in its own field on the spec and
-handed to docker as `--env-file`** (T61, 19 §5). Bessemer never opens that file — docker reads it —
+handed to docker as `--env-file`** (T61, 19 §5). Speepobox never opens that file — docker reads it —
 so the path may appear in argv, a log, the ledger, or an event and the contents never do. Whatever
 the repo puts in it, the agent can read, and that is the repo's call (04).
 
@@ -700,7 +700,7 @@ New record, **as built in T2** (`src/ledger/record.ts` is the authority; this is
   still a one-off or a feature underneath and mode recovery is always a tag read. A
   `dispatchIdentity()` accessor unwraps it — call sites never null-check
 - explicit `schemaVersion` — `1` on every record this package writes, and the only value the
-  schema admits. There is no stamp `0`: a line with no `schemaVersion` is not a bessemer record and
+  schema admits. There is no stamp `0`: a line with no `schemaVersion` is not a speepobox record and
   is skipped with a warning (T135)
 - run id, never synthesized
 - start and end timestamps

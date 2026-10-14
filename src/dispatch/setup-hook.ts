@@ -20,7 +20,7 @@
 // before the releases is the reason, not silence. It has a budget too,
 // `setup-timeout`, which is the pass budget's shape: the caller's timeout.
 import { Clock, Duration, Effect, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { Reporter } from "../reporter.ts";
 import { Sandbox, SandboxError, type SandboxHandle } from "../sandbox/sandbox.ts";
 import { setupHookMount } from "../sandbox/spec.ts";
@@ -51,9 +51,9 @@ const linesOf = (said: string): ReadonlyArray<string> =>
 export const runSetupHook = (
   handle: SandboxHandle,
   repoRoot: string,
-): Effect.Effect<void, SandboxError, Sandbox | BessemerConfig | Reporter> =>
+): Effect.Effect<void, SandboxError, Sandbox | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const sandbox = yield* Sandbox;
     const reporter = yield* Reporter;
     // The same derivation the mount came from, so the command names the path

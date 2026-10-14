@@ -1,5 +1,5 @@
 // Ownership is declared, never inferred (design rule 3, 05 Q11). Every
-// sandbox carries `bessemer.managed=true` + `bessemer.repo=<hash of repo
+// sandbox carries `speepobox.managed=true` + `speepobox.repo=<hash of repo
 // root>`, and every query filters on **both**. Prefix sweeping of
 // `agentbox-*` is retired: the container name matches anyone's unrelated
 // container and — worse — matches agentbox running in a second repo on the
@@ -11,8 +11,8 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
-export const MANAGED_LABEL = "bessemer.managed";
-export const REPO_LABEL = "bessemer.repo";
+export const MANAGED_LABEL = "speepobox.managed";
+export const REPO_LABEL = "speepobox.repo";
 
 // A stable, short, path-safe scope for one repo root. Pure — the caller
 // resolves the repo root; `status` may run no git commands (SPEC §7), so it

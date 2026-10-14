@@ -29,7 +29,7 @@
 // its two stacks out: the seam has to be the `CommandExecutor`, and `Git` and
 // `Forge` capture theirs when their layer is *built*, so an executor provided
 // over the finished composition would reach the dispatch's own reads and not
-// theirs. Every term is `app.ts`'s, including `bessemerConfigLiveFor` and
+// theirs. Every term is `app.ts`'s, including `speepoboxConfigLiveFor` and
 // `promptSourceLiveFor` at the scratch repo — which is the point: the config,
 // the prompts, and the runtime root all come from the repo being served.
 import { describe, expect, it } from "@effect/vitest";
@@ -39,8 +39,8 @@ import { NodeContext, NodeFileSystem, NodePath } from "@effect/platform-node";
 import { Effect, Either, Layer, Option, Ref, type Scope } from "effect";
 import { resolveCredential } from "../src/agent/credential.ts";
 import { promptSourceLiveFor } from "../src/agent/prompt-source.ts";
-import { bessemerConfigLiveFor } from "../src/config/config.ts";
-import { bessemerDir, findRepoRoot, packageRoot } from "../src/config/paths.ts";
+import { speepoboxConfigLiveFor } from "../src/config/config.ts";
+import { speepoboxDir, findRepoRoot, packageRoot } from "../src/config/paths.ts";
 import { dispatchCli } from "../src/dispatch/command.ts";
 import { dispatch } from "../src/dispatch/dispatch.ts";
 import { checkoutPathFor, logPathFor, slugFor } from "../src/dispatch/plan.ts";
@@ -64,19 +64,19 @@ import { fakeProcess, type ScriptedResult } from "./support/exec-fake.ts";
 // The branch this dispatch is for, and the one that is checked out instead —
 // the branch guard refuses dispatching the branch the served repo currently
 // has out, so the scratch repo stands on a third one.
-const BRANCH = "bessemer-t62";
+const BRANCH = "speepobox-t62";
 const CHECKED_OUT = "holding";
 const BASE = "main";
 const SPEC = "T62";
-const IMAGE = "served-bessemer";
+const IMAGE = "served-speepobox";
 // The forge guard reads `origin`, and since T70 every dispatch fetches it —
 // which is the one git command this world answers from the table rather than
 // running, because it is the one that would leave the host.
 const ORIGIN = "https://github.com/acme/served-repo.git";
-// A throwaway, in the scratch repo's own `.bessemer/.env` — which is where a
+// A throwaway, in the scratch repo's own `.speepobox/.env` — which is where a
 // served repo's credential lives (T58) and what the roots row names. It is
 // never printed by anything, which is asserted.
-const TOKEN = "bessemer-t62-scratch-token";
+const TOKEN = "speepobox-t62-scratch-token";
 // The dispatcher's own revision: a package fact, resolved at the composition
 // root against the repo the *package* lives in, and one of the two legitimate
 // package reads this file names.
@@ -170,24 +170,24 @@ const servedRepo: Effect.Effect<
   yield* git("config", "user.name", "Scratch");
   yield* fs.makeDirectory(`${repo}/tasks`, { recursive: true });
   yield* fs.writeFileString(`${repo}/tasks/${SPEC}.md`, `# ${SPEC}\n\nthe task\n`);
-  // The bessemer directory, which is everything bessemer keeps in a served
+  // The speepobox directory, which is everything speepobox keeps in a served
   // repo (19 §2): the committed config, the prompt override, and — written
   // after the commit, because it is the one file that is never committed —
   // the credential.
-  yield* fs.makeDirectory(`${bessemerDir(repo)}/prompts`, { recursive: true });
+  yield* fs.makeDirectory(`${speepoboxDir(repo)}/prompts`, { recursive: true });
   yield* fs.writeFileString(
-    `${bessemerDir(repo)}/config.toml`,
+    `${speepoboxDir(repo)}/config.toml`,
     // A local ref as the base: this repo has no remote-tracking refs, and
     // `resolveBaseSha` refuses a base it cannot resolve.
     `image = "${IMAGE}"\nbase = "${BASE}"\n`,
   );
-  yield* fs.writeFileString(`${bessemerDir(repo)}/prompts/implement.md`, OVERRIDE);
+  yield* fs.writeFileString(`${speepoboxDir(repo)}/prompts/implement.md`, OVERRIDE);
   yield* git("add", "-A");
   yield* git("commit", "-q", "-m", "the served repo");
   yield* git("branch", BRANCH);
   yield* git("checkout", "-q", "-b", CHECKED_OUT);
   yield* git("remote", "add", "origin", ORIGIN);
-  yield* fs.writeFileString(`${bessemerDir(repo)}/.env`, `CLAUDE_CODE_OAUTH_TOKEN=${TOKEN}\n`);
+  yield* fs.writeFileString(`${speepoboxDir(repo)}/.env`, `CLAUDE_CODE_OAUTH_TOKEN=${TOKEN}\n`);
   return repo;
 }).pipe(Effect.orDie);
 
@@ -238,9 +238,9 @@ describe("doctor, on a repo the package does not live in", () => {
       );
       // The composition root's two reads, made here because that is where they
       // are made (AGENTS.md): the credential against the **served repo's**
-      // bessemer directory, and the package's own location handed down as a
+      // speepobox directory, and the package's own location handed down as a
       // value — `doctor.ts` may not import it (19 §8).
-      const credential = yield* resolveCredential(bessemerDir(repo)).pipe(
+      const credential = yield* resolveCredential(speepoboxDir(repo)).pipe(
         Effect.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer)),
       );
 
@@ -272,7 +272,7 @@ describe("doctor, on a repo the package does not live in", () => {
       expect(rows[0]?.probe).toBe("roots");
       expect(rows[0]?.status).toBe("ok");
       expect(rows[0]?.detail).toBe(
-        `serving ${repo}; package ${packageRoot} at ${REVISION}; config ${repo}/.bessemer/config.toml; credential from ${repo}/.bessemer/.env; not self-hosted`,
+        `serving ${repo}; package ${packageRoot} at ${REVISION}; config ${repo}/.speepobox/config.toml; credential from ${repo}/.speepobox/.env; not self-hosted`,
       );
       // The credential came out of the served repo's own file — the token is
       // in it, and no row says so.
@@ -281,10 +281,10 @@ describe("doctor, on a repo the package does not live in", () => {
       }
       const row = (probe: string) => rows.find((candidate) => candidate.probe === probe);
       expect(row("credential")?.detail).toBe(
-        `CLAUDE_CODE_OAUTH_TOKEN set from ${repo}/.bessemer/.env (value not shown)`,
+        `CLAUDE_CODE_OAUTH_TOKEN set from ${repo}/.speepobox/.env (value not shown)`,
       );
       expect(row("tasks-dir")?.detail).toContain(`${repo}/tasks`);
-      expect(row("runtime-root")?.detail).toContain(`${repo}/.bessemer`);
+      expect(row("runtime-root")?.detail).toContain(`${repo}/.speepobox`);
       // Probe 10 is not asked at all when the dispatcher serves another repo
       // (T60), so no `rev-list` is spent and the row says what it did not
       // compare.
@@ -308,7 +308,7 @@ describe("doctor, on a repo the package does not live in", () => {
 
 // The rehearsal's world: the scratch repo, a ref-backed `Reporter`, the
 // scripted executor, and `app.ts`'s `appDryRunLiveFor` spelled out over them
-// term for term — same nine recording layers, same `bessemerConfigLiveFor`
+// term for term — same nine recording layers, same `speepoboxConfigLiveFor`
 // and `promptSourceLiveFor`, both rooted at the served repo.
 const rehearsalWorld = Effect.gen(function* () {
   const repo = yield* servedRepo;
@@ -319,7 +319,7 @@ const rehearsalWorld = Effect.gen(function* () {
     NodeContext.layer,
   );
   const platform = Layer.mergeAll(NodeFileSystem.layer, NodePath.layer, executor, layer);
-  const base = Layer.provideMerge(bessemerConfigLiveFor(repo), platform);
+  const base = Layer.provideMerge(speepoboxConfigLiveFor(repo), platform);
   const rehearsal = Layer.provideMerge(
     AgentCliRecordingLive,
     Layer.provideMerge(
@@ -337,9 +337,9 @@ const rehearsalWorld = Effect.gen(function* () {
     ),
   );
   // The two host reads a dispatch is handed, made where bin.ts makes them and
-  // asked of the **served** repo: the credential out of its bessemer
+  // asked of the **served** repo: the credential out of its speepobox
   // directory, and the forge repo off its own `origin`.
-  const credential = yield* resolveCredential(bessemerDir(repo)).pipe(
+  const credential = yield* resolveCredential(speepoboxDir(repo)).pipe(
     Effect.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer)),
   );
   const forgeRepo = yield* resolveForgeRepo(repo).pipe(
@@ -368,7 +368,7 @@ describe("a rehearsal of a repo the package does not live in", () => {
       const emitted = yield* Ref.get(events);
       const resolved = emitted.find((event) => event._tag === "PlanResolved");
       const plan = resolved?._tag === "PlanResolved" ? resolved.plan : undefined;
-      // The runtime root defaults to the served repo's bessemer directory
+      // The runtime root defaults to the served repo's speepobox directory
       // (T57), so every write location this run named is inside the repo it
       // serves.
       expect(plan?.task).toEqual({
@@ -376,11 +376,11 @@ describe("a rehearsal of a repo the package does not live in", () => {
         path: `${repo}/tasks/${SPEC}.md`,
         feedback: Option.none(),
       });
-      expect(plan?.checkoutPath).toBe(checkoutPathFor(bessemerDir(repo), slugFor(BRANCH)));
-      expect(plan?.checkoutPath.startsWith(`${repo}/.bessemer/`)).toBe(true);
+      expect(plan?.checkoutPath).toBe(checkoutPathFor(speepoboxDir(repo), slugFor(BRANCH)));
+      expect(plan?.checkoutPath.startsWith(`${repo}/.speepobox/`)).toBe(true);
 
       // The line docker would have been handed: the spec mounted out of the
-      // served repo's tasks dir, the workspace under its bessemer directory,
+      // served repo's tasks dir, the workspace under its speepobox directory,
       // and not one word of the package.
       const start = intents(emitted).find((detail) => detail.startsWith("start the sandbox"));
       expect(start).toContain(`-v ${repo}/tasks/${SPEC}.md:${SPEC_TARGET}:ro`);
@@ -402,7 +402,7 @@ describe("a rehearsal of a repo the package does not live in", () => {
       expect(start).not.toContain(TOKEN);
 
       // The override took, and the log says so as the client's (T14, T59): the
-      // file is `<repo>/.bessemer/prompts/implement.md` and nothing in the
+      // file is `<repo>/.speepobox/prompts/implement.md` and nothing in the
       // package is named `implement.md`'s equal here. The review and
       // description passes fall through to the package's own defaults, which
       // is the package read this file does not object to.
@@ -467,12 +467,14 @@ describe("a rehearsal of a repo the package does not live in", () => {
       const resolved = (yield* Ref.get(events)).find((event) => event._tag === "PlanResolved");
       const plan = resolved?._tag === "PlanResolved" ? resolved.plan : undefined;
       const logPath = Option.getOrElse(plan?.logPath ?? Option.none(), () => "");
-      expect(logPath).toBe(logPathFor(bessemerDir(repo), plan?.runId ?? ""));
+      expect(logPath).toBe(logPathFor(speepoboxDir(repo), plan?.runId ?? ""));
       expect(yield* fs.exists(logPath)).toBe(true);
       // And not beside the package, which under the shim is a cache clone
       // every served repo shares — one run's log there would be every
       // adopter's.
-      expect(yield* fs.exists(logPathFor(bessemerDir(packageRoot), plan?.runId ?? ""))).toBe(false);
+      expect(yield* fs.exists(logPathFor(speepoboxDir(packageRoot), plan?.runId ?? ""))).toBe(
+        false,
+      );
       // The log is a record of the run, and the token is not part of it.
       expect(yield* fs.readFileString(logPath)).not.toContain(TOKEN);
     }).pipe(Effect.provide(NodeContext.layer)),

@@ -5,7 +5,7 @@ Type: AFK
 Blocked by:
 
 <!--
-Template for issues in the bessemer package. Required by ticket 06, which found that nothing
+Template for issues in the speepobox package. Required by ticket 06, which found that nothing
 otherwise forces an issue to name its verification commands — and that `pre-commit` run on the package
 directory passes while checking NOTHING, which hands the agent a false green.
 

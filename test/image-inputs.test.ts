@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Either } from "effect";
 import { type InputsListRefused, parseInputsList } from "../src/image/inputs.ts";
 
-const DOCKERFILE = ".bessemer/image/Dockerfile";
+const DOCKERFILE = ".speepobox/image/Dockerfile";
 
 const refusal = (text: string): InputsListRefused => {
   const parsed = parseInputsList(text, DOCKERFILE);
@@ -15,7 +15,7 @@ const refusal = (text: string): InputsListRefused => {
 describe("parseInputsList", () => {
   it("puts the Dockerfile first, then the listed paths in file order", () => {
     const list = [
-      "# bessemer template v1",
+      "# speepobox template v1",
       "",
       "  client/yarn.lock  ",
       "\t# indented comment",

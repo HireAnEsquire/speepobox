@@ -10,7 +10,7 @@
 // resume would.
 import type { FileSystem, Path } from "@effect/platform";
 import { Effect, Layer, Option } from "effect";
-import type { BessemerConfig } from "../config/config.ts";
+import type { SpeepoboxConfig } from "../config/config.ts";
 import { Ledger, LedgerLive, type LedgerShape } from "../ledger/ledger.ts";
 import type { RunRecord } from "../ledger/record.ts";
 import { Reporter, type ReporterShape } from "../reporter.ts";
@@ -39,7 +39,7 @@ export const recordingLedger = (live: LedgerShape, reporter: ReporterShape): Led
 export const LedgerRecordingLive: Layer.Layer<
   Ledger,
   never,
-  BessemerConfig | Reporter | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Reporter | FileSystem.FileSystem | Path.Path
 > = Layer.effect(
   Ledger,
   Effect.map(Effect.all([Ledger, Reporter]), ([live, reporter]) => recordingLedger(live, reporter)),

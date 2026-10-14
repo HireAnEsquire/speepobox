@@ -1,4 +1,4 @@
-# Everything in the bessemer directory that is not committed: the operator's
+# Everything in the speepobox directory that is not committed: the operator's
 # private settings, the agent credential, and runtime state. Ignored by name,
 # so the tasks dir and env.sandbox stay tracked.
 

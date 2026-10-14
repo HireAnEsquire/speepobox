@@ -11,7 +11,7 @@ import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Effect, Either, Layer, Option, Ref } from "effect";
 import { AgentPassFailed } from "../src/agent/agent-cli.ts";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { land } from "../src/dispatch/land.ts";
 import { APPROVED_OUTCOME, IMPLEMENT_FAILED, issueChecklistFor } from "../src/dispatch/feature.ts";
 import { type DispatchPlan, featureDispatch, planFor, specDispatch } from "../src/dispatch/plan.ts";
@@ -43,7 +43,7 @@ import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 import { fakeIssue, fakeIssueStore } from "./support/issue-store-fake.ts";
 
-const BRANCH = "bessemer-t12";
+const BRANCH = "speepobox-t12";
 const BASE_REF = "origin/master";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
@@ -92,7 +92,7 @@ const world = (options: WorldOptions = {}) =>
       Layer.mergeAll(
         NodeFileSystem.layer,
         NodePath.layer,
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) => Ref.update(events, (current) => [...current, event]),
         }),
@@ -167,7 +167,7 @@ describe("the body a PR is opened with", () => {
     const body = prBodyFor(DESCRIPTION, plan);
     expect(body.startsWith(DESCRIPTION)).toBe(true);
     // The spec by name, not by path: the trailer is for a human reading the PR.
-    expect(body).toContain("AI-authored via bessemer (spec: `T12-forge-pr.md`)");
+    expect(body).toContain("AI-authored via speepobox (spec: `T12-forge-pr.md`)");
     expect(body).toContain("Draft until the dispatching dev reviews it.");
   });
 
@@ -185,7 +185,9 @@ describe("the body a PR is opened with", () => {
       ...plan,
       task: { _tag: "Inline", text: "fix the release note", feedback: Option.none() },
     });
-    expect(body).toContain("AI-authored via bessemer. Draft until the dispatching dev reviews it.");
+    expect(body).toContain(
+      "AI-authored via speepobox. Draft until the dispatching dev reviews it.",
+    );
     expect(body).not.toContain("spec:");
   });
 });
@@ -206,7 +208,7 @@ describe("the PR after the push", () => {
           // The ref this run was dispatched against, untouched: turning it
           // into the branch `gh` wants is the forge's own job.
           base: BASE_REF,
-          title: `[bessemer] ${BRANCH}`,
+          title: `[speepobox] ${BRANCH}`,
           body: prBodyFor(DESCRIPTION, scratch.plan),
         },
       ]);
@@ -287,7 +289,7 @@ describe("the PR after the push", () => {
       const scratch = yield* world({
         forge: {
           createFails:
-            "could not open a draft PR for 'bessemer-t12': GraphQL: was submitted too quickly",
+            "could not open a draft PR for 'speepobox-t12': GraphQL: was submitted too quickly",
         },
       });
       const outcome = yield* Effect.either(
@@ -349,7 +351,7 @@ describe("the PR after the push", () => {
   it.scoped("fails at stage pr when the edit is refused, still recording the open PR", () =>
     Effect.gen(function* () {
       const scratch = yield* world({
-        forge: { existing: VIEWED_PR, editFails: "could not update the PR for 'bessemer-t12'" },
+        forge: { existing: VIEWED_PR, editFails: "could not update the PR for 'speepobox-t12'" },
       });
       const outcome = yield* Effect.either(
         runLandingAndPr(scratch).pipe(Effect.provide(scratch.layer)),
@@ -422,7 +424,7 @@ describe("the checklist on a feature run's PR", () => {
           Layer.mergeAll(
             fakeForge(calls, forge),
             fakeAgentCli({ description: DESCRIPTION, ...agent }),
-            Layer.succeed(BessemerConfig, {
+            Layer.succeed(SpeepoboxConfig, {
               ...defaultConfig,
               runtimeRoot: "/runtime",
               maxReviewRounds: 3,
@@ -506,7 +508,7 @@ describe("the checklist on a feature run's PR", () => {
           DESCRIPTION,
           "",
           "---",
-          "AI-authored via bessemer (spec: `T12-forge-pr.md`). Draft until the dispatching dev reviews it.",
+          "AI-authored via speepobox (spec: `T12-forge-pr.md`). Draft until the dispatching dev reviews it.",
         ].join("\n"),
       );
     }),

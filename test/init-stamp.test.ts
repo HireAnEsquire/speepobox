@@ -76,7 +76,7 @@ describe("the templates", () => {
       expect(text).not.toMatch(/^\s+sudo\b/m);
       // Root setup is a pattern the README describes, offered commented out:
       // the template builds as if it were not there (T136).
-      expect(text).toContain('"Setup that needs root" in bessemer\'s README');
+      expect(text).toContain('"Setup that needs root" in speepobox\'s README');
       expect(text).toMatch(/^# COPY root-setup\.sh /m);
       expect(text).not.toMatch(/^[^#].*sudo/m);
       expect(text).not.toMatch(/hae/i);
@@ -85,7 +85,7 @@ describe("the templates", () => {
 });
 
 // The line a stamp landed on.
-const stampAt = (text: string) => text.split("\n").findIndex((l) => l.startsWith("# bessemer-"));
+const stampAt = (text: string) => text.split("\n").findIndex((l) => l.startsWith("# speepobox-"));
 
 describe("stamp", () => {
   it("goes on line 1 of a file with nothing that must stay first", () => {
@@ -116,7 +116,7 @@ describe("stamp", () => {
       expect(
         text
           .split("\n")
-          .filter((l) => !l.startsWith("# bessemer-"))
+          .filter((l) => !l.startsWith("# speepobox-"))
           .join("\n"),
       ).toBe(body);
       expect(bodyDigest(text)).toBe(Option.getOrThrow(readStamp(text)).digest);
@@ -127,12 +127,12 @@ describe("stamp", () => {
     const text = stamp("x", 2, "a\n");
     expect(Option.isSome(readStamp(`one\ntwo\n${text}`))).toBe(true);
     expect(readStamp("no stamp here\n")).toEqual(Option.none());
-    expect(readStamp("  # bessemer-template: x v1 sha256:0123456789ab\n")).toEqual(Option.none());
+    expect(readStamp("  # speepobox-template: x v1 sha256:0123456789ab\n")).toEqual(Option.none());
   });
 });
 
 describe("substitute", () => {
-  const values = { image: "acme-bessemer", base: "origin/main", "tool-sha": "abc123" } as const;
+  const values = { image: "acme-speepobox", base: "origin/main", "tool-sha": "abc123" } as const;
 
   it.effect("fills every placeholder in the config template and leaves no {{", () =>
     Effect.gen(function* () {
@@ -140,11 +140,11 @@ describe("substitute", () => {
       for (const name of CONFIG_PLACEHOLDERS) expect(text).toContain(`{{${name}}}`);
       const out = Either.getOrThrow(substitute(text, values));
       expect(out).not.toContain("{{");
-      expect(out).toContain('image = "acme-bessemer"');
+      expect(out).toContain('image = "acme-speepobox"');
       expect(out).toContain('base = "origin/main"');
       expect(out).toContain('tool-sha = "abc123"');
-      expect(out).toContain('tasks-dir = ".bessemer/tasks"');
-      expect(out).toContain('image-build-command = ".bessemer/bessemer image build"');
+      expect(out).toContain('tasks-dir = ".speepobox/tasks"');
+      expect(out).toContain('image-build-command = ".speepobox/speepobox image build"');
       for (const key of ["setup-hook", "sandbox-env-file", "cap-add"]) {
         expect(out).toMatch(new RegExp(`^# ${key} = `, "m"));
         expect(out).not.toMatch(new RegExp(`^${key} = `, "m"));
@@ -178,9 +178,9 @@ describe("the rendered .gitignore", () => {
       const fs = yield* FileSystem.FileSystem;
       const repo = yield* fs.makeTempDirectoryScoped();
       yield* exec("git", "init", "-q", repo);
-      yield* fs.makeDirectory(join(repo, ".bessemer"));
+      yield* fs.makeDirectory(join(repo, ".speepobox"));
       yield* fs.writeFileString(
-        join(repo, ".bessemer", ".gitignore"),
+        join(repo, ".speepobox", ".gitignore"),
         yield* stamped(".gitignore"),
       );
       const ignored = (path: string) =>
@@ -188,29 +188,29 @@ describe("the rendered .gitignore", () => {
           Effect.map((result) => result.exitCode === 0),
         );
       for (const path of [
-        ".bessemer/tasks/some-feature/issues/T1-x.md",
-        ".bessemer/tasks/spec.md",
-        ".bessemer/env.sandbox",
+        ".speepobox/tasks/some-feature/issues/T1-x.md",
+        ".speepobox/tasks/spec.md",
+        ".speepobox/env.sandbox",
         // Runtime state is anchored to the top level (T119): an issue folder
         // holding a file of the same name is still tracked.
-        ".bessemer/tasks/f/logs/x.md",
-        ".bessemer/tasks/f/locks/x.md",
-        ".bessemer/tasks/f/checkouts/x.md",
-        ".bessemer/tasks/f/runs.jsonl",
-        ".bessemer/tasks/f/config.local.toml",
+        ".speepobox/tasks/f/logs/x.md",
+        ".speepobox/tasks/f/locks/x.md",
+        ".speepobox/tasks/f/checkouts/x.md",
+        ".speepobox/tasks/f/runs.jsonl",
+        ".speepobox/tasks/f/config.local.toml",
       ]) {
         expect([path, yield* ignored(path)]).toEqual([path, false]);
       }
       for (const path of [
-        ".bessemer/feedback-edit-123-abc/f.txt",
-        ".bessemer/.env",
-        ".bessemer/logs/x.log",
-        ".bessemer/locks/x",
-        ".bessemer/checkouts/x/y",
-        ".bessemer/runs.jsonl",
-        ".bessemer/config.local.toml",
+        ".speepobox/feedback-edit-123-abc/f.txt",
+        ".speepobox/.env",
+        ".speepobox/logs/x.log",
+        ".speepobox/locks/x",
+        ".speepobox/checkouts/x/y",
+        ".speepobox/runs.jsonl",
+        ".speepobox/config.local.toml",
         // The credential is unanchored on purpose: never committed from anywhere.
-        ".bessemer/tasks/f/.env",
+        ".speepobox/tasks/f/.env",
       ]) {
         expect([path, yield* ignored(path)]).toEqual([path, true]);
       }
@@ -227,9 +227,9 @@ const entries = (text: string) =>
   text.split("\n").filter((line) => line.trim() !== "" && !line.startsWith("#"));
 
 describe("this repo's hand-stamped scaffold", () => {
-  const bessemer = join(findRepoRoot(packageRoot), ".bessemer");
+  const speepobox = join(findRepoRoot(packageRoot), ".speepobox");
   const ownFile = (name: StampedTemplate) =>
-    FileSystem.FileSystem.pipe(Effect.flatMap((fs) => fs.readFileString(join(bessemer, name))));
+    FileSystem.FileSystem.pipe(Effect.flatMap((fs) => fs.readFileString(join(speepobox, name))));
 
   it.effect("carries the template's name, current version, and digest on every file", () =>
     Effect.gen(function* () {

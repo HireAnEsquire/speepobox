@@ -16,7 +16,7 @@
 import { FileSystem } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Clock, Effect, Either, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { lockPathFor } from "../dispatch/plan.ts";
 import { exec } from "../internal/exec.ts";
 import { Ledger } from "../ledger/ledger.ts";
@@ -94,7 +94,7 @@ const lockFor = (
 
 const containerHalf = (
   repoRoot: string,
-): Effect.Effect<ContainerHalf, never, CommandExecutor | BessemerConfig | FileSystem.FileSystem> =>
+): Effect.Effect<ContainerHalf, never, CommandExecutor | SpeepoboxConfig | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const result = yield* Effect.either(
       exec("docker", "ps", ...ownershipFilterArgs(repoRoot), "--format", "{{.Names}}\t{{.Status}}"),
@@ -108,7 +108,7 @@ const containerHalf = (
         detail: "docker unavailable (daemon down?)",
       } as const;
     }
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const running = yield* Effect.forEach(parseContainerRows(result.right.stdout), (container) =>
       Effect.map(lockFor(config.runtimeRoot, container), (lock) => ({
         ...container,
@@ -145,7 +145,7 @@ export const status = (
 ): Effect.Effect<
   void,
   never,
-  Ledger | Reporter | CommandExecutor | BessemerConfig | FileSystem.FileSystem
+  Ledger | Reporter | CommandExecutor | SpeepoboxConfig | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
     const reporter = yield* Reporter;

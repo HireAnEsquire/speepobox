@@ -18,7 +18,7 @@
 // PR did not fail because nobody was told about it, and the row, the exit
 // status, and the event stream are the same either way.
 import { Effect, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { stoppedAt } from "../dispatch/feature.ts";
 import { logPathOrNote, type DispatchPlan } from "../dispatch/plan.ts";
 import { dispatchIdentity, type RunRecord, type TerminalReason } from "../ledger/record.ts";
@@ -29,7 +29,7 @@ import { type Notification, Notifier, type NotifierShape } from "./notifier.ts";
 // bash's title, verbatim (`run.sh:1750`): the tool that dispatched, and the
 // branch it dispatched — which is the task's identity, so it is the whole of
 // what a notification needs to be attributable at a glance.
-export const notificationTitleFor = (branch: string): string => `bessemer: ${branch}`;
+export const notificationTitleFor = (branch: string): string => `speepobox: ${branch}`;
 
 // What a *feature* run says instead of a verdict (T76, `run.sh:2168-2172`):
 // there is no single verdict on that arm, and what a dispatcher wants first is
@@ -249,9 +249,9 @@ const send = (
 export const notifyTerminal = (
   plan: DispatchPlan,
   record: RunRecord,
-): Effect.Effect<void, never, Notifier | BessemerConfig | Reporter> =>
+): Effect.Effect<void, never, Notifier | SpeepoboxConfig | Reporter> =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     // `off` is "the notifier is never invoked", not "the notifier does
     // nothing": the gate is here, at the call site, so a `Notifier` that
     // counts its calls sees zero.
@@ -271,9 +271,9 @@ export const notifyTerminal = (
 export const withStepNotifications = (
   plan: DispatchPlan,
   next: ReporterShape,
-): Effect.Effect<ReporterShape, never, Notifier | BessemerConfig> =>
+): Effect.Effect<ReporterShape, never, Notifier | SpeepoboxConfig> =>
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     if (config.notify !== "steps") {
       return next;
     }

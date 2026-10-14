@@ -736,7 +736,7 @@ export const setupHookFound = (
 // review sees it, and a named file that is not on this host is refused before
 // the lock like every other bad input (matrix row 1).
 //
-// **The check is a `stat`, never a read.** Bessemer never opens this file;
+// **The check is a `stat`, never a read.** Speepobox never opens this file;
 // docker does. That is why its values cannot reach argv, a log, the ledger, or
 // an event — the path is in this refusal, the contents are in none of them.
 export const sandboxEnvFileFound = (

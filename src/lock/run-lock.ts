@@ -1,7 +1,7 @@
 // `RunLock` (SPEC §2/§4): the first resource in the run's `Scope`, and a PID
 // file rather than a `Semaphore` (05 Q17) — the contention this exists to see
 // is two invocations in two terminals, which an in-process primitive cannot.
-// It lives under the runtime root (the served repo's bessemer directory by
+// It lives under the runtime root (the served repo's speepobox directory by
 // default, T57), keyed by the slug the plan derives.
 //
 // `LockHeld` comes from a *claim that collided*, never from a stat-then-write:
@@ -15,7 +15,7 @@
 import { FileSystem, Path } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import { Context, Data, Effect, Layer, Option, Schema, type Scope } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { lockPathFor } from "../dispatch/plan.ts";
 import { Reporter } from "../reporter.ts";
 import { type ClaimOutcome, claimLockFile } from "./claim.ts";
@@ -59,11 +59,11 @@ export class RunLock extends Context.Tag("RunLock")<RunLock, RunLockShape>() {}
 export const RunLockLive: Layer.Layer<
   RunLock,
   never,
-  BessemerConfig | Reporter | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Reporter | FileSystem.FileSystem | Path.Path
 > = Layer.effect(
   RunLock,
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     // The reporter this layer was built over — the console. It is never the
     // run log: that one is provided further in, and does not yet exist when
     // the lock is claimed. `dispatch/run.ts` carries the ruling on why the
@@ -136,7 +136,7 @@ export const RunLockLive: Layer.Layer<
         const owner = yield* ownerOf(file).pipe(Effect.mapError(lockError(file)));
         if (ownerIsAlive(owner)) {
           return yield* new LockHeld({
-            detail: `another bessemer run (pid ${owner.value}) is already working '${slug}' — wait for it or kill it`,
+            detail: `another speepobox run (pid ${owner.value}) is already working '${slug}' — wait for it or kill it`,
           });
         }
 
@@ -159,7 +159,7 @@ export const RunLockLive: Layer.Layer<
           // it does not claim the reclaim is over — and the case a dispatcher
           // most often reads this on is the one where it is not.
           return yield* new LockHeld({
-            detail: `another bessemer run got to the stale lock on '${slug}' first — wait for it or kill it`,
+            detail: `another speepobox run got to the stale lock on '${slug}' first — wait for it or kill it`,
           });
         }
         yield* reporter.emit({

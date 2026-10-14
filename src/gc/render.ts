@@ -6,7 +6,7 @@ import { Option } from "effect";
 import { formatDuration, formatTable } from "../status/render.ts";
 import type { GcSnapshot, Measure } from "./snapshot.ts";
 
-const HEADER = "What this host holds from bessemer runs";
+const HEADER = "What this host holds from speepobox runs";
 
 // bash's warning (`run.sh:562`, `tasklib.py:1113`), in this tool's words.
 export const DAEMON_DOWN_NOTE =

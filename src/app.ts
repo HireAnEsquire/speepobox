@@ -6,8 +6,8 @@ import { type AgentCli, AgentCliLive } from "./agent/agent-cli.ts";
 import { type PromptSource, promptSourceLiveFor } from "./agent/prompt-source.ts";
 import { renderAgentEvent } from "./agent/render.ts";
 import {
-  BessemerConfig,
-  bessemerConfigLiveFor,
+  SpeepoboxConfig,
+  speepoboxConfigLiveFor,
   type ConfigError,
   defaultConfigFor,
   loadConfig,
@@ -183,7 +183,7 @@ export const PlatformAndReporterLive = (
     ReporterConsoleLive,
   );
 
-// The read-only slice's config layer. It differs from bessemerConfigLiveFor in
+// The read-only slice's config layer. It differs from speepoboxConfigLiveFor in
 // exactly one way: a failed decode degrades to the committed defaults instead
 // of dying at layer build, because the three read-only commands are
 // intercepted before any preflight (03 §1.1) and must work when the thing they
@@ -196,11 +196,11 @@ export const PlatformAndReporterLive = (
 // layer `status` composes without ever asking git anything, where the config
 // layer already reads the host filesystem at a root, and which root that is is
 // the fact that says which repo is served.
-const bessemerConfigTolerantLiveFor = (
+const speepoboxConfigTolerantLiveFor = (
   repoRoot: string,
-): Layer.Layer<BessemerConfig, never, NodeContext.NodeContext> =>
+): Layer.Layer<SpeepoboxConfig, never, NodeContext.NodeContext> =>
   Layer.effect(
-    BessemerConfig,
+    SpeepoboxConfig,
     loadConfig(repoRoot).pipe(Effect.orElseSucceed(() => defaultConfigFor(repoRoot))),
   );
 
@@ -217,11 +217,11 @@ const bessemerConfigTolerantLiveFor = (
 export const appBaseLiveFor = (
   repoRoot: string,
   stdinIsTTY: boolean,
-): Layer.Layer<Git | Ledger | BessemerConfig | Reporter | NodeContext.NodeContext> =>
+): Layer.Layer<Git | Ledger | SpeepoboxConfig | Reporter | NodeContext.NodeContext> =>
   Layer.provideMerge(
     Layer.mergeAll(LedgerLive, GitLive),
     Layer.provideMerge(
-      bessemerConfigTolerantLiveFor(repoRoot),
+      speepoboxConfigTolerantLiveFor(repoRoot),
       PlatformAndReporterLive(stdinIsTTY),
     ),
   );
@@ -263,7 +263,7 @@ export const appLiveFor = (
   | IssueStore
   | RunLock
   | Ledger
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | NodeContext.NodeContext
   | Prompt,
@@ -284,7 +284,7 @@ export const appLiveFor = (
       ),
       Layer.provideMerge(
         LedgerLive,
-        Layer.provideMerge(bessemerConfigLiveFor(repoRoot), PlatformAndReporterLive(stdinIsTTY)),
+        Layer.provideMerge(speepoboxConfigLiveFor(repoRoot), PlatformAndReporterLive(stdinIsTTY)),
       ),
     ),
   );
@@ -334,7 +334,7 @@ export const appDryRunLiveFor = (
   | IssueStore
   | RunLock
   | Ledger
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | NodeContext.NodeContext
   | Prompt,
@@ -355,7 +355,7 @@ export const appDryRunLiveFor = (
       ),
       Layer.provideMerge(
         LedgerRecordingLive,
-        Layer.provideMerge(bessemerConfigLiveFor(repoRoot), PlatformAndReporterLive(stdinIsTTY)),
+        Layer.provideMerge(speepoboxConfigLiveFor(repoRoot), PlatformAndReporterLive(stdinIsTTY)),
       ),
     ),
   );
@@ -375,7 +375,7 @@ export const DRY_RUN_FLAG = "--dry-run";
 
 // An argv that is **only** modifiers is no args at all — bash's rule
 // (`run.sh:752`, `ORIGINAL_ARGC - MODIFIER_ARGC`), and what makes
-// `bessemer --dry-run` on a TTY open the picker and rehearse what it picks
+// `speepobox --dry-run` on a TTY open the picker and rehearse what it picks
 // (T81). It lives here rather than in `picker/picker.ts` because that module
 // may not name the flag at all (`scripts/check-bans.ts`) and must not: the
 // words ride through the picker unread, onto the argv it hands back and onto
@@ -415,7 +415,7 @@ export const appLayerFor = (
   | IssueStore
   | RunLock
   | Ledger
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | NodeContext.NodeContext
   | Prompt,

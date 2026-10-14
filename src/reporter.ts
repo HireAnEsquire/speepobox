@@ -132,7 +132,7 @@ export type ReporterEvent =
       readonly stream: "stdout" | "stderr";
       readonly line: string;
     }
-  // One line of what `docker build` printed while `bessemer image build` ran
+  // One line of what `docker build` printed while `speepobox image build` ran
   // (T111), as it arrives, from either stream — BuildKit narrates on stderr.
   // Emitted by the command's `onOutput`, never by the `Sandbox` layer. Its
   // own event rather than a `SetupOutput`: no run is in progress, and a

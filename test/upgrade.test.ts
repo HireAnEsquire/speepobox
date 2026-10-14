@@ -57,8 +57,8 @@ const servedRepo = (root: string, config: string) =>
     const fs = yield* FileSystem.FileSystem;
     const repoRoot = join(root, "served");
     yield* git("init", "-q", "-b", "main", repoRoot);
-    yield* fs.makeDirectory(join(repoRoot, ".bessemer"), { recursive: true });
-    yield* fs.writeFileString(join(repoRoot, ".bessemer/config.toml"), config);
+    yield* fs.makeDirectory(join(repoRoot, ".speepobox"), { recursive: true });
+    yield* fs.writeFileString(join(repoRoot, ".speepobox/config.toml"), config);
     yield* git("-C", repoRoot, "add", ".");
     yield* git("-C", repoRoot, "commit", "-q", "-m", "scaffold");
     return repoRoot;
@@ -69,7 +69,7 @@ const configWith = (pinLine: string): string =>
 
 const configIn = (repoRoot: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fs) =>
-    Effect.map(fs.readFile(join(repoRoot, ".bessemer/config.toml")), (bytes) =>
+    Effect.map(fs.readFile(join(repoRoot, ".speepobox/config.toml")), (bytes) =>
       new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes),
     ),
   );
@@ -187,7 +187,7 @@ describe("renderUpgrade", () => {
         "",
         "Next: run this to see which scaffold files the new release's templates change:",
         `  ${INIT_DIFF_COMMAND}`,
-        "Nothing was committed: commit .bessemer/config.toml when you are ready.",
+        "Nothing was committed: commit .speepobox/config.toml when you are ready.",
       ].join("\n"),
     );
   });
@@ -233,7 +233,7 @@ describe("upgrade", () => {
         );
         expect(rendered).toContain(INIT_DIFF_COMMAND);
         // Nothing committed: the config is the one change, and it is unstaged.
-        expect(yield* statusOf(f.repoRoot)).toBe("M .bessemer/config.toml");
+        expect(yield* statusOf(f.repoRoot)).toBe("M .speepobox/config.toml");
         expect(yield* git("-C", f.repoRoot, "rev-list", "--count", "HEAD")).toBe("1");
       }),
     ),
@@ -362,7 +362,7 @@ describe("upgrade", () => {
   it.scoped("refuses when origin carries no release at all", () =>
     provideReal(
       Effect.gen(function* () {
-        const f = yield* fixture([["bessemer-port-source"]], (shas) => pinOf(shas[0]!));
+        const f = yield* fixture([["speepobox-port-source"]], (shas) => pinOf(shas[0]!));
         const { exit } = yield* run(f);
         expect(refusalOf(exit)).toBe(
           "origin has no release (no vN tag) to pin; nothing to upgrade to — nothing was written",
@@ -372,12 +372,12 @@ describe("upgrade", () => {
   );
 
   describe.each([
-    ["no line", 'image-sha = "x"', "no tool-sha line in .bessemer/config.toml"],
-    ["a malformed line", "tool-sha = 'abc'", "line 2 of .bessemer/config.toml is a tool-sha line"],
+    ["no line", 'image-sha = "x"', "no tool-sha line in .speepobox/config.toml"],
+    ["a malformed line", "tool-sha = 'abc'", "line 2 of .speepobox/config.toml is a tool-sha line"],
     [
       "a duplicated line",
       `${pinOf(UNTAGGED)}\n${pinOf(UNTAGGED)}`,
-      "2 tool-sha lines in .bessemer/config.toml (line 2, line 3)",
+      "2 tool-sha lines in .speepobox/config.toml (line 2, line 3)",
     ],
   ])("on %s", (_, pinLine, sentence) => {
     it.scoped.each([{ argv: [] }, { argv: ["--to", "v1"] }])(
@@ -422,7 +422,7 @@ describe("upgrade", () => {
           selfHosted: true,
         });
         expect(refusalOf(exit)).toBe(
-          `upgrade refused: ${repoRoot} is the repo bessemer itself lives in — its checked-out branch chooses the dispatcher, and there is no pin — nothing was written`,
+          `upgrade refused: ${repoRoot} is the repo speepobox itself lives in — its checked-out branch chooses the dispatcher, and there is no pin — nothing was written`,
         );
       }),
     ),

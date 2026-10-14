@@ -14,7 +14,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Effect, Either, Exit, Layer, Option, Ref, Schema } from "effect";
-import { BessemerConfig, type BessemerConfigShape, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, type SpeepoboxConfigShape, defaultConfig } from "../src/config/config.ts";
 import { planFor, specDispatch } from "../src/dispatch/plan.ts";
 import { runInScope } from "../src/dispatch/run.ts";
 import { RepoUrl } from "../src/git/repo-url.ts";
@@ -40,8 +40,8 @@ import { fakeNotifier } from "./support/notifier-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
 const REPO_ROOT = "/srv/hae";
-const CHECKOUT = "/srv/bessemer/checkouts/bessemer-t6";
-const CONTAINER = "bessemer-bessemer-t6";
+const CHECKOUT = "/srv/speepobox/checkouts/speepobox-t6";
+const CONTAINER = "speepobox-speepobox-t6";
 const CONTAINER_ID = "d15c0ffee1d";
 // The setup hook the scoped cases below declare, named relative to the repo
 // root as a host's own config would name it (T7).
@@ -298,12 +298,12 @@ describe("the sandbox resource", () => {
         Effect.gen(function* () {
           const sandbox = yield* Sandbox;
           const handle = yield* sandbox.run(spec);
-          yield* sandbox.exec(handle, ["bash", "/bessemer/setup.sh"]);
+          yield* sandbox.exec(handle, ["bash", "/speepobox/setup.sh"]);
         }),
       ).pipe(Effect.provide(scratch.layer));
 
       const commands = yield* Ref.get(scratch.commands);
-      expect(commands[1]).toBe(`docker exec ${CONTAINER_ID} bash /bessemer/setup.sh`);
+      expect(commands[1]).toBe(`docker exec ${CONTAINER_ID} bash /speepobox/setup.sh`);
       // Addressed by id, and detached from nothing: a `-d` here would spawn a
       // child no scope owns.
       expect(commands[1]).not.toContain(" -d");
@@ -325,7 +325,7 @@ describe("the sandbox resource", () => {
           Effect.gen(function* () {
             const sandbox = yield* Sandbox;
             const handle = yield* sandbox.run(spec);
-            return yield* sandbox.exec(handle, ["bash", "/bessemer/setup.sh"]);
+            return yield* sandbox.exec(handle, ["bash", "/speepobox/setup.sh"]);
           }),
         ),
       ).pipe(Effect.provide(scratch.layer));
@@ -333,7 +333,7 @@ describe("the sandbox resource", () => {
       expect(Either.isLeft(outcome)).toBe(true);
       if (Either.isLeft(outcome)) {
         expect(outcome.left._tag).toBe("SandboxError");
-        expect(outcome.left.detail).toContain("'bash /bessemer/setup.sh' exited 3");
+        expect(outcome.left.detail).toContain("'bash /speepobox/setup.sh' exited 3");
         expect(outcome.left.detail).toContain(`the sandbox '${CONTAINER}'`);
         expect(outcome.left.detail).toContain("pg_isready: not found");
         // The daemon still holds this container, so the command died on its
@@ -366,7 +366,7 @@ describe("the sandbox resource", () => {
           Effect.gen(function* () {
             const sandbox = yield* Sandbox;
             const handle = yield* sandbox.run(spec);
-            return yield* sandbox.exec(handle, ["bash", "/bessemer/setup.sh"]);
+            return yield* sandbox.exec(handle, ["bash", "/speepobox/setup.sh"]);
           }),
         ),
       ).pipe(Effect.provide(scratch.layer));
@@ -398,7 +398,7 @@ describe("the sandbox resource", () => {
           Effect.gen(function* () {
             const sandbox = yield* Sandbox;
             const handle = yield* sandbox.run(spec);
-            return yield* sandbox.exec(handle, ["bash", "/bessemer/setup.sh"]);
+            return yield* sandbox.exec(handle, ["bash", "/speepobox/setup.sh"]);
           }),
         ),
       ).pipe(Effect.provide(scratch.layer));
@@ -416,15 +416,15 @@ describe("the sandbox resource", () => {
   it.effect("removes a container by handle, and types a refusal to", () =>
     Effect.gen(function* () {
       const scratch = yield* world({
-        "docker rm": { exit: 1, stderr: "No such container: bessemer-gone\n" },
+        "docker rm": { exit: 1, stderr: "No such container: speepobox-gone\n" },
       });
       const outcome = yield* Effect.either(
         Effect.flatMap(Sandbox, (sandbox) =>
-          sandbox.remove({ name: "bessemer-gone", id: "bessemer-gone" }),
+          sandbox.remove({ name: "speepobox-gone", id: "speepobox-gone" }),
         ),
       ).pipe(Effect.provide(scratch.layer));
 
-      expect(yield* Ref.get(scratch.commands)).toEqual(["docker rm -fv bessemer-gone"]);
+      expect(yield* Ref.get(scratch.commands)).toEqual(["docker rm -fv speepobox-gone"]);
       expect(Either.isLeft(outcome)).toBe(true);
       if (Either.isLeft(outcome)) {
         expect(outcome.left._tag).toBe("SandboxError");
@@ -444,7 +444,7 @@ describe("the sandbox resource", () => {
 // T18's subject — but the lock, the ledger row, and the docker argv are real.
 const scoped = (
   script: Record<string, ScriptedResult> = happyScript,
-  config: Partial<BessemerConfigShape> = {},
+  config: Partial<SpeepoboxConfigShape> = {},
 ) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
@@ -461,7 +461,7 @@ const scoped = (
 
     const plan = planFor({
       ...specDispatch(`${repoRoot}/tasks/T6.md`),
-      branch: "bessemer-t6",
+      branch: "speepobox-t6",
       baseRef: "origin/master",
       baseSha: "1111111111111111111111111111111111111111",
       mergeBaseSha: "2222222222222222222222222222222222222222",
@@ -483,7 +483,7 @@ const scoped = (
         NodeFileSystem.layer,
         NodePath.layer,
         scriptedExecutor(script, commands),
-        Layer.succeed(BessemerConfig, {
+        Layer.succeed(SpeepoboxConfig, {
           ...defaultConfig,
           runtimeRoot,
           capAdd: ["CHOWN"],
@@ -548,7 +548,7 @@ describe("the sandbox inside the run's scope", () => {
   );
 
   // The setup hook, end to end (T7): the config names a host script, the
-  // container gets it read-only under `/bessemer`, and the run runs it there
+  // container gets it read-only under `/speepobox`, and the run runs it there
   // through `Sandbox.exec` — the same path, derived once, in the mount and in
   // the command alike.
   it.scoped("mounts the declared setup hook read-only and runs it in the container", () =>
@@ -837,10 +837,10 @@ describe("the sandbox inside the run's scope", () => {
 // `SandboxError` carrying that stderr.
 const buildSpec = (seen: Ref.Ref<ReadonlyArray<string>>) => ({
   tag: "hae-agentbox",
-  context: "/srv/hae/.bessemer/image",
-  dockerfile: "/srv/hae/.bessemer/image/Dockerfile",
+  context: "/srv/hae/.speepobox/image",
+  dockerfile: "/srv/hae/.speepobox/image/Dockerfile",
   buildArgs: { AGENT_UID: "501", AGENT_GID: "20" },
-  labels: { "bessemer.inputs": ".bessemer/image/Dockerfile", "bessemer.inputs.digest": "d" },
+  labels: { "speepobox.inputs": ".speepobox/image/Dockerfile", "speepobox.inputs.digest": "d" },
   onOutput: (line: string) => Ref.update(seen, (current) => [...current, line]),
 });
 
@@ -856,10 +856,10 @@ describe("the image build", () => {
       );
 
       expect(yield* Ref.get(scratch.commands)).toEqual([
-        "docker build --file /srv/hae/.bessemer/image/Dockerfile --tag hae-agentbox" +
+        "docker build --file /srv/hae/.speepobox/image/Dockerfile --tag hae-agentbox" +
           " --build-arg AGENT_UID=501 --build-arg AGENT_GID=20" +
-          " --label bessemer.inputs=.bessemer/image/Dockerfile --label bessemer.inputs.digest=d" +
-          " /srv/hae/.bessemer/image",
+          " --label speepobox.inputs=.speepobox/image/Dockerfile --label speepobox.inputs.digest=d" +
+          " /srv/hae/.speepobox/image",
       ]);
       expect((yield* Ref.get(seen)).toSorted()).toEqual(["#1 load", "#2 done", "sha256:feed"]);
       // The layer emits nothing of its own: the callback is the caller's.

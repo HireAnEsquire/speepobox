@@ -1,11 +1,11 @@
-// `bessemer image build` (SPEC §7, T111): the served repo's agent image, built
+// `speepobox image build` (SPEC §7, T111): the served repo's agent image, built
 // by the package itself, so every adopter's image carries labels made by the
 // one recipe probe 2 checks them with. Each repo used to keep its own bash
 // copy of the build and the digest recipe, and a change to the recipe would
 // have left every one of them reporting a stale image for good.
 //
 // It is on the **dispatch surface**, not the read-only slice: it reads `image`
-// off `BessemerConfig`, so a config that does not decode stops it at layer
+// off `SpeepoboxConfig`, so a config that does not decode stops it at layer
 // build as it stops a dispatch. Its words are `image build` and nothing else —
 // a rehearsal of a build has nothing to show that the command line does not
 // already say, so the rehearsal flag is refused here as any unknown word is.
@@ -14,18 +14,18 @@
 // calls this command; that wrapper is what its `image-build-command` names.
 import { FileSystem, Path } from "@effect/platform";
 import { Data, Effect, Either, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
-import { BESSEMER_DIRNAME } from "../config/paths.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
+import { SPEEPOBOX_DIRNAME } from "../config/paths.ts";
 import { Reporter } from "../reporter.ts";
 import { Sandbox, type SandboxError } from "../sandbox/sandbox.ts";
 import { INPUTS_DIGEST_LABEL, INPUTS_LABEL, inputsDigest, parseInputsList } from "./inputs.ts";
 
-export const IMAGE_USAGE = "bessemer image build";
+export const IMAGE_USAGE = "speepobox image build";
 
 // The image's directory, repo-relative and `/`-separated: the build context,
 // the home of the Dockerfile, and of the input list. The context is this and
 // never the repo root, which holds `checkouts/` — the clones of other runs.
-export const IMAGE_DIR = `${BESSEMER_DIRNAME}/image`;
+export const IMAGE_DIR = `${SPEEPOBOX_DIRNAME}/image`;
 export const DOCKERFILE = `${IMAGE_DIR}/Dockerfile`;
 export const INPUTS_LIST = `${IMAGE_DIR}/inputs`;
 
@@ -75,11 +75,11 @@ export const imageBuild = (
 ): Effect.Effect<
   void,
   ImageBuildRefused | SandboxError,
-  BessemerConfig | Sandbox | Reporter | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Sandbox | Reporter | FileSystem.FileSystem | Path.Path
 > =>
   Effect.gen(function* () {
     yield* parseImageArgv(params.argv);
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const sandbox = yield* Sandbox;
     const reporter = yield* Reporter;
     const fs = yield* FileSystem.FileSystem;

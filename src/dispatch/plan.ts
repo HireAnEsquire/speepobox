@@ -12,7 +12,7 @@ import { RunIdentity } from "../ledger/record.ts";
 
 // The container name is for humans only — ownership is declared by label and
 // never inferred from a name (ownership/labels.ts, design rule 3).
-export const CONTAINER_PREFIX = "bessemer-";
+export const CONTAINER_PREFIX = "speepobox-";
 export const CHECKOUTS_DIRNAME = "checkouts";
 export const LOGS_DIRNAME = "logs";
 export const LOCKS_DIRNAME = "locks";
@@ -67,7 +67,7 @@ export const lockPathFor = (runtimeRoot: string, slug: string): string =>
 // the next one.
 //
 // Under `locks/`, beside the lock the run holds while it writes, and not at the
-// runtime root's top: the default root is the served repo's `.bessemer/`, and a
+// runtime root's top: the default root is the served repo's `.speepobox/`, and a
 // loose file there is an untracked file in that repo. The suffix is neither
 // `.pid` nor `.evicting`, so the lock scans skip it the way they skip
 // `claim.ts`'s temp file.

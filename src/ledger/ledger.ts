@@ -1,5 +1,5 @@
 // The `Ledger` tag (SPEC §3): the durable outcome record at `runs.jsonl`
-// under the runtime root (T57 — the served repo's bessemer directory, unless a
+// under the runtime root (T57 — the served repo's speepobox directory, unless a
 // `runtime-root` moved the writes), gitignored and per-machine.
 //
 // Ledger content is derived state (SPEC §10): a missing file, an unreadable
@@ -8,7 +8,7 @@
 // degrades on — the outcome-row test in AGENTS.md — and never a defect.
 import { FileSystem, Path } from "@effect/platform";
 import { Context, Data, DateTime, Effect, Either, Layer, Option, Schema } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { namesId } from "../issues/issue.ts";
 import { Reporter } from "../reporter.ts";
 import { type DispatchIdentity, dispatchIdentity, formatParseError, RunRecord } from "./record.ts";
@@ -104,7 +104,7 @@ export interface LedgerShape {
 
 export class Ledger extends Context.Tag("Ledger")<Ledger, LedgerShape>() {}
 
-// A line is a bessemer record when it says so. One with no `schemaVersion`
+// A line is a speepobox record when it says so. One with no `schemaVersion`
 // is skipped like any other undecodable line: the bash adapter that once read
 // those was retired with the side-by-side comparison it served (T135).
 const decodeLine = (line: string): Either.Either<RunRecord, string> => {
@@ -120,7 +120,7 @@ const decodeLine = (line: string): Either.Either<RunRecord, string> => {
     return Either.left("not a JSON object");
   }
   if (!("schemaVersion" in value)) {
-    return Either.left("no schemaVersion — not a bessemer record");
+    return Either.left("no schemaVersion — not a speepobox record");
   }
   return Schema.decodeUnknownEither(RunRecord)(value).pipe(
     Either.mapLeft((error) => `undecodable record — ${formatParseError(error)}`),
@@ -226,11 +226,11 @@ const resumeFrom = (records: ReadonlyArray<RunRecord>, target: ResumeTarget): Re
 export const LedgerLive: Layer.Layer<
   Ledger,
   never,
-  BessemerConfig | Reporter | FileSystem.FileSystem | Path.Path
+  SpeepoboxConfig | Reporter | FileSystem.FileSystem | Path.Path
 > = Layer.effect(
   Ledger,
   Effect.gen(function* () {
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const reporter = yield* Reporter;
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;

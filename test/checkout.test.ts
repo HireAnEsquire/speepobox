@@ -13,7 +13,7 @@ import { FileSystem } from "@effect/platform";
 import { SystemError } from "@effect/platform/Error";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Effect, Either, Exit, Layer, Option, Ref, Schema } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { type HardReset, planFor, specDispatch } from "../src/dispatch/plan.ts";
 import { atStage, runInScope } from "../src/dispatch/run.ts";
 import { checkout, salvage } from "../src/dispatch/checkout.ts";
@@ -42,7 +42,7 @@ import { fakeNotifier } from "./support/notifier-fake.ts";
 import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t18";
+const BRANCH = "speepobox-t18";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
 
@@ -213,7 +213,7 @@ const world = (
       Layer.mergeAll(
         files,
         NodePath.layer,
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) => Ref.update(events, (current) => [...current, event]),
         }),
@@ -1072,7 +1072,7 @@ describe("the checkout resource", () => {
           _tag: "SetConfig",
           repo: scratch.plan.checkoutPath,
           key: "user.email",
-          value: "bessemer@users.noreply.github.com",
+          value: "speepobox@users.noreply.github.com",
         },
       ]);
       // And the run went through: an unset key is an answer, so nothing here

@@ -34,7 +34,7 @@ import { basename } from "node:path";
 import { FileSystem, Path } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import { Effect, Either, Option } from "effect";
-import { BESSEMER_DIRNAME } from "../config/paths.ts";
+import { SPEEPOBOX_DIRNAME } from "../config/paths.ts";
 import type { DispatcherRevision } from "../git/dispatcher-revision.ts";
 import { Git } from "../git/git.ts";
 import { releaseAt, type Release } from "../git/releases.ts";
@@ -72,13 +72,13 @@ export interface InitOptions {
   readonly headReleases: Option.Option<ReadonlyArray<Release>>;
 }
 
-// The empty file that makes `.bessemer/tasks/`, the directory the config's
+// The empty file that makes `.speepobox/tasks/`, the directory the config's
 // `tasks-dir` names, so `doctor`'s probe 8 is green on a fresh scaffold.
 const TASKS_KEEP = "tasks/.gitkeep";
 
 const CONFIG = "config.toml";
 
-// What the scaffold holds, by its path under the bessemer directory, in the
+// What the scaffold holds, by its path under the speepobox directory, in the
 // order it is reported.
 const SCAFFOLD: ReadonlyArray<string> = [CONFIG, ...STAMPED_TEMPLATES, TASKS_KEEP];
 
@@ -159,7 +159,7 @@ interface ToolSha {
 const emptyPin = (why: string): ToolSha => ({
   value: { value: "", source: "package revision" },
   warning: Option.some(
-    `tool-sha is written empty: ${why} — set it by hand to a pushed bessemer revision`,
+    `tool-sha is written empty: ${why} — set it by hand to a pushed speepobox revision`,
   ),
 });
 
@@ -176,11 +176,11 @@ const resolveToolSha = (
   headReleases: Option.Option<ReadonlyArray<Release>>,
 ): ToolSha => {
   if (Option.isNone(revision)) {
-    return emptyPin("this bessemer's revision could not be read");
+    return emptyPin("this speepobox's revision could not be read");
   }
   if (revision.value.dirty) {
     return emptyPin(
-      `this bessemer's source is dirty at ${revision.value.revision}, so no revision names what is running`,
+      `this speepobox's source is dirty at ${revision.value.revision}, so no revision names what is running`,
     );
   }
   const { sha, revision: short } = revision.value;
@@ -191,7 +191,7 @@ const resolveToolSha = (
     value: { value: sha, source: "package revision" },
     warning: unreleased
       ? Option.some(
-          `tool-sha pins ${short}, and no v<N> tag points at it, so it is not a bessemer release — ` +
+          `tool-sha pins ${short}, and no v<N> tag points at it, so it is not a speepobox release — ` +
             "`upgrade` moves a pin only between releases",
         )
       : Option.none(),
@@ -224,15 +224,15 @@ export const init = (
     }
     if (options.selfHosted) {
       return yield* new InitRefused({
-        detail: `init refused: ${options.repoRoot} is the repo bessemer itself lives in, and it is not scaffolded — nothing was written`,
+        detail: `init refused: ${options.repoRoot} is the repo speepobox itself lives in, and it is not scaffolded — nothing was written`,
       });
     }
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const targets = SCAFFOLD.map((name) => ({
       name,
-      shown: `${BESSEMER_DIRNAME}/${name}`,
-      at: path.join(options.repoRoot, BESSEMER_DIRNAME, name),
+      shown: `${SPEEPOBOX_DIRNAME}/${name}`,
+      at: path.join(options.repoRoot, SPEEPOBOX_DIRNAME, name),
     }));
 
     // Every existing target is looked at before anything is written, so a

@@ -20,7 +20,7 @@ import {
   type ReviewRound,
   type ReviewVerdict,
 } from "../src/agent/verdict.ts";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { planFor, specDispatch } from "../src/dispatch/plan.ts";
 import { runInScope } from "../src/dispatch/run.ts";
 import { Ledger } from "../src/ledger/ledger.ts";
@@ -37,7 +37,7 @@ import { fakeNotifier } from "./support/notifier-fake.ts";
 import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t10";
+const BRANCH = "speepobox-t10";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
 
 interface ReviewWorld {
@@ -99,7 +99,7 @@ const world = (options: ReviewWorld = {}) =>
       Layer.mergeAll(
         NodeFileSystem.layer,
         NodePath.layer,
-        Layer.succeed(BessemerConfig, {
+        Layer.succeed(SpeepoboxConfig, {
           ...defaultConfig,
           runtimeRoot,
           ...(options.maxReviewRounds === undefined

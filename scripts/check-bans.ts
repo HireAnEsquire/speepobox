@@ -8,7 +8,7 @@
 //      Ownership is declared by label, never inferred from a name (design
 //      rule 3); prefix sweeping of `agentbox-*` is retired everywhere,
 //      including gc. The old spelling is the right one here and stays: the
-//      sweep that was retired is bash's, and `bessemer-*` was never swept,
+//      sweep that was retired is bash's, and `speepobox-*` was never swept,
 //      so it has no retirement to record. T65 moved this line and put the
 //      sentence at odds with its two other copies (`ownership/labels.ts:4`,
 //      SPEC §7); restored on review.
@@ -125,7 +125,7 @@ const violationsIn = (file: string): Array<Violation> => {
       found.push({
         file,
         line,
-        ban: "ownership queries must filter on the bessemer.managed/bessemer.repo labels, never on container name",
+        ban: "ownership queries must filter on the speepobox.managed/speepobox.repo labels, never on container name",
       });
     }
   });

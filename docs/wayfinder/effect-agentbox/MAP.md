@@ -1031,3 +1031,5 @@ hae install gate, the HITL install that holds the runbook (not carried), and thr
 [T136](issues/T136-setup-that-needs-root-is-documented.md), the root pattern for adopters; and
 [T137](issues/T137-the-parity-oracle-retires.md), the oracle's deletion. The last two wait on
 the hae install gate. The map closes, as a planning edit, once T135–T137 have merged.
+
+**Status 2026-10-14: the tool took the name `speepobox` (T144).** Code, tests and the living documents were swept, and the history documents were not.

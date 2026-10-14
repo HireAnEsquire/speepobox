@@ -1,6 +1,6 @@
-# bessemer-template: image/inputs v1 sha256:dbbcbcae3528
+# speepobox-template: image/inputs v2 sha256:250e7d21ead1
 # The files this repo's agent image is built from, beyond the Dockerfile.
-# `bessemer image build` hashes them into the image's labels, and `doctor`
+# `speepobox image build` hashes them into the image's labels, and `doctor`
 # recomputes that digest to tell whether the image is stale.
 #
 # One exact repo-relative path per line. No globs. Blank lines and `#`

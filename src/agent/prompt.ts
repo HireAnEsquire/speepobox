@@ -31,7 +31,7 @@ export const DESCRIBE_PR_PROMPT = "describe-pr";
 
 // A name under a root, and the whole of the layout both arms of the precedence
 // chain share (T14). The client arm is this expression against the served
-// repo's bessemer directory (T59); the package arm is the same expression
+// repo's speepobox directory (T59); the package arm is the same expression
 // against the package root.
 export const promptPathIn = (root: string, name: string): string =>
   join(root, PROMPTS_DIRNAME, `${name}.md`);

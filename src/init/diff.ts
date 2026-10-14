@@ -13,7 +13,7 @@
 // also asked for its owner's execute bit (T127), which is not drift.
 import { FileSystem, Path } from "@effect/platform";
 import { Effect, Option } from "effect";
-import { BESSEMER_DIRNAME } from "../config/paths.ts";
+import { SPEEPOBOX_DIRNAME } from "../config/paths.ts";
 import { InitRefused } from "./argv.ts";
 import { unifiedDiff } from "./line-diff.ts";
 import { countsAsDrift, isNotExecutable, type DriftFile, type StampedDrift } from "./snapshot.ts";
@@ -85,7 +85,7 @@ export const driftOf = (input: {
   };
 };
 
-const shown = (name: string): string => `${BESSEMER_DIRNAME}/${name}`;
+const shown = (name: string): string => `${SPEEPOBOX_DIRNAME}/${name}`;
 
 export interface InitDiffOptions {
   readonly repoRoot: string;
@@ -101,7 +101,7 @@ export const scaffoldDrift = (
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const at = (name: string) => path.join(options.repoRoot, BESSEMER_DIRNAME, name);
+    const at = (name: string) => path.join(options.repoRoot, SPEEPOBOX_DIRNAME, name);
     // Repo-relative where the package sits inside the served repo — the
     // self-hosted case, whose remedy names it — and absolute otherwise.
     const shownTemplate = (file: string) => {

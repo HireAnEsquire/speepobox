@@ -1,9 +1,9 @@
 import { ConfigFile } from "@effect/cli";
 import type { FileSystem, Path } from "@effect/platform";
 import { Config, ConfigProvider, Context, Data, Effect, Layer } from "effect";
-import { bessemerDir, resolveRuntimeRoot } from "./paths.ts";
+import { speepoboxDir, resolveRuntimeRoot } from "./paths.ts";
 
-export interface BessemerConfigShape {
+export interface SpeepoboxConfigShape {
   // The agent image's tag. No code default (T40): an image is built by one
   // repo's script out of one repo's files, so it is that repo's to name — the
   // rule `imageBuildCommand` states below.
@@ -64,7 +64,7 @@ export interface BessemerConfigShape {
   // One path and not a list, because a list-valued key merges per index
   // across the config layers (AGENTS.md's `cap-add` ruling).
   //
-  // **Bessemer never opens the file; docker reads it** — the path is all this
+  // **Speepobox never opens the file; docker reads it** — the path is all this
   // record ever holds.
   readonly sandboxEnvFile: string;
   readonly notify: "off" | "end" | "steps";
@@ -74,7 +74,7 @@ export interface BessemerConfigShape {
 
 // Keys carried over from bash (run.sh:202-221) —
 // every one of them but `runtimeRoot`, which is not a constant (T57): it
-// defaults to the served repo's bessemer directory, so it cannot be answered
+// defaults to the served repo's speepobox directory, so it cannot be answered
 // without being told which repo is served. `defaultConfigFor` below is the
 // whole record; this one is what a caller spreads when it is supplying a
 // runtime root of its own.
@@ -84,7 +84,7 @@ export interface BessemerConfigShape {
 // this package, and the descriptor below gives none of them a value of its
 // own. They keep fields because `defaultConfigFor` spreads this record into
 // the degraded config `app.ts` falls back to on a failed decode.
-export const defaultConfig: Omit<BessemerConfigShape, "runtimeRoot"> = {
+export const defaultConfig: Omit<SpeepoboxConfigShape, "runtimeRoot"> = {
   image: "",
   imageBuildCommand: "",
   base: "",
@@ -104,9 +104,9 @@ export const defaultConfig: Omit<BessemerConfigShape, "runtimeRoot"> = {
 // key that is a fact about the repo being served. This is what the tolerant
 // layer degrades to on a failed decode — a degraded config still has to know
 // where writes go, and the answer is the same directory a good decode gives.
-export const defaultConfigFor = (repoRoot: string): BessemerConfigShape => ({
+export const defaultConfigFor = (repoRoot: string): SpeepoboxConfigShape => ({
   ...defaultConfig,
-  runtimeRoot: bessemerDir(repoRoot),
+  runtimeRoot: speepoboxDir(repoRoot),
 });
 
 // Malformed or schema-violating config, at startup (SPEC §3). `detail` is the
@@ -124,10 +124,10 @@ export const parseCapAdd = (value: string): ReadonlyArray<string> =>
     .filter((capability) => capability !== "");
 
 // Built per served repo, because two of `runtime-root`'s answers depend on
-// one: the default is that repo's bessemer directory, and a configured value
+// one: the default is that repo's speepobox directory, and a configured value
 // that is relative resolves against that repo rather than against whatever
 // directory the operator's shell happened to be standing in (19 §1).
-const descriptorFor = (repoRoot: string): Config.Config<BessemerConfigShape> =>
+const descriptorFor = (repoRoot: string): Config.Config<SpeepoboxConfigShape> =>
   Config.all({
     // `image` and `base` take no `withDefault` (T40): a chain that answers
     // neither fails the decode, and Effect's message names the missing key.
@@ -173,10 +173,10 @@ const descriptorFor = (repoRoot: string): Config.Config<BessemerConfigShape> =>
     tasksDir: Config.string("tasks-dir").pipe(Config.withDefault(defaultConfig.tasksDir)),
     // Resolved, not taken raw: a relative `runtime-root` is anchored on the
     // served repo, exactly as `tasks-dir` and `setup-hook` are. The default
-    // needs no resolving — `bessemerDir` already answers absolutely.
+    // needs no resolving — `speepoboxDir` already answers absolutely.
     runtimeRoot: Config.string("runtime-root").pipe(
       Config.map((value) => resolveRuntimeRoot(repoRoot, value)),
-      Config.withDefault(bessemerDir(repoRoot)),
+      Config.withDefault(speepoboxDir(repoRoot)),
     ),
   });
 
@@ -185,7 +185,7 @@ export interface ConfigSources {
   // every other source. Keys are the config key names (e.g. "image").
   readonly flags?: ReadonlyMap<string, string>;
   // Environment provider, injectable for tests. The real one reads
-  // `BESSEMER_*` variables (constant-cased, nested under the prefix).
+  // `SPEEPOBOX_*` variables (constant-cased, nested under the prefix).
   readonly env?: ConfigProvider.ConfigProvider;
 }
 
@@ -201,12 +201,12 @@ export const configProviderChain = (
   sources?: ConfigSources,
 ): Effect.Effect<ConfigProvider.ConfigProvider, ConfigError, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function* () {
-    const root = bessemerDir(repoRoot);
+    const root = speepoboxDir(repoRoot);
     const flags = ConfigProvider.fromMap(new Map(sources?.flags ?? []));
     // nested first, constantCase second: the case mapping must cover the
-    // nested prefix too, so "max-review-rounds" reads BESSEMER_MAX_REVIEW_ROUNDS.
+    // nested prefix too, so "max-review-rounds" reads SPEEPOBOX_MAX_REVIEW_ROUNDS.
     const env = (sources?.env ?? ConfigProvider.fromEnv()).pipe(
-      ConfigProvider.nested("bessemer"),
+      ConfigProvider.nested("speepobox"),
       ConfigProvider.constantCase,
     );
     const fileProvider = (fileName: string) =>
@@ -220,13 +220,13 @@ export const configProviderChain = (
     );
   }).pipe(Effect.mapError((error) => new ConfigError({ detail: error.message })));
 
-// The decode, once. Dispatch startup runs this inside bessemerConfigLiveFor so a
+// The decode, once. Dispatch startup runs this inside speepoboxConfigLiveFor so a
 // malformed config fails before the run exists; doctor runs it directly and
 // reports the outcome as probe 7 instead of dying on it.
 export const loadConfig = (
   repoRoot: string,
   sources?: ConfigSources,
-): Effect.Effect<BessemerConfigShape, ConfigError, FileSystem.FileSystem | Path.Path> =>
+): Effect.Effect<SpeepoboxConfigShape, ConfigError, FileSystem.FileSystem | Path.Path> =>
   configProviderChain(repoRoot, sources).pipe(
     Effect.flatMap((provider) =>
       descriptorFor(repoRoot).pipe(
@@ -236,9 +236,9 @@ export const loadConfig = (
     ),
   );
 
-export class BessemerConfig extends Context.Tag("BessemerConfig")<
-  BessemerConfig,
-  BessemerConfigShape
+export class SpeepoboxConfig extends Context.Tag("SpeepoboxConfig")<
+  SpeepoboxConfig,
+  SpeepoboxConfigShape
 >() {}
 
 // One layer decodes the chain once into the tag (05 Q7); call sites read the
@@ -250,7 +250,7 @@ export class BessemerConfig extends Context.Tag("BessemerConfig")<
 // asks git anything about, where this layer already reads the host filesystem
 // at a root, every command composing it reads the config it decodes, and the
 // root it reads at is precisely the fact that says which repo is being served.
-export const bessemerConfigLiveFor = (
+export const speepoboxConfigLiveFor = (
   repoRoot: string,
-): Layer.Layer<BessemerConfig, ConfigError, FileSystem.FileSystem | Path.Path> =>
-  Layer.effect(BessemerConfig, loadConfig(repoRoot));
+): Layer.Layer<SpeepoboxConfig, ConfigError, FileSystem.FileSystem | Path.Path> =>
+  Layer.effect(SpeepoboxConfig, loadConfig(repoRoot));

@@ -37,7 +37,7 @@ describe("isReleaseTag", () => {
     expect(isReleaseTag(name)).toBe(true);
   });
 
-  it.each(["v0", "v01", "v1.2", "V1", "bessemer-port-source", "clack-picker-prototype"])(
+  it.each(["v0", "v01", "v1.2", "V1", "speepobox-port-source", "clack-picker-prototype"])(
     "refuses %s",
     (name) => {
       expect(isReleaseTag(name)).toBe(false);
@@ -52,8 +52,8 @@ describe("parseLsRemoteTags", () => {
     `${TAG_OBJECT}\trefs/tags/v1`,
     `${A}\trefs/tags/v1^{}`,
     `${B}\trefs/tags/v2`,
-    `${OTHER_TAG_OBJECT}\trefs/tags/bessemer-port-source`,
-    `${A}\trefs/tags/bessemer-port-source^{}`,
+    `${OTHER_TAG_OBJECT}\trefs/tags/speepobox-port-source`,
+    `${A}\trefs/tags/speepobox-port-source^{}`,
     `${"d".repeat(40)}\trefs/tags/v3`,
     `${C}\trefs/tags/v3^{}`,
     `${C}\trefs/tags/v4`,
@@ -137,7 +137,7 @@ const fixture = Effect.gen(function* () {
   yield* git("-C", upstream, "commit", "-q", "--allow-empty", "-m", "one");
   const first = yield* git("-C", upstream, "rev-parse", "HEAD");
   yield* git("-C", upstream, "tag", "-a", "-m", "v1", "v1");
-  yield* git("-C", upstream, "tag", "bessemer-port-source");
+  yield* git("-C", upstream, "tag", "speepobox-port-source");
   yield* git("-C", upstream, "commit", "-q", "--allow-empty", "-m", "two");
   const second = yield* git("-C", upstream, "rev-parse", "HEAD");
   yield* git("-C", upstream, "tag", "v2");
@@ -184,18 +184,18 @@ describe("readRemoteReleases", () => {
     Effect.gen(function* () {
       const environments = yield* Ref.make<ReadonlyArray<Record<string, string>>>([]);
       const commands = yield* Ref.make<ReadonlyArray<string>>([]);
-      yield* readRemoteReleases("/srv/bessemer").pipe(
+      yield* readRemoteReleases("/srv/speepobox").pipe(
         Effect.provide(
           scriptedExecutor(
             {
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --get-url origin": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --get-url origin": {
                 stdout: "https://github.com/HireAnEsquire/speepobox.git\n",
               },
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git -c": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git -c": {
                 exit: 128,
                 stderr: "fatal: gh said no\n",
               },
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --tags origin": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --tags origin": {
                 stdout: "",
               },
             },
@@ -206,10 +206,10 @@ describe("readRemoteReleases", () => {
         ),
       );
       expect(yield* Ref.get(commands)).toEqual([
-        "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --get-url origin",
-        "git -C /srv/bessemer --git-dir=/srv/bessemer/.git -c credential.https://github.com.helper= " +
+        "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --get-url origin",
+        "git -C /srv/speepobox --git-dir=/srv/speepobox/.git -c credential.https://github.com.helper= " +
           "-c credential.https://github.com.helper=!gh auth git-credential ls-remote --tags origin",
-        "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --tags origin",
+        "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --tags origin",
       ]);
       const spawned = yield* Ref.get(environments);
       expect(spawned.map((env) => env["GIT_TERMINAL_PROMPT"])).toEqual([undefined, "0", "0"]);
@@ -219,17 +219,17 @@ describe("readRemoteReleases", () => {
   it.effect("quotes both attempts and names gh auth login, then setup-git", () =>
     Effect.gen(function* () {
       const error = yield* Effect.flip(
-        readRemoteReleases("/srv/bessemer").pipe(
+        readRemoteReleases("/srv/speepobox").pipe(
           Effect.provide(
             scriptedExecutor({
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --get-url origin": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --get-url origin": {
                 stdout: "https://github.com/HireAnEsquire/speepobox.git\n",
               },
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git -c": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git -c": {
                 exit: 128,
                 stderr: "fatal: could not read Username for 'https://github.com': one\n",
               },
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote --tags origin": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote --tags origin": {
                 exit: 128,
                 stderr: "fatal: could not read Username for 'https://github.com': two\n",
               },
@@ -248,10 +248,10 @@ describe("readRemoteReleases", () => {
   it.effect("fails with a nonzero git's fatal line", () =>
     Effect.gen(function* () {
       const exit = yield* Effect.exit(
-        readRemoteReleases("/srv/bessemer").pipe(
+        readRemoteReleases("/srv/speepobox").pipe(
           Effect.provide(
             scriptedExecutor({
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote": {
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote": {
                 exit: 128,
                 stderr:
                   "fatal: could not read Username for 'https://github.com': terminal prompts disabled\n",
@@ -279,10 +279,10 @@ describe("readRemoteReleases", () => {
   it.effect("times out after 10 s", () =>
     Effect.gen(function* () {
       const fiber = yield* Effect.fork(
-        readRemoteReleases("/srv/bessemer").pipe(
+        readRemoteReleases("/srv/speepobox").pipe(
           Effect.provide(
             scriptedExecutor({
-              "git -C /srv/bessemer --git-dir=/srv/bessemer/.git ls-remote": { hangs: true },
+              "git -C /srv/speepobox --git-dir=/srv/speepobox/.git ls-remote": { hangs: true },
             }),
           ),
         ),
@@ -327,7 +327,7 @@ describe("readRemoteReleases' credential (T132)", () => {
   const CANNED: Credential = { username: "x-access-token", password: "canned" };
 
   const gitOnly = Effect.sync(() => {
-    const dir = mkdtempSync(join(tmpdir(), "bessemer-git-only-"));
+    const dir = mkdtempSync(join(tmpdir(), "speepobox-git-only-"));
     const found = (process.env["PATH"] ?? "")
       .split(delimiter)
       .map((entry) => join(entry, "git"))
@@ -422,11 +422,11 @@ describe("credentialOrigin", () => {
   it.each([
     ["https://github.com/HireAnEsquire/speepobox.git\n", Option.some("https://github.com")],
     ["https://someone@github.com/x/y.git", Option.some("https://github.com")],
-    ["http://127.0.0.1:8080/bessemer.git", Option.some("http://127.0.0.1:8080")],
+    ["http://127.0.0.1:8080/speepobox.git", Option.some("http://127.0.0.1:8080")],
     ["git@github.com:HireAnEsquire/speepobox.git", Option.none()],
     ["ssh://git@github.com/HireAnEsquire/speepobox.git", Option.none()],
-    ["file:///srv/bessemer.git", Option.none()],
-    ["/srv/bessemer.git", Option.none()],
+    ["file:///srv/speepobox.git", Option.none()],
+    ["/srv/speepobox.git", Option.none()],
   ])("%s", (url, expected) => {
     expect(credentialOrigin(url)).toEqual(expected);
   });

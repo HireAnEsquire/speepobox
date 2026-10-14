@@ -1,15 +1,22 @@
 #!/bin/sh
-# The bessemer shim (T125, T126): reads this repo's pin and runs the package
+# The speepobox shim (T125, T126): reads this repo's pin and runs the package
 # cache entry for it, building the entry first when it is missing. Commit it at
-# .bessemer/bessemer; the repo it serves is the directory above that
-# .bessemer/, wherever you run it from.
+# .speepobox/speepobox; the repo it serves is the directory above that
+# .speepobox/, wherever you run it from.
 #
 # POSIX sh only. Every refusal is one line on stderr, `!! [<kind>] <fix>`, and
 # exit 1. The pin grammar is SPEC §6's, the same one the package reads.
 set -u
 
 # The release this shim fetches. A fork edits this line.
-RELEASE_URL='https://github.com/HireAnEsquire/bessemer.git'
+RELEASE_URL='https://github.com/HireAnEsquire/speepobox.git'
+# Its parts, derived rather than written twice: the origin git looks a
+# credential up under, its host, and the `owner/name` the GitHub API spells.
+release_rest=${RELEASE_URL#*://}
+release_host=${release_rest%%/*}
+release_origin=${RELEASE_URL%%://*}://$release_host
+release_repo=${release_rest#*/}
+release_repo=${release_repo%.git}
 
 refuse() {
   printf '!! [%s] %s\n' "$1" "$2" >&2
@@ -33,7 +40,7 @@ command -v git >/dev/null 2>&1 ||
 command -v npm >/dev/null 2>&1 ||
   refuse npm 'npm is not on the PATH — install npm (it ships with node)'
 
-# 2. The served repo: the directory above this shim's own .bessemer/, made
+# 2. The served repo: the directory above this shim's own .speepobox/, made
 # absolute. Never the working directory, and nothing walks up.
 case $0 in
   */*) shim_dir=${0%/*} ;;
@@ -48,9 +55,9 @@ repo=$(CDPATH='' cd -- "$shim_dir/.." && pwd) ||
 # stops the scan, because a malformed line wins over everything. LC_ALL=C:
 # in a UTF-8 locale `[[:blank:]]` also matches Unicode spaces the package's
 # grammar does not, and the two must never disagree.
-config=$repo/.bessemer/config.toml
+config=$repo/.speepobox/config.toml
 [ -f "$config" ] && [ -r "$config" ] ||
-  refuse no-config "no readable .bessemer/config.toml in $repo — run \`init\` (from a hand clone, on a fresh repo)"
+  refuse no-config "no readable .speepobox/config.toml in $repo — run \`init\` (from a hand clone, on a fresh repo)"
 scan=$(LC_ALL=C sed -n '
 /^tool-sha[[:blank:]]*=[[:blank:]]*"[^"]*"[[:blank:]]*$/{
 =
@@ -88,22 +95,22 @@ $scan
 EOF
 
 expected='tool-sha = "<40-hex sha>"'
-unfetchable="find a release's full SHA with \`git ls-remote --tags $RELEASE_URL\` and copy the SHA on its \`vN^{}\` line onto the tool-sha line, or run \`upgrade --to vN\` from a hand clone of bessemer"
+unfetchable="find a release's full SHA with \`gh api --paginate repos/$release_repo/tags --jq '.[] | \"\\(.commit.sha) \\(.name)\"'\` and copy the SHA on its \`vN\` line onto the tool-sha line, or run \`upgrade --to vN\` from a hand clone of speepobox"
 
 [ -z "$malformed_line" ] ||
-  refuse malformed "line $malformed_line of .bessemer/config.toml is a tool-sha line the pin grammar cannot read (\`$malformed_text\`) — write it exactly as \`$expected\`: unindented, double-quoted, with no trailing comment"
+  refuse malformed "line $malformed_line of .speepobox/config.toml is a tool-sha line the pin grammar cannot read (\`$malformed_text\`) — write it exactly as \`$expected\`: unindented, double-quoted, with no trailing comment"
 [ "$count" -gt 0 ] ||
-  refuse no-line "no tool-sha line in .bessemer/config.toml — run \`init\` (from a hand clone, on a fresh repo), or add the line \`$expected\`"
+  refuse no-line "no tool-sha line in .speepobox/config.toml — run \`init\` (from a hand clone, on a fresh repo), or add the line \`$expected\`"
 [ "$count" -eq 1 ] ||
-  refuse duplicated "$count tool-sha lines in .bessemer/config.toml ($lines) — keep one"
+  refuse duplicated "$count tool-sha lines in .speepobox/config.toml ($lines) — keep one"
 [ -n "$sha" ] ||
-  refuse empty "the tool-sha pin on line $pin_line of .bessemer/config.toml is empty — $unfetchable"
+  refuse empty "the tool-sha pin on line $pin_line of .speepobox/config.toml is empty — $unfetchable"
 case $sha in
   *[!0123456789abcdef]*) short=yes ;;
   *) [ ${#sha} -eq 40 ] && short= || short=yes ;;
 esac
 [ -z "$short" ] ||
-  refuse short "the tool-sha pin on line $pin_line of .bessemer/config.toml (\`$sha\`) is not a full 40-hex SHA — $unfetchable"
+  refuse short "the tool-sha pin on line $pin_line of .speepobox/config.toml (\`$sha\`) is not a full 40-hex SHA — $unfetchable"
 
 # 4. The cache entry. One that exists is complete: only a complete entry is
 # ever given this name.
@@ -114,11 +121,12 @@ elif [ -n "${HOME:-}" ]; then
 else
   refuse cache 'neither XDG_CACHE_HOME nor HOME is set — set HOME'
 fi
-root=$cache/bessemer
+root=$cache/speepobox
 entry=$root/$sha
 
 # Every file operation below goes through node: the shim's external commands
-# are node, git, npm, and sed, and nothing else is assumed on the PATH.
+# are node, git, npm, and sed, and nothing else is assumed on the PATH — gh
+# is used where it is found (step 5), and never required.
 remove() {
   node -e 'require("fs").rmSync(process.argv[1], { recursive: true, force: true })' "$1"
 }
@@ -168,10 +176,31 @@ for (const name of fs.readdirSync(root)) {
   out=$(git init -q "$tmp" 2>&1 &&
     git -C "$tmp" remote add origin "$RELEASE_URL" 2>&1) ||
     refuse build "cannot prepare a clone at $tmp: $(one_line "$out")"
-  # The operator's own git credential chain, read by git and never by this
-  # shim; a missing credential fails rather than prompting.
-  out=$(GIT_TERMINAL_PROMPT=0 git -C "$tmp" fetch -q --depth 1 origin "$sha" 2>&1) ||
-    refuse fetch "cannot fetch $sha from $RELEASE_URL ($(one_line "$out")) — if git has no credential for github.com, run \`gh auth setup-git\`; the SHA may also not exist upstream, which fails the same way"
+  # T132: gh is the credential first, for this one call and only when it is
+  # on the PATH. The empty value resets every helper the operator's config
+  # contributed for the release's origin — without it git asks them first and
+  # then hands each gh's answer to `store` — and the second is gh's own helper,
+  # by the path found here, the pair gh adds to its own fetches. Then the
+  # operator's own chain, exactly as before. Nothing here reads a credential,
+  # nothing is written to any git config, and a missing one fails, never prompts.
+  gh=$(command -v gh 2>/dev/null) || gh=
+  fetched=
+  if [ -n "$gh" ]; then
+    via_gh=$(GIT_TERMINAL_PROMPT=0 git -C "$tmp" \
+      -c "credential.$release_origin.helper=" \
+      -c "credential.$release_origin.helper=!\"$gh\" auth git-credential" \
+      fetch -q --depth 1 origin "$sha" 2>&1) && fetched=yes
+  fi
+  if [ -z "$fetched" ]; then
+    out=$(GIT_TERMINAL_PROMPT=0 git -C "$tmp" fetch -q --depth 1 origin "$sha" 2>&1) || {
+      if [ -n "$gh" ]; then
+        tried="through gh: $(one_line "$via_gh"); through git's own credentials: $(one_line "$out")"
+      else
+        tried="gh is not on the PATH; through git's own credentials: $(one_line "$out")"
+      fi
+      refuse fetch "cannot fetch $sha from $RELEASE_URL ($tried) — run \`gh auth login\` (installing gh if it is missing), then \`gh auth setup-git\` if git still has no credential for $release_host; the SHA may also not exist upstream, which fails the same way"
+    }
+  fi
   out=$(git -C "$tmp" checkout -q --detach "$sha" 2>&1) ||
     refuse build "cannot check out $sha in $tmp: $(one_line "$out")"
   out=$(cd "$tmp" && npm ci --omit=dev --ignore-scripts --no-audit --no-fund 2>&1) ||

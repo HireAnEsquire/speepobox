@@ -233,7 +233,7 @@ If it lists commits, they exist only in the copy — merge or cherry-pick from
 export const keptCheckoutNotice = (slug: string, checkout: CheckoutOnDisk): string =>
   `'${slug}' kept its own copy of the repository, and nothing was removed.
 
-bessemer gives every run a private copy of this repository to work in, and moves the commits
+speepobox gives every run a private copy of this repository to work in, and moves the commits
 back when the run ends — onto the branch the run was given, or failing that onto a branch of
 the run's own. A copy is kept when neither of those would take the commits, because then it is
 the only place that work exists; when one of them did and the copy could not be removed
@@ -259,7 +259,7 @@ export const unmovedCheckoutNotice = (
   `'${slug}' left its own copy of the repository behind, and it was **not** removed: nothing here
 could say the commits in it are anywhere else.
 
-bessemer gives every run a private copy of this repository to work in, and moves the commits
+speepobox gives every run a private copy of this repository to work in, and moves the commits
 back when the run ends — but this one was killed before it got there, so that move never
 happened. A copy is removed on this pass only when a read says the commits in it are already on
 a branch here, and this read said otherwise: ${found}

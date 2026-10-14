@@ -26,7 +26,7 @@ import { type ScriptedResult, scriptedExecutor } from "./support/exec-fake.ts";
 import { fakeGit, type GitCall } from "./support/git-fake.ts";
 
 const REPO_ROOT = "/srv/hae";
-const BRANCH = "bessemer-t84";
+const BRANCH = "speepobox-t84";
 const PURPOSE = "feedback";
 // What `git var GIT_EDITOR` answers here, and therefore the head of the `sh`
 // argv the bracket builds. Two words, because an editor that carries its own

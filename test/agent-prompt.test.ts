@@ -49,7 +49,7 @@ import { APPROVED_MARKER, FIXED_MARKER } from "../src/agent/verdict.ts";
 const SPEC_PATH = "/repo/tasks/T9.md";
 
 const RUN = {
-  branch: "bessemer-t9",
+  branch: "speepobox-t9",
   mergeBaseSha: "2222222222222222222222222222222222222222",
   ...specDispatch(SPEC_PATH),
   // No issue: a spec run's passes are for the spec, and which issue a pass is
@@ -64,7 +64,7 @@ const RUN = {
 const RESUMED: RunIdentity = {
   _tag: "FeedbackResume",
   resumed: { _tag: "OneOff", spec: SPEC_PATH },
-  resumedRunId: Option.some("bessemer-t9-1786000000000"),
+  resumedRunId: Option.some("speepobox-t9-1786000000000"),
 };
 
 describe("the implement prompt", () => {
@@ -399,7 +399,7 @@ describe("the resuming sentence", () => {
   // framing is the identity's: the body is what the human read before they
   // wrote the feedback (22 §5).
   it("carries the PR context under a spec resume's own message", () => {
-    const pr = { title: "[bessemer] bessemer-t9", body: "## Overview\n\nWhat the last run did." };
+    const pr = { title: "[speepobox] speepobox-t9", body: "## Overview\n\nWhat the last run did." };
     const prompt = implementPromptFor("# TASK", resumed, Option.some(pr));
     expect(prompt).toContain(PR_CONTEXT_OPEN);
     expect(prompt).toContain(`Title: ${pr.title}`);
@@ -421,7 +421,7 @@ describe("the prompts for a task stated inline", () => {
     identity: RESUMED,
   } satisfies PassRun;
   const PR_CONTEXT = {
-    title: "[bessemer] bessemer-t9",
+    title: "[speepobox] speepobox-t9",
     body: "## Overview\n\nWhat the last run said it did.",
   };
 

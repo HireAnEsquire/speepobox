@@ -5,7 +5,7 @@ import { DateTime, Effect, Layer, Option, Ref } from "effect";
 import { CAPPED_UNREVIEWED_FIX } from "../src/agent/verdict.ts";
 import { lockPathFor } from "../src/dispatch/plan.ts";
 import { classify, type LockOnDisk } from "../src/reconcile/wreckage.ts";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { LEDGER_FILENAME, Ledger, LedgerError, LedgerLive } from "../src/ledger/ledger.ts";
 import { CURRENT_SCHEMA_VERSION, type RunRecord } from "../src/ledger/record.ts";
 import {
@@ -28,7 +28,7 @@ const NOW = Date.parse("2026-08-07T22:00:00.000Z");
 // sparsest rows a version-1 ledger holds, rendered end to end so `status` is
 // proved against lines on disk rather than against today's encoder.
 const V1_LINES = [
-  '{"schemaVersion":1,"runId":null,"branch":"bessemer-t1","identity":{"_tag":"Feature","feature":"issues","issues":[{"issue":"T1","outcome":"approved"}]},"startedAt":null,"endedAt":"2026-08-07T21:07:26.322Z","terminalReason":null,"outcome":null,"base":{"ref":"origin/feature-x","sha":null},"mergeBaseSha":null,"pr":{"number":101,"url":"https://example.test/pull/101"}}',
+  '{"schemaVersion":1,"runId":null,"branch":"speepobox-t1","identity":{"_tag":"Feature","feature":"issues","issues":[{"issue":"T1","outcome":"approved"}]},"startedAt":null,"endedAt":"2026-08-07T21:07:26.322Z","terminalReason":null,"outcome":null,"base":{"ref":"origin/feature-x","sha":null},"mergeBaseSha":null,"pr":{"number":101,"url":"https://example.test/pull/101"}}',
   '{"schemaVersion":1,"runId":null,"branch":"widget-report","identity":{"_tag":"OneOff","spec":"widget-report.md"},"startedAt":null,"endedAt":"2026-08-07T20:07:26.553Z","terminalReason":null,"outcome":"needs-work","base":{"ref":"origin/master","sha":null},"mergeBaseSha":null,"pr":{"number":102,"url":"https://example.test/pull/102"}}',
 ];
 
@@ -37,7 +37,7 @@ const V1_LINES = [
 // dispatcher's disk, and a `status` that skipped them would be a worse bug
 // than the one the field fixes.
 const V1_LINE_WITHOUT_RESCUE =
-  '{"schemaVersion":1,"runId":"bessemer-t29-1786000000000","branch":"bessemer-t29","identity":{"_tag":"OneOff","spec":"/repo/tasks/T29.md"},"startedAt":"2026-08-07T21:00:00.000Z","endedAt":"2026-08-07T21:41:00.000Z","terminalReason":{"_tag":"Failed","stage":"land"},"outcome":null,"base":{"ref":"origin/master","sha":"26f4ea47ef"},"mergeBaseSha":"22e7e70e14","pr":null}';
+  '{"schemaVersion":1,"runId":"speepobox-t29-1786000000000","branch":"speepobox-t29","identity":{"_tag":"OneOff","spec":"/repo/tasks/T29.md"},"startedAt":"2026-08-07T21:00:00.000Z","endedAt":"2026-08-07T21:41:00.000Z","terminalReason":{"_tag":"Failed","stage":"land"},"outcome":null,"base":{"ref":"origin/master","sha":"26f4ea47ef"},"mergeBaseSha":"22e7e70e14","pr":null}';
 
 const dockerPsScript = (stdout: string, exit = 0): Record<string, ScriptedResult> => ({
   "docker ps": { exit, stdout },
@@ -56,7 +56,7 @@ const ledgerOver = (runtimeRoot: string) =>
   LedgerLive.pipe(
     Layer.provide(
       Layer.mergeAll(
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, { emit: () => Effect.void }),
       ),
     ),
@@ -83,9 +83,9 @@ const runStatus = (options: RunOptions) =>
             emit: (event) => Ref.update(events, (current) => [...current, event]),
           }),
           scriptedExecutor(options.script ?? dockerPsScript(""), commands),
-          Layer.succeed(BessemerConfig, {
+          Layer.succeed(SpeepoboxConfig, {
             ...defaultConfig,
-            runtimeRoot: options.runtimeRoot ?? "/nonexistent/bessemer-status-runtime",
+            runtimeRoot: options.runtimeRoot ?? "/nonexistent/speepobox-status-runtime",
           }),
         ),
       ),
@@ -132,8 +132,8 @@ describe("ownership labels", () => {
 
 describe("the container half", () => {
   it("parses NAME<TAB>STATUS rows without re-checking the name", () => {
-    expect(parseContainerRows("bessemer-t2\tUp 3 minutes\nsomething-else\tUp 2 days\n")).toEqual([
-      { name: "bessemer-t2", uptime: "Up 3 minutes" },
+    expect(parseContainerRows("speepobox-t2\tUp 3 minutes\nsomething-else\tUp 2 days\n")).toEqual([
+      { name: "speepobox-t2", uptime: "Up 3 minutes" },
       // Not dropped: the label filter already decided ownership, and a second
       // name check is the retired prefix sweep wearing a hat.
       { name: "something-else", uptime: "Up 2 days" },
@@ -151,7 +151,7 @@ describe("the container half", () => {
       expect(argv.startsWith("docker ps ")).toBe(true);
       expect(argv).toContain(`--filter label=${MANAGED_LABEL}=true`);
       expect(argv).toContain(`--filter label=${REPO_LABEL}=${repoScope(REPO_ROOT)}`);
-      expect(argv).not.toContain("bessemer-");
+      expect(argv).not.toContain("speepobox-");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 });
@@ -175,7 +175,7 @@ describe("status degradations", () => {
       const screen = renderStatus(snapshot);
       expect(screen).toContain("docker unavailable (daemon down?)");
       expect(screen).toContain("Recent below is unaffected");
-      expect(screen).toContain("bessemer-t1");
+      expect(screen).toContain("speepobox-t1");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -193,9 +193,9 @@ describe("status degradations", () => {
       );
       const { snapshot, events } = yield* runStatus({ ledger: ledgerOver(runtimeRoot) });
       const screen = renderStatus(snapshot);
-      expect(screen).toContain("bessemer-t29");
+      expect(screen).toContain("speepobox-t29");
       expect(screen).toContain("❌ failed(land)");
-      expect(screen).toContain("bessemer-t1");
+      expect(screen).toContain("speepobox-t1");
       expect(screen).toContain("widget-report");
       expect(events.filter((event) => event._tag === "Warned")).toEqual([]);
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -216,12 +216,12 @@ describe("status degradations", () => {
   it.effect("an unreadable ledger still renders the container half", () =>
     Effect.gen(function* () {
       const { snapshot } = yield* runStatus({
-        script: dockerPsScript("bessemer-t2\tUp 3 minutes\n"),
+        script: dockerPsScript("speepobox-t2\tUp 3 minutes\n"),
         ledger: failingLedger,
       });
       expect(snapshot.ledger._tag).toBe("LedgerUnavailable");
       const screen = renderStatus(snapshot);
-      expect(screen).toContain("bessemer-t2");
+      expect(screen).toContain("speepobox-t2");
       expect(screen).toContain("ledger unavailable: runs.jsonl: EACCES");
       expect(screen).toContain("Running above is unaffected");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -254,7 +254,7 @@ describe("status degradations", () => {
 describe("the container's owner", () => {
   // As `test/gc.test.ts` uses it: past every kernel's pid_max, so never alive.
   const DEAD_PID = 2147483647;
-  const CONTAINER = "bessemer-gate-5";
+  const CONTAINER = "speepobox-gate-5";
   const SLUG = "gate-5";
 
   // Runs `status` over one running container, with `lock` seeded at the
@@ -287,7 +287,7 @@ describe("the container's owner", () => {
           { name: CONTAINER, uptime: "Up 2 hours", owner: { _tag: "OwnedBy", pid: process.pid } },
         ],
       });
-      expect(screen).toContain("NAME             UPTIME      OWNER");
+      expect(screen).toContain("NAME              UPTIME      OWNER");
       expect(screen).toContain(`${CONTAINER}  Up 2 hours  pid ${process.pid}`);
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -394,7 +394,7 @@ describe("status is read-only", () => {
       const before = yield* fs.stat(file);
 
       const { commands } = yield* runStatus({
-        script: dockerPsScript("bessemer-t2\tUp 3 minutes\n"),
+        script: dockerPsScript("speepobox-t2\tUp 3 minutes\n"),
         ledger: ledgerOver(runtimeRoot),
       });
 
@@ -430,7 +430,7 @@ describe("the status renderer", () => {
   const record: RunRecord = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     runId: Option.some("run-1"),
-    branch: "bessemer-t2",
+    branch: "speepobox-t2",
     identity: {
       _tag: "Feature",
       feature: "issues",
@@ -466,7 +466,7 @@ describe("the status renderer", () => {
     containers: {
       _tag: "Containers",
       running: [
-        { name: "bessemer-t9", uptime: "Up 3 minutes", owner: { _tag: "OwnedBy", pid: 4242 } },
+        { name: "speepobox-t9", uptime: "Up 3 minutes", owner: { _tag: "OwnedBy", pid: 4242 } },
       ],
     },
     ledger: { _tag: "Runs", recent },
@@ -477,7 +477,7 @@ describe("the status renderer", () => {
   it("renders both halves as aligned tables with no trailing whitespace", () => {
     const screen = renderStatus(snapshotOf([record]));
     expect(screen.split("\n").every((line) => line === line.trimEnd())).toBe(true);
-    expect(screen).toContain("bessemer-t9  Up 3 minutes");
+    expect(screen).toContain("speepobox-t9  Up 3 minutes");
     expect(screen).toContain("T1✓ T2✗");
     // Duration is why start joined end in the record.
     expect(screen).toContain("39m");
@@ -597,17 +597,17 @@ describe("the status renderer", () => {
   it("names where a rescued run's commits are, on that run's own line", () => {
     const rescued: RunRecord = {
       ...record,
-      branch: "bessemer-t29",
+      branch: "speepobox-t29",
       identity: { _tag: "OneOff", spec: "t29.md" },
       terminalReason: Option.some({ _tag: "Failed", stage: "land" }),
       pr: Option.none(),
-      rescuedOnto: Option.some("bessemer-t29-from-run-a1b2c3d"),
+      rescuedOnto: Option.some("speepobox-t29-from-run-a1b2c3d"),
     };
     const line = renderStatus(snapshotOf([rescued]))
       .split("\n")
-      .find((row) => row.includes("bessemer-t29"));
+      .find((row) => row.includes("speepobox-t29"));
     expect(line).toContain("❌ failed(land)");
-    expect(line).toContain("bessemer-t29-from-run-a1b2c3d");
+    expect(line).toContain("speepobox-t29-from-run-a1b2c3d");
     // Whole, never ellipsized: it is a ref the reader is about to type.
     expect(line).not.toContain("…");
   });
@@ -657,12 +657,12 @@ describe("the status renderer", () => {
     };
     const dirty: RunRecord = {
       ...record,
-      branch: "bessemer-t43",
+      branch: "speepobox-t43",
       dispatcher: Option.some({ revision: "6345f52", dirty: true }),
     };
     const screen = renderStatus(snapshotOf([clean, dirty]));
-    const cleanLine = screen.split("\n").find((row) => row.includes("bessemer-t2"));
-    const dirtyLine = screen.split("\n").find((row) => row.includes("bessemer-t43"));
+    const cleanLine = screen.split("\n").find((row) => row.includes("speepobox-t2"));
+    const dirtyLine = screen.split("\n").find((row) => row.includes("speepobox-t43"));
     expect(cleanLine).toContain("6345f52");
     expect(cleanLine).not.toContain("6345f52-dirty");
     expect(dirtyLine).toContain("6345f52-dirty");
@@ -675,7 +675,7 @@ describe("the status renderer", () => {
   it("renders what a run cost as tokens over passes, and nothing for a row with none", () => {
     const spent: RunRecord = {
       ...record,
-      branch: "bessemer-t53",
+      branch: "speepobox-t53",
       tokensIn: Option.some(100_000),
       tokensOut: Option.some(300_000),
       cacheWrite: Option.some(400_000),
@@ -685,7 +685,7 @@ describe("the status renderer", () => {
     };
     const cheaper: RunRecord = {
       ...spent,
-      branch: "bessemer-t52",
+      branch: "speepobox-t52",
       tokensIn: Option.some(30_000),
       tokensOut: Option.some(100_000),
       cacheWrite: Option.some(50_000),
@@ -696,12 +696,12 @@ describe("the status renderer", () => {
     const lineFor = (branch: string): string | undefined =>
       screen.split("\n").find((row) => row.includes(branch));
     expect(screen).toContain("COST");
-    expect(lineFor("bessemer-t53")).toContain("1.4M/4");
-    expect(lineFor("bessemer-t52")).toContain("230k/2");
+    expect(lineFor("speepobox-t53")).toContain("1.4M/4");
+    expect(lineFor("speepobox-t52")).toContain("230k/2");
     // The row every dispatcher already has on disk: unmeasured, which is not
     // the same claim as free. DURATION is "39m" on this row, so the "-" being
     // matched here is the cost cell rather than that one.
-    expect(lineFor("bessemer-t2")).toMatch(/39m\s+-\s/);
+    expect(lineFor("speepobox-t2")).toMatch(/39m\s+-\s/);
     // And the models are on the row, never on the screen: this is one screen.
     expect(screen).not.toContain("claude-opus-5");
   });

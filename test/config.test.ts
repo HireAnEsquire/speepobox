@@ -4,14 +4,14 @@ import { FileSystem, Path } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { ConfigProvider, Effect, Either, Layer } from "effect";
 import {
-  BessemerConfig,
+  SpeepoboxConfig,
   defaultConfig,
   defaultConfigFor,
   loadConfig,
 } from "../src/config/config.ts";
 import {
-  BESSEMER_DIRNAME,
-  bessemerDir,
+  SPEEPOBOX_DIRNAME,
+  speepoboxDir,
   findRepoRoot,
   packagePathspec,
   packageRoot,
@@ -21,18 +21,18 @@ import {
 } from "../src/config/paths.ts";
 import { substitute } from "../src/init/stamp.ts";
 
-// A scratch served repo: a temp root with its bessemer directory made, which
+// A scratch served repo: a temp root with its speepobox directory made, which
 // is the only place the chain looks for the two files (T57). `fs` is read off
 // the context rather than passed, so a case reads `yield* servedRepo` where it
 // used to read `yield* fs.makeTempDirectoryScoped()`.
 const servedRepo = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
   const root = yield* fs.makeTempDirectoryScoped();
-  yield* fs.makeDirectory(bessemerDir(root));
+  yield* fs.makeDirectory(speepoboxDir(root));
   return root;
 }).pipe(Effect.orDie);
 
-// A deterministic empty environment: the host's real BESSEMER_* variables
+// A deterministic empty environment: the host's real SPEEPOBOX_* variables
 // must not leak into these tests.
 const emptyEnv = ConfigProvider.fromMap(new Map());
 
@@ -52,14 +52,14 @@ describe("config precedence chain", () => {
       const root = yield* servedRepo;
 
       // code defaults, for the keys that still have one
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       const fromDefaults = yield* loadConfig(root, { env: emptyEnv });
       expect(fromDefaults.memory).toBe(defaultConfig.memory);
       expect(fromDefaults.maxReviewRounds).toBe(3);
 
       // committed beats defaults
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         `${required("committed")}max-review-rounds = 4\n`,
       );
       const fromCommitted = yield* loadConfig(root, { env: emptyEnv });
@@ -69,7 +69,7 @@ describe("config precedence chain", () => {
 
       // local beats committed
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.local.toml"),
+        path.join(speepoboxDir(root), "config.local.toml"),
         'image = "local"\n',
       );
       const fromLocal = yield* loadConfig(root, { env: emptyEnv });
@@ -77,7 +77,7 @@ describe("config precedence chain", () => {
       expect(fromLocal.maxReviewRounds).toBe(4);
 
       // env beats local
-      const env = envOf({ BESSEMER_IMAGE: "from-env" });
+      const env = envOf({ SPEEPOBOX_IMAGE: "from-env" });
       const fromEnv = yield* loadConfig(root, { env });
       expect(fromEnv.image).toBe("from-env");
 
@@ -90,17 +90,17 @@ describe("config precedence chain", () => {
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
-  it.scoped("BESSEMER_* env keys map onto kebab-case config keys", () =>
+  it.scoped("SPEEPOBOX_* env keys map onto kebab-case config keys", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* servedRepo;
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       const config = yield* loadConfig(root, {
         env: envOf({
-          BESSEMER_MAX_REVIEW_ROUNDS: "7",
-          BESSEMER_PASS_TIMEOUT: "120",
-          BESSEMER_NOTIFY: "steps",
+          SPEEPOBOX_MAX_REVIEW_ROUNDS: "7",
+          SPEEPOBOX_PASS_TIMEOUT: "120",
+          SPEEPOBOX_NOTIFY: "steps",
         }),
       });
       expect(config.maxReviewRounds).toBe(7);
@@ -116,7 +116,7 @@ describe("config precedence chain", () => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* servedRepo;
-      const committed = path.join(bessemerDir(root), "config.toml");
+      const committed = path.join(speepoboxDir(root), "config.toml");
 
       yield* fs.writeFileString(committed, required());
       expect((yield* loadConfig(root, { env: emptyEnv })).setupTimeoutSeconds).toBe(600);
@@ -124,7 +124,7 @@ describe("config precedence chain", () => {
       yield* fs.writeFileString(committed, `${required()}setup-timeout = 900\n`);
       expect((yield* loadConfig(root, { env: emptyEnv })).setupTimeoutSeconds).toBe(900);
 
-      const env = envOf({ BESSEMER_SETUP_TIMEOUT: "300" });
+      const env = envOf({ SPEEPOBOX_SETUP_TIMEOUT: "300" });
       expect((yield* loadConfig(root, { env })).setupTimeoutSeconds).toBe(300);
 
       const fromFlags = yield* loadConfig(root, {
@@ -146,22 +146,22 @@ describe("config precedence chain", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
 
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       expect((yield* loadConfig(root, { env: emptyEnv })).capAdd).toEqual([]);
 
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         `${required()}cap-add = "CHOWN, SETUID"\n`,
       );
       expect((yield* loadConfig(root, { env: emptyEnv })).capAdd).toEqual(["CHOWN", "SETUID"]);
 
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.local.toml"),
+        path.join(speepoboxDir(root), "config.local.toml"),
         'cap-add = "KILL"\n',
       );
       expect((yield* loadConfig(root, { env: emptyEnv })).capAdd).toEqual(["KILL"]);
 
-      const fromEnv = yield* loadConfig(root, { env: envOf({ BESSEMER_CAP_ADD: "FOWNER" }) });
+      const fromEnv = yield* loadConfig(root, { env: envOf({ SPEEPOBOX_CAP_ADD: "FOWNER" }) });
       expect(fromEnv.capAdd).toEqual(["FOWNER"]);
 
       // Declaring none is a value a layer can hold, and it means none.
@@ -182,17 +182,17 @@ describe("config precedence chain", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
 
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       expect((yield* loadConfig(root, { env: emptyEnv })).setupHook).toBe("");
 
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         `${required()}setup-hook = ".box/setup.sh"\n`,
       );
       expect((yield* loadConfig(root, { env: emptyEnv })).setupHook).toBe(".box/setup.sh");
 
       const fromEnv = yield* loadConfig(root, {
-        env: envOf({ BESSEMER_SETUP_HOOK: "/opt/setup.sh" }),
+        env: envOf({ SPEEPOBOX_SETUP_HOOK: "/opt/setup.sh" }),
       });
       expect(fromEnv.setupHook).toBe("/opt/setup.sh");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -207,21 +207,21 @@ describe("config precedence chain", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
 
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       expect((yield* loadConfig(root, { env: emptyEnv })).sandboxEnvFile).toBe("");
 
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
-        `${required()}sandbox-env-file = ".bessemer/env.sandbox"\n`,
+        path.join(speepoboxDir(root), "config.toml"),
+        `${required()}sandbox-env-file = ".speepobox/env.sandbox"\n`,
       );
       expect((yield* loadConfig(root, { env: emptyEnv })).sandboxEnvFile).toBe(
-        ".bessemer/env.sandbox",
+        ".speepobox/env.sandbox",
       );
 
       // A later layer replaces the whole answer, which is what a single path
       // buys over a list: a list-valued key merges per index instead.
       const fromEnv = yield* loadConfig(root, {
-        env: envOf({ BESSEMER_SANDBOX_ENV_FILE: ".agentbox/.env.sandbox" }),
+        env: envOf({ SPEEPOBOX_SANDBOX_ENV_FILE: ".agentbox/.env.sandbox" }),
       });
       expect(fromEnv.sandboxEnvFile).toBe(".agentbox/.env.sandbox");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -237,11 +237,11 @@ describe("config precedence chain", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
 
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       expect((yield* loadConfig(root, { env: emptyEnv })).imageBuildCommand).toBe("");
 
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         `${required()}image-build-command = "make agent-image"\n`,
       );
       expect((yield* loadConfig(root, { env: emptyEnv })).imageBuildCommand).toBe(
@@ -249,7 +249,7 @@ describe("config precedence chain", () => {
       );
 
       const fromEnv = yield* loadConfig(root, {
-        env: envOf({ BESSEMER_IMAGE_BUILD_COMMAND: "scripts/build.sh" }),
+        env: envOf({ SPEEPOBOX_IMAGE_BUILD_COMMAND: "scripts/build.sh" }),
       });
       expect(fromEnv.imageBuildCommand).toBe("scripts/build.sh");
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -261,7 +261,7 @@ describe("config precedence chain", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         `${required()}notify = "loud"\n`,
       );
       const outcome = yield* Effect.either(loadConfig(root, { env: emptyEnv }));
@@ -278,7 +278,10 @@ describe("config precedence chain", () => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* servedRepo;
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), "image = [unclosed\n");
+      yield* fs.writeFileString(
+        path.join(speepoboxDir(root), "config.toml"),
+        "image = [unclosed\n",
+      );
       const outcome = yield* Effect.either(loadConfig(root, { env: emptyEnv }));
       expect(Either.isLeft(outcome)).toBe(true);
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -292,14 +295,14 @@ describe("defaults", () => {
   // cache clone every served repo shares, so a runtime root beside it would
   // pool every adopter's checkouts, locks, and ledger in one place — and a
   // repin would carry them off.
-  it.scoped("the runtime root defaults to the served repo's .bessemer/", () =>
+  it.scoped("the runtime root defaults to the served repo's .speepobox/", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* servedRepo;
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required());
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required());
       const config = yield* loadConfig(root, { env: emptyEnv });
-      expect(config.runtimeRoot).toBe(bessemerDir(root));
+      expect(config.runtimeRoot).toBe(speepoboxDir(root));
       expect(config.runtimeRoot).not.toBe(root);
       expect(config.runtimeRoot).not.toBe(packageRoot);
       expect(config.runtimeRoot).not.toContain(".agentbox");
@@ -314,24 +317,24 @@ describe("defaults", () => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* servedRepo;
-      const file = path.join(bessemerDir(root), "config.toml");
+      const file = path.join(speepoboxDir(root), "config.toml");
 
       yield* fs.writeFileString(file, `${required()}runtime-root = "state/box"\n`);
       expect((yield* loadConfig(root, { env: emptyEnv })).runtimeRoot).toBe(
         path.join(root, "state", "box"),
       );
 
-      yield* fs.writeFileString(file, `${required()}runtime-root = "/var/lib/bessemer"\n`);
-      expect((yield* loadConfig(root, { env: emptyEnv })).runtimeRoot).toBe("/var/lib/bessemer");
+      yield* fs.writeFileString(file, `${required()}runtime-root = "/var/lib/speepobox"\n`);
+      expect((yield* loadConfig(root, { env: emptyEnv })).runtimeRoot).toBe("/var/lib/speepobox");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
   // Where the chain looks, stated as the two places it does not (19 §2): the
   // served repo's own root, which is where a config file would sit if the
-  // bessemer directory did not exist, and the package, which every served repo
+  // speepobox directory did not exist, and the package, which every served repo
   // shares under the shim. A file in either is not this repo's config, and the
   // decode refuses by name rather than reading somebody else's answers.
-  it.scoped("reads the bessemer directory and neither the repo root nor the package", () =>
+  it.scoped("reads the speepobox directory and neither the repo root nor the package", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
@@ -346,13 +349,13 @@ describe("defaults", () => {
 
       // The package's own committed config is a real file with a real
       // `image` in it, and it is not this served repo's answer either.
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), required("its-own"));
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), required("its-own"));
       const decoded = yield* loadConfig(root, { env: emptyEnv });
       expect(decoded.image).toBe("its-own");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
-  it.scoped("the committed .bessemer/config.toml travels with the repo and decodes alone", () =>
+  it.scoped("the committed .speepobox/config.toml travels with the repo and decodes alone", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
@@ -364,12 +367,12 @@ describe("defaults", () => {
       // host-dependence rule, and the gate structurally cannot catch it.
       const root = yield* servedRepo;
       const committed = yield* fs.readFileString(
-        path.join(bessemerDir(findRepoRoot(packageRoot)), "config.toml"),
+        path.join(speepoboxDir(findRepoRoot(packageRoot)), "config.toml"),
       );
       // This repo is the package, so it carries no pin (T120): nothing
       // self-hosted reads one.
       expect(committed).not.toMatch(/^tool-sha/m);
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), committed);
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), committed);
 
       const config = yield* loadConfig(root, { env: emptyEnv });
       // It answers the two keys the package will not answer for anyone (T40).
@@ -415,22 +418,22 @@ describe("the pin is not a config key", () => {
       const template = yield* fs.readFileString(path.join(packageRoot, "templates", "config.toml"));
       const text = Either.getOrThrow(
         substitute(template, {
-          image: "acme-bessemer",
+          image: "acme-speepobox",
           base: "origin/trunk",
           "tool-sha": "0123456789abcdef0123456789abcdef01234567",
         }),
       );
       expect(text).toMatch(/^tool-sha = "0123456789abcdef0123456789abcdef01234567"$/m);
-      yield* fs.writeFileString(path.join(bessemerDir(root), "config.toml"), text);
+      yield* fs.writeFileString(path.join(speepoboxDir(root), "config.toml"), text);
 
       const config = yield* loadConfig(root, { env: emptyEnv });
       expect(config).not.toHaveProperty("toolSha");
       expect(config).toEqual({
         ...defaultConfigFor(root),
-        image: "acme-bessemer",
+        image: "acme-speepobox",
         base: "origin/trunk",
-        tasksDir: ".bessemer/tasks",
-        imageBuildCommand: ".bessemer/bessemer image build",
+        tasksDir: ".speepobox/tasks",
+        imageBuildCommand: ".speepobox/speepobox image build",
       });
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -446,7 +449,7 @@ describe("the keys the package ships no answer for", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         'base = "origin/main"\n',
       );
       const outcome = yield* Effect.either(loadConfig(root, { env: emptyEnv }));
@@ -464,7 +467,7 @@ describe("the keys the package ships no answer for", () => {
       const path = yield* Path.Path;
       const root = yield* servedRepo;
       yield* fs.writeFileString(
-        path.join(bessemerDir(root), "config.toml"),
+        path.join(speepoboxDir(root), "config.toml"),
         'image = "some-image"\n',
       );
       const outcome = yield* Effect.either(loadConfig(root, { env: emptyEnv }));
@@ -482,7 +485,7 @@ describe("the keys the package ships no answer for", () => {
     Effect.gen(function* () {
       const root = yield* servedRepo;
       const config = yield* loadConfig(root, {
-        env: envOf({ BESSEMER_IMAGE: "from-env", BESSEMER_BASE: "origin/trunk" }),
+        env: envOf({ SPEEPOBOX_IMAGE: "from-env", SPEEPOBOX_BASE: "origin/trunk" }),
       });
       expect(config.image).toBe("from-env");
       expect(config.base).toBe("origin/trunk");
@@ -498,22 +501,22 @@ describe("the keys the package ships no answer for", () => {
   });
 });
 
-// The one derivation of the bessemer directory (CONTEXT.md), and the
+// The one derivation of the speepobox directory (CONTEXT.md), and the
 // resolution every write location's root goes through. Pure, so they are
 // asserted against trees named here rather than against this checkout.
-describe("the bessemer directory", () => {
-  it("is `.bessemer` under the served repo, spelled once", () => {
-    expect(BESSEMER_DIRNAME).toBe(".bessemer");
-    expect(bessemerDir("/srv/hae")).toBe(join("/srv/hae", ".bessemer"));
+describe("the speepobox directory", () => {
+  it("is `.speepobox` under the served repo, spelled once", () => {
+    expect(SPEEPOBOX_DIRNAME).toBe(".speepobox");
+    expect(speepoboxDir("/srv/hae")).toBe(join("/srv/hae", ".speepobox"));
     // Derived from the served repo, never from the package: under the shim the
     // package is a cache clone every served repo shares.
-    expect(bessemerDir("/srv/hae")).not.toBe(bessemerDir("/srv/other"));
+    expect(speepoboxDir("/srv/hae")).not.toBe(speepoboxDir("/srv/other"));
   });
 
   it("resolves a relative runtime root against the repo and takes an absolute one as-is", () => {
-    expect(resolveRuntimeRoot("/srv/hae", ".bessemer")).toBe(join("/srv/hae", ".bessemer"));
+    expect(resolveRuntimeRoot("/srv/hae", ".speepobox")).toBe(join("/srv/hae", ".speepobox"));
     expect(resolveRuntimeRoot("/srv/hae", "state/box")).toBe(join("/srv/hae", "state", "box"));
-    expect(resolveRuntimeRoot("/srv/hae", "/var/lib/bessemer")).toBe("/var/lib/bessemer");
+    expect(resolveRuntimeRoot("/srv/hae", "/var/lib/speepobox")).toBe("/var/lib/speepobox");
   });
 });
 
@@ -534,9 +537,9 @@ describe("the sandbox env file's path rule", () => {
       path: join("/srv/hae", ".agentbox", ".env.sandbox"),
     });
     // Normalized, so an interior `..` that stays inside is still inside.
-    expect(resolveSandboxEnvFile("/srv/hae", "a/../.bessemer/env.sandbox")).toEqual({
+    expect(resolveSandboxEnvFile("/srv/hae", "a/../.speepobox/env.sandbox")).toEqual({
       _tag: "Inside",
-      path: join("/srv/hae", ".bessemer", "env.sandbox"),
+      path: join("/srv/hae", ".speepobox", "env.sandbox"),
     });
   });
 
@@ -566,7 +569,7 @@ describe("the sandbox env file's path rule", () => {
   });
 });
 
-// The repo root is what the `bessemer.repo` ownership label hashes, so these
+// The repo root is what the `speepobox.repo` ownership label hashes, so these
 // pin the walk against trees built here rather than against whatever repo the
 // suite happens to run inside — the host-dependence rule in AGENTS.md.
 describe("the repo root walk", () => {
@@ -576,7 +579,7 @@ describe("the repo root walk", () => {
       const path = yield* Path.Path;
       const repo = yield* fs.makeTempDirectoryScoped();
       yield* fs.makeDirectory(path.join(repo, ".git"));
-      const nested = path.join(repo, "bessemer", "src", "config");
+      const nested = path.join(repo, "speepobox", "src", "config");
       yield* fs.makeDirectory(nested, { recursive: true });
       expect(findRepoRoot(nested)).toBe(repo);
       expect(findRepoRoot(repo)).toBe(repo);
@@ -592,7 +595,7 @@ describe("the repo root walk", () => {
         path.join(worktree, ".git"),
         "gitdir: /elsewhere/.git/worktrees/w\n",
       );
-      const nested = path.join(worktree, "bessemer");
+      const nested = path.join(worktree, "speepobox");
       yield* fs.makeDirectory(nested);
       expect(findRepoRoot(nested)).toBe(worktree);
     }).pipe(Effect.provide(NodeContext.layer)),
@@ -660,15 +663,15 @@ describe("packagePathspec", () => {
   });
 });
 
-describe("BessemerConfig tag", () => {
+describe("SpeepoboxConfig tag", () => {
   it.effect("consumers read the decoded record from the tag (Layer.succeed over a literal)", () =>
     Effect.gen(function* () {
-      const config = yield* BessemerConfig;
+      const config = yield* SpeepoboxConfig;
       expect(config.image).toBe("from-literal");
       expect(config.maxReviewRounds).toBe(9);
     }).pipe(
       Effect.provide(
-        Layer.succeed(BessemerConfig, {
+        Layer.succeed(SpeepoboxConfig, {
           ...defaultConfigFor(packageRoot),
           image: "from-literal",
           maxReviewRounds: 9,

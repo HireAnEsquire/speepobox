@@ -20,7 +20,7 @@ export default defineConfig({
     // npm script so the one config that runs live cases is the one thing that
     // can admit them — and so the script stays a plain `vitest run`, with no
     // `VAR=1` prefix a non-POSIX shell would choke on.
-    env: { BESSEMER_LIVE: "1" },
+    env: { SPEEPOBOX_LIVE: "1" },
     // The two ways a live tier goes quietly green, both refused: an empty
     // glob (a renamed or moved case) is a failed run, not a pass, and no case
     // here is `skipIf`-guarded — a missing dockerd is red.

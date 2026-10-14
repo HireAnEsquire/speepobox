@@ -40,7 +40,7 @@ const DECLARED_CAP = "CHOWN";
 
 // The pid keeps two runs of this file — or a run and a container a hard kill
 // left behind — from colliding on a container name.
-const branchFor = (what: string): string => `bessemer-live-${what}-${process.pid}`;
+const branchFor = (what: string): string => `speepobox-live-${what}-${process.pid}`;
 
 // A dispatch's worth of real host state: a repo root whose hash scopes this
 // case's labels, a checkout directory to mount as the workspace, and a spec

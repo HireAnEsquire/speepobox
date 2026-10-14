@@ -106,7 +106,7 @@ const resetRows = (plan: DispatchPlan): ReadonlyArray<string> =>
 // the shape T15 inherits — one derivation, one rendering, no second copy.
 export const renderPlan = (plan: DispatchPlan): string =>
   [
-    `bessemer: ${taskNamed(plan.task)} on branch '${plan.branch}'  |  base ${plan.baseRef} @ ${shortSha(plan.baseSha)}`,
+    `speepobox: ${taskNamed(plan.task)} on branch '${plan.branch}'  |  base ${plan.baseRef} @ ${shortSha(plan.baseSha)}`,
     row("mode", modeNamed(plan)),
     ...issueRows(plan),
     row("branch", plan.branch),
@@ -190,7 +190,7 @@ const label = (
     case "ConfigError":
       return "config: ";
     // `LockError` is the lock file we could not write, so the line says which
-    // subject failed. `LockHeld` names its own ("another bessemer run …") and
+    // subject failed. `LockHeld` names its own ("another speepobox run …") and
     // falls through to no label, as a `GuardRefused`, a `GitError` ("could not
     // clone 'x' into …"), a `SandboxError` ("could not start the sandbox
     // 'x' …"), an `AgentPassFailed` ("the implement pass …"), a

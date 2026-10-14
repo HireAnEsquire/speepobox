@@ -25,7 +25,7 @@
 import { FileSystem, Terminal } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Clock, DateTime, Effect, Either, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { resolveTasksDir } from "../config/paths.ts";
 import {
   FEEDBACK_EDIT_PURPOSE,
@@ -87,7 +87,7 @@ const ISSUES_TITLE = "issues";
 const BRANCH_MESSAGE = "Which branch?";
 const BASE_MESSAGE = "Which base?";
 const SUMMARY_MESSAGE = "Dispatch this?";
-const SUMMARY_TITLE = "bessemer";
+const SUMMARY_TITLE = "speepobox";
 const RESUME_MESSAGE = "Resume which run?";
 const FEEDBACK_MESSAGE = "Add feedback?";
 
@@ -116,7 +116,7 @@ const TASK_EDIT_PURPOSE = "task";
 // an accepted divergence from fzf. A symbol for the way back rather than a
 // reserved name: no branch can be one, so the collision is unrepresentable
 // rather than remembered.
-export const BACK: unique symbol = Symbol("bessemer/picker/back");
+export const BACK: unique symbol = Symbol("speepobox/picker/back");
 
 export type BranchChoice = string | typeof BACK;
 
@@ -240,7 +240,7 @@ export interface PickRequest {
   readonly modifiers: ReadonlyArray<string>;
   // What a command line missing an answer already said (T86): every step it
   // answered is filled in and skipped on the first pass, and the flags that
-  // are not steps ride into the words. Absent for a bare `bessemer`.
+  // are not steps ride into the words. Absent for a bare `speepobox`.
   readonly seed?: Seed;
 }
 
@@ -401,7 +401,7 @@ export const shellWord = (word: string): string =>
   /^[\w.,/:=@-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 
 export const commandLine = (argv: ReadonlyArray<string>): string =>
-  ["bessemer", ...argv].map(shellWord).join(" ");
+  ["speepobox", ...argv].map(shellWord).join(" ");
 
 // The word `--issues` takes: the predicate by name, or the ids joined.
 export const issuesWord = (issues: IssuesPick): string =>
@@ -936,7 +936,7 @@ const needs = <A>(value: A | undefined, what: string): Effect.Effect<A> =>
 
 // The picker, and what it picked. `None` is **nobody is there**: no prompt is
 // asked, and what the entrypoint does with that is what this invocation did
-// before the picker existed — usage for a bare `bessemer`, the dispatch's own
+// before the picker existed — usage for a bare `speepobox`, the dispatch's own
 // refusal for an argv of nothing but modifiers. The gate lives here rather
 // than in the switch for the reason every step does: nothing in `bin.ts` is
 // assertable, and "off a terminal it asks nothing" is a property worth
@@ -955,7 +955,7 @@ export const pickerArgv = (
   | Git
   | IssueStore
   | Ledger
-  | BessemerConfig
+  | SpeepoboxConfig
   | Terminal.Terminal
   | FileSystem.FileSystem
   | CommandExecutor
@@ -965,7 +965,7 @@ export const pickerArgv = (
     if (!(yield* terminal.isTTY)) {
       return Option.none<ReadonlyArray<string>>();
     }
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const prompt = yield* Prompt;
     const git = yield* Git;
     const store = yield* IssueStore;

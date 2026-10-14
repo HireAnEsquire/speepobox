@@ -29,7 +29,7 @@
 import { FileSystem, Path } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Effect, Option } from "effect";
-import { BessemerConfig } from "../config/config.ts";
+import { SpeepoboxConfig } from "../config/config.ts";
 import { salvage } from "../dispatch/checkout.ts";
 import { statusIndexPathFor } from "../dispatch/plan.ts";
 import type { Git } from "../git/git.ts";
@@ -74,7 +74,7 @@ export const reclaimAll = (
   | Sandbox
   | RunLock
   | Git
-  | BessemerConfig
+  | SpeepoboxConfig
   | Reporter
   | CommandExecutor
   | FileSystem.FileSystem
@@ -85,7 +85,7 @@ export const reclaimAll = (
     const fs = yield* FileSystem.FileSystem;
     const sandbox = yield* Sandbox;
     const runLock = yield* RunLock;
-    const config = yield* BessemerConfig;
+    const config = yield* SpeepoboxConfig;
     const path = yield* Path.Path;
 
     const report = (detail: string): Effect.Effect<void> =>
@@ -198,7 +198,7 @@ export const reclaimAll = (
     ): Effect.Effect<
       Failures,
       never,
-      Git | BessemerConfig | Reporter | CommandExecutor | FileSystem.FileSystem | Path.Path
+      Git | SpeepoboxConfig | Reporter | CommandExecutor | FileSystem.FileSystem | Path.Path
     > =>
       Effect.gen(function* () {
         const again = yield* scanWreckage(repoRoot);

@@ -18,7 +18,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Effect, Either, Layer, Option, Ref, Schema } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { land } from "../src/dispatch/land.ts";
 import { APPROVED_OUTCOME } from "../src/dispatch/feature.ts";
 import {
@@ -61,7 +61,7 @@ import { fakeNotifier } from "./support/notifier-fake.ts";
 import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t11";
+const BRANCH = "speepobox-t11";
 const BASE_REF = "origin/master";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
@@ -132,7 +132,7 @@ const world = (
       Layer.mergeAll(
         NodeFileSystem.layer,
         NodePath.layer,
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) => Ref.update(events, (current) => [...current, event]),
         }),

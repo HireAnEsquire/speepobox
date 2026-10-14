@@ -1,7 +1,7 @@
-// The pin, read out of `.bessemer/config.toml` by the one grammar SPEC §6
+// The pin, read out of `.speepobox/config.toml` by the one grammar SPEC §6
 // names (T121, P6 F6 and F7). Pure: it reads the text it is handed and
 // nothing else — the shim reads the same file with `sed` before the package
-// exists, so the pin is not a `BessemerConfig` key and no layer decodes it.
+// exists, so the pin is not a `SpeepoboxConfig` key and no layer decodes it.
 //
 // One grammar, two implementations: this module and the shim's `sed` (T125).
 // `test/fixtures/pin/` holds the lines both are held to, so a case added here
@@ -110,25 +110,25 @@ const unfetchableRemedy =
   "find a release's full SHA with " +
   `\`gh api --paginate repos/${RELEASE_REPO}/tags --jq '.[] | "\\(.commit.sha) \\(.name)"'\` ` +
   "and copy the SHA on its `vN` line onto the tool-sha line, or run `upgrade --to vN` from a " +
-  "hand clone of bessemer";
+  "hand clone of speepobox";
 
 const lineNo = (index: number): string => `line ${index + 1}`;
 
 export const renderPinRefusal = PinRefusal.$match({
   NoLine: () =>
-    "no tool-sha line in .bessemer/config.toml — run `init` (from a hand clone, on a fresh " +
+    "no tool-sha line in .speepobox/config.toml — run `init` (from a hand clone, on a fresh " +
     `repo), or add the line \`${EXPECTED_PIN_LINE}\``,
   Malformed: ({ index, text }) =>
-    `${lineNo(index)} of .bessemer/config.toml is a tool-sha line the pin grammar cannot read ` +
+    `${lineNo(index)} of .speepobox/config.toml is a tool-sha line the pin grammar cannot read ` +
     `(\`${text}\`) — write it exactly as \`${EXPECTED_PIN_LINE}\`: unindented, double-quoted, ` +
     "with no trailing comment",
   Duplicated: ({ indices }) =>
-    `${indices.length} tool-sha lines in .bessemer/config.toml ` +
+    `${indices.length} tool-sha lines in .speepobox/config.toml ` +
     `(${indices.map(lineNo).join(", ")}) — keep one`,
   Empty: ({ index }) =>
-    `the tool-sha pin on ${lineNo(index)} of .bessemer/config.toml is empty — ${unfetchableRemedy}`,
+    `the tool-sha pin on ${lineNo(index)} of .speepobox/config.toml is empty — ${unfetchableRemedy}`,
   Short: ({ index, value }) =>
-    `the tool-sha pin on ${lineNo(index)} of .bessemer/config.toml (\`${value}\`) is not a ` +
+    `the tool-sha pin on ${lineNo(index)} of .speepobox/config.toml (\`${value}\`) is not a ` +
     `full 40-hex SHA — ${unfetchableRemedy}`,
 });
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # This repo's setup hook (T7): the one thing that has to happen inside the
-# container before the agent pass. .bessemer/config.toml declares it as
-# `setup-hook`; the dispatcher mounts it read-only at /bessemer/setup-hook.sh
+# container before the agent pass. .speepobox/config.toml declares it as
+# `setup-hook`; the dispatcher mounts it read-only at /speepobox/setup-hook.sh
 # and runs it with `bash <path>` (src/dispatch/setup-hook.ts).
 #
-# At the repo root rather than in .bessemer/image/ because it is run-time, never
+# At the repo root rather than in .speepobox/image/ because it is run-time, never
 # build-time: it is not in the image, which is why it is correctly absent from
-# .bessemer/image/inputs. Inside .bessemer/image/ it would raise a standing "why
+# .speepobox/image/inputs. Inside .speepobox/image/ it would raise a standing "why
 # isn't this an input?" for every reader. A directory earns its keep at the
 # second script.
 #

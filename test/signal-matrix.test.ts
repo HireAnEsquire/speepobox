@@ -20,7 +20,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodePath } from "@effect/platform-node";
 import { DateTime, Deferred, Effect, Exit, Fiber, Layer, Option, Ref } from "effect";
-import { BessemerConfig, defaultConfig } from "../src/config/config.ts";
+import { SpeepoboxConfig, defaultConfig } from "../src/config/config.ts";
 import { packageRoot } from "../src/config/paths.ts";
 import { lockPathFor, planFor, specDispatch } from "../src/dispatch/plan.ts";
 import { runInScope } from "../src/dispatch/run.ts";
@@ -40,7 +40,7 @@ import { fakeNotifier } from "./support/notifier-fake.ts";
 import { fakeSandbox } from "./support/sandbox-fake.ts";
 import { PLAN_TIP } from "./support/plan.ts";
 
-const BRANCH = "bessemer-t19";
+const BRANCH = "speepobox-t19";
 const BASE_SHA = "1111111111111111111111111111111111111111";
 const MERGE_BASE_SHA = "2222222222222222222222222222222222222222";
 
@@ -80,7 +80,7 @@ const world = () =>
       Layer.mergeAll(
         NodeFileSystem.layer,
         NodePath.layer,
-        Layer.succeed(BessemerConfig, { ...defaultConfig, runtimeRoot }),
+        Layer.succeed(SpeepoboxConfig, { ...defaultConfig, runtimeRoot }),
         Layer.succeed(Reporter, {
           emit: (event) => Ref.update(events, (current) => [...current, event]),
         }),

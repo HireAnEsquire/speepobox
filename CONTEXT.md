@@ -1,4 +1,4 @@
-# Bessemer
+# Speepobox
 
 An AFK coding-agent dispatcher: it takes a task, runs an agent against a repository inside a
 sandbox, reviews the result, and lands it as a branch and a PR. It runs on the dispatching host and
@@ -15,13 +15,13 @@ is standing. Its directory is the repo root (`repoRoot`).
 _Avoid_: client, target repo, host repo
 
 **Package**:
-Bessemer's own source tree — its code, its default prompts, its lockfile. What an adopter's shim clones
+Speepobox's own source tree — its code, its default prompts, its lockfile. What an adopter's shim clones
 and runs; never a place a served repo's facts are read from or written to. Its directory is the
 package root (`packageRoot`).
 _Avoid_: tool root, install dir
 
 **Adopter**:
-A team that has installed Bessemer to serve its own repository. A role, not a directory.
+A team that has installed Speepobox to serve its own repository. A role, not a directory.
 _Avoid_: client, customer, consumer
 
 **Self-hosted**:
@@ -30,12 +30,15 @@ dispatcher's own revision is chosen by a branch of the served repo rather than p
 _Avoid_: dogfooding, incubation
 
 **speepobox**:
-The name of this repository (`HireAnEsquire/speepobox`), the public one releases are fetched from.
-It was also the tool's own name until T63 renamed the tool `bessemer`, and in `docs/` it still means
-the tool under that old name: `@hireanesquire/speepobox` is the old package and the `speepobox/`
-directory inside hae is where it incubated, never this repository. Code and tests use the word only
-in the release URL, never as a name for the tool.
-_Avoid_: speepobox as a name for the tool
+The name of the tool and of this repository (`HireAnEsquire/speepobox`), the public one releases are
+fetched from. The tool was called `speepobox` until T63, `bessemer` from T63 to T144, and
+`speepobox` again from T144. In `docs/`, a ticket or decision doc uses the name that was current
+when it was written.
+
+**bessemer**:
+The tool's name from T63 to T144. It survives only in `docs/` documents written under it, and in
+file names among them.
+_Avoid_: bessemer as a name for the tool
 
 ### Roots and locations
 
@@ -48,22 +51,22 @@ A place a dispatch writes state — checkouts, locks, logs, the ledger. Always r
 runtime root.
 
 **Runtime root** (`runtimeRoot`):
-The directory write locations resolve against, one per served repo. Defaults to the bessemer
+The directory write locations resolve against, one per served repo. Defaults to the speepobox
 directory. Moving it moves writes only; every read location stays where it was.
 _Avoid_: state dir, cache dir
 
-**Bessemer directory** (`.bessemer/`):
-The one directory Bessemer keeps inside a served repo: its committed configuration, the operator's
+**Speepobox directory** (`.speepobox/`):
+The one directory Speepobox keeps inside a served repo: its committed configuration, the operator's
 private settings and credential, prompt overrides, and — by default — its runtime state. Everything
-Bessemer reads from or writes to a served repo lives here or is named by something here.
+Speepobox reads from or writes to a served repo lives here or is named by something here.
 _Avoid_: `.agentbox/` (hae's bash dispatcher, a different tool)
 
 ### Installing into a served repo
 
 **Scaffold**:
-The files `init` writes into a served repo's bessemer directory — its committed config, its
+The files `init` writes into a served repo's speepobox directory — its committed config, its
 `.gitignore`, its agent image's Dockerfile and input list, and an empty tasks directory. Each file
-belongs to the served repo from the moment it is written; Bessemer never overwrites one.
+belongs to the served repo from the moment it is written; Speepobox never overwrites one.
 _Avoid_: adapter, boilerplate
 
 **Template**:
@@ -79,8 +82,8 @@ _Avoid_: out of date, stale (stale is the agent image's word)
 
 **Shim**:
 The one scaffold file that is executed rather than read: a small committed script in the served repo's
-bessemer directory that fetches the pinned package and runs it, naming the served repo from where the
-shim itself sits. How an adopter's operators run Bessemer; a self-hosted repo has none.
+speepobox directory that fetches the pinned package and runs it, naming the served repo from where the
+shim itself sits. How an adopter's operators run Speepobox; a self-hosted repo has none.
 _Avoid_: wrapper, launcher, installer, binary
 
 **Pin**:

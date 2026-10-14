@@ -1,15 +1,13 @@
-# bessemer
+# speepobox
 
 An AFK coding-agent dispatcher ([ADR 0007](docs/adr/0007-agentbox-effect-typescript-port.md)): it
 takes a task, runs an agent against a repository inside a sandbox, reviews the result, and
 lands it as a branch and a PR. The vocabulary — the roles, the roots, and the read-versus-write
 split — is in [CONTEXT.md](CONTEXT.md).
 
-The repository is `speepobox`; the tool it ships is `bessemer`.
+## Using speepobox in your repo
 
-## Using bessemer in your repo
-
-You are an **adopter**: your repo is served by a bessemer **release** it pins, and every command
+You are an **adopter**: your repo is served by a speepobox **release** it pins, and every command
 goes through the **shim** committed in your repo. Every command below is typed as printed, from
 your repo's root.
 
@@ -38,16 +36,16 @@ echo "${latest:+v$latest}"
 Clone that release, install it, and run `init` against your repo:
 
 ```sh
-clone=$(mktemp -d)/bessemer
+clone=$(mktemp -d)/speepobox
 gh repo clone HireAnEsquire/speepobox "$clone" -- --depth 1 --branch "v$latest"
 (cd "$clone" && npm ci)
 node "$clone/src/bin.ts" init --repo-root "$PWD"
 ```
 
-`init` writes `.bessemer/`, pins `tool-sha` in `.bessemer/config.toml` to the clone's revision, and
-prints the next steps: your stack's base image, `.bessemer/bessemer image build`, the agent
-credential in `.bessemer/.env`, and `.bessemer/bessemer doctor`. Commit `.bessemer/`, the shim
-`.bessemer/bessemer` included.
+`init` writes `.speepobox/`, pins `tool-sha` in `.speepobox/config.toml` to the clone's revision, and
+prints the next steps: your stack's base image, `.speepobox/speepobox image build`, the agent
+credential in `.speepobox/.env`, and `.speepobox/speepobox doctor`. Commit `.speepobox/`, the shim
+`.speepobox/speepobox` included.
 
 Whatever base image you choose needs `git` and `timeout` on its path; the template's
 `debian:bookworm-slim` already has both.
@@ -61,11 +59,11 @@ rm -rf "$clone"
 #### Setup that needs root
 
 The container runs as your image's user under `--cap-drop ALL`, with no sudo. If your setup needs
-root — starting a database, say — bessemer builds nothing for it, because the image is yours. One
+root — starting a database, say — speepobox builds nothing for it, because the image is yours. One
 pattern is written down here, and it is the one a served repo has run; others are allowed.
 
-- **The root work is a script baked into the image.** It lives in `.bessemer/image/`, is listed in
-  `.bessemer/image/inputs` so that changing it makes the image stale for `doctor`, and is `COPY`'d
+- **The root work is a script baked into the image.** It lives in `.speepobox/image/`, is listed in
+  `.speepobox/image/inputs` so that changing it makes the image stale for `doctor`, and is `COPY`'d
   to a fixed absolute path.
 - **sudo is scoped to exactly that command line.** The sudoers entry is
   `agent ALL=(ALL) NOPASSWD: /usr/bin/bash <path>`, and the setup hook runs exactly that. sudo
@@ -76,7 +74,7 @@ pattern is written down here, and it is the one a served repo has run; others ar
   `SETGID`; anything beyond that is the script's to earn.
 
 A worked example, starting postgres for the test suite. The root script,
-`.bessemer/image/root-setup.sh`:
+`.speepobox/image/root-setup.sh`:
 
 ```bash
 #!/usr/bin/env bash
@@ -95,68 +93,68 @@ SELECT 'CREATE DATABASE app'
 SQL
 ```
 
-listed in `.bessemer/image/inputs`:
+listed in `.speepobox/image/inputs`:
 
 ```
-.bessemer/image/root-setup.sh
+.speepobox/image/root-setup.sh
 ```
 
-In `.bessemer/image/Dockerfile`, while the image is still root: `postgresql` joins the
+In `.speepobox/image/Dockerfile`, while the image is still root: `postgresql` joins the
 `apt-get install` list, and the commented-out block the template ships is uncommented as it stands:
 
 ```dockerfile
 RUN apt-get update && apt-get install -y --no-install-recommends sudo \
     && rm -rf /var/lib/apt/lists/*
-COPY root-setup.sh /usr/local/libexec/bessemer/root-setup.sh
-RUN echo "agent ALL=(ALL) NOPASSWD: /usr/bin/bash /usr/local/libexec/bessemer/root-setup.sh" \
+COPY root-setup.sh /usr/local/libexec/speepobox/root-setup.sh
+RUN echo "agent ALL=(ALL) NOPASSWD: /usr/bin/bash /usr/local/libexec/speepobox/root-setup.sh" \
       > /etc/sudoers.d/agent \
     && chmod 0440 /etc/sudoers.d/agent
 ```
 
-The setup hook, `.bessemer/setup-hook.sh`, runs in the clone as `agent`:
+The setup hook, `.speepobox/setup-hook.sh`, runs in the clone as `agent`:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-sudo /usr/bin/bash /usr/local/libexec/bessemer/root-setup.sh
+sudo /usr/bin/bash /usr/local/libexec/speepobox/root-setup.sh
 npm ci
 ```
 
-And `.bessemer/config.toml` names the hook and the capabilities, as one comma-separated value:
+And `.speepobox/config.toml` names the hook and the capabilities, as one comma-separated value:
 
 ```toml
-setup-hook = ".bessemer/setup-hook.sh"
+setup-hook = ".speepobox/setup-hook.sh"
 cap-add = "CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL"
 ```
 
 `SETUID` and `SETGID` are sudo's; postgres earned the other four. That list is known to be enough,
-not known to be minimal. Give both scripts the executable bit (`chmod +x`) — bessemer runs them
+not known to be minimal. Give both scripts the executable bit (`chmod +x`) — speepobox runs them
 through `bash`, but a pre-commit hook may refuse a shebang script without it. Then rebuild with
-`.bessemer/bessemer image build`.
+`.speepobox/speepobox image build`.
 
 ### 3. The shim
 
-From now on every command is `.bessemer/bessemer …`:
+From now on every command is `.speepobox/speepobox …`:
 
 ```sh
-.bessemer/bessemer doctor
-.bessemer/bessemer status
+.speepobox/speepobox doctor
+.speepobox/speepobox status
 ```
 
-Nothing goes on your `PATH`. The shim is committed with the rest of `.bessemer/`, so everyone who
+Nothing goes on your `PATH`. The shim is committed with the rest of `.speepobox/`, so everyone who
 clones your repo runs the release it pins. The first run on a host fetches that release and installs
 it into the package cache, which is slow; later runs start straight away.
 
 ### 4. Dispatching
 
-A dispatch hands one task to an agent. bessemer clones your branch into a private copy, starts a
+A dispatch hands one task to an agent. speepobox clones your branch into a private copy, starts a
 container for the agent to work in, runs the implement pass and then the review rounds, pushes the
 result to the branch, and opens a draft PR against the base.
 
 #### Before a dispatch: the branch
 
-The branch is yours to make, and bessemer never creates one. Make it from the base you mean to
+The branch is yours to make, and speepobox never creates one. Make it from the base you mean to
 target:
 
 ```sh
@@ -181,12 +179,12 @@ refused. Different branches run side by side.
 
 #### The forms
 
-A spec file. A bare name resolves under the tasks dir (`tasks-dir`, `.bessemer/tasks` in the
+A spec file. A bare name resolves under the tasks dir (`tasks-dir`, `.speepobox/tasks` in the
 scaffold). Anything with a slash is a path used as-is. `.md` is added if it is missing either way,
-so this runs `.bessemer/tasks/add-login.md`:
+so this runs `.speepobox/tasks/add-login.md`:
 
 ```sh
-.bessemer/bessemer add-login --branch my-change
+.speepobox/speepobox add-login --branch my-change
 ```
 
 The spec is read from your working tree, so it can be uncommitted. It is mounted read-only into the
@@ -196,7 +194,7 @@ The task stated inline, with no spec file. The text is recorded on the ledger ro
 `--resume` can replay it:
 
 ```sh
-.bessemer/bessemer --task "Rename the config loader's error type to ConfigError" --branch my-change
+.speepobox/speepobox --task "Rename the config loader's error type to ConfigError" --branch my-change
 ```
 
 A feature run works through `<folder>/issues/*.md` in dependency order, in one container, on one
@@ -205,8 +203,8 @@ issue ids, or `all`, which selects every `ready-for-agent` AFK issue whose block
 also selected:
 
 ```sh
-.bessemer/bessemer --feature checkout-flow --issues all --branch checkout-flow
-.bessemer/bessemer --feature checkout-flow --issues 3,4 --branch checkout-flow
+.speepobox/speepobox --feature checkout-flow --issues all --branch checkout-flow
+.speepobox/speepobox --feature checkout-flow --issues 3,4 --branch checkout-flow
 ```
 
 The issues are read from the branch tip, not from your working tree, so the folder must be committed
@@ -219,14 +217,14 @@ feature selection, and its base. A resumed feature run replays only the issues t
 approved. Feedback is not recovered — add new feedback with `--feedback`:
 
 ```sh
-.bessemer/bessemer --resume my-change --feedback "Keep the old function as a deprecated alias"
+.speepobox/speepobox --resume my-change --feedback "Keep the old function as a deprecated alias"
 ```
 
-Or write it in your editor with `--feedback-edit`. bessemer opens the editor git would open for a
+Or write it in your editor with `--feedback-edit`. speepobox opens the editor git would open for a
 commit. That needs a terminal, and saving an empty file aborts the dispatch:
 
 ```sh
-.bessemer/bessemer --resume my-change --feedback-edit
+.speepobox/speepobox --resume my-change --feedback-edit
 ```
 
 `--feedback` and `--feedback-edit` also work on a fresh spec or feature dispatch. The text is added
@@ -236,15 +234,15 @@ deleted, or a resumed feature run has no unapproved issues left, the feedback be
 `--last` is `--resume` on the branch that was recorded most recently:
 
 ```sh
-.bessemer/bessemer --last --feedback "Address the review comments about error handling"
+.speepobox/speepobox --last --feedback "Address the review comments about error handling"
 ```
 
-With no arguments on a terminal, bessemer opens the **picker**. It asks for the source (a feature
+With no arguments on a terminal, speepobox opens the **picker**. It asks for the source (a feature
 folder, a spec, an inline task, or a recorded run to resume), then the branch, the issues if it is a
 feature, and the base. Then it shows the equivalent command line and asks before it dispatches:
 
 ```sh
-.bessemer/bessemer
+.speepobox/speepobox
 ```
 
 A command line missing an answer — no source, no `--branch`, or `--feature` without `--issues` —
@@ -255,7 +253,7 @@ is wrong rather than incomplete is refused, never asked about.
 
 - `--base <ref>` is the PR target and the diff boundary the review reads against. Leave it out and
   the branch's last recorded base in the ledger is used, then the `base` key in
-  `.bessemer/config.toml`. A resume takes the base off its record.
+  `.speepobox/config.toml`. A resume takes the base off its record.
 - `--dry-run` rehearses the dispatch. Every guard runs for real, including the `git fetch origin`,
   and the plan is printed. Nothing is claimed, started, pushed, logged, or recorded. Use it to check
   what a command line would do.
@@ -263,7 +261,7 @@ is wrong rather than incomplete is refused, never asked about.
   there, then pushes with `--force-with-lease`. The commits it discards can be recovered only from
   the reflog, and the run's ledger row records the tip it threw away. On a terminal it asks first
   and names how many commits will go. It is refused beside `--resume` or `--last`.
-- `--allow-stale-dispatcher` only matters when bessemer dispatches into its own repo. There, a
+- `--allow-stale-dispatcher` only matters when speepobox dispatches into its own repo. There, a
   dispatcher whose source is missing a commit the base already has is refused, and this flag runs it
   anyway and records that on the row. In your repo there is nothing for it to override.
 - `--no-input` never prompts. A command line missing an answer is refused instead of opening the
@@ -276,10 +274,10 @@ is wrong rather than incomplete is refused, never asked about.
    nothing and records nothing. Then the dispatch clears what dead runs left behind (see below).
 2. **The plan.** A block naming the mode, the branch, the base, the diff boundary, the container,
    the checkout path, and the `log path`.
-3. **The lock**, `.bessemer/locks/<slug>.pid`, held until the run ends.
-4. **The checkout.** A clone of the branch tip into `.bessemer/checkouts/<slug>`. The agent never
+3. **The lock**, `.speepobox/locks/<slug>.pid`, held until the run ends.
+4. **The checkout.** A clone of the branch tip into `.speepobox/checkouts/<slug>`. The agent never
    works in your own working tree.
-5. **The container**, `bessemer-<slug>`, started from your image with every capability dropped
+5. **The container**, `speepobox-<slug>`, started from your image with every capability dropped
    except those listed in `cap-add`, and with the `memory` and `pids-limit` limits.
 6. **The setup hook**, if `setup-hook` names one, run in the clone within `setup-timeout`.
 7. **The implement pass.** The agent works the task and commits, within `pass-timeout`.
@@ -293,7 +291,7 @@ is wrong rather than incomplete is refused, never asked about.
 11. **The notification.** A desktop notification through `osascript` on macOS, with the outcome
     and the PR. Where it cannot be sent, the run warns and carries on.
 
-The run log is `.bessemer/logs/<slug>-<id>.log`, one file per run. Logs are never deleted. The plan
+The run log is `.speepobox/logs/<slug>-<id>.log`, one file per run. Logs are never deleted. The plan
 block prints the run's log path when the run starts, so `tail -f` that path to watch the agent
 work. The log has every prompt verbatim and everything the agent printed.
 
@@ -303,7 +301,7 @@ as at the end of a run, and the row records the run as interrupted.
 #### Watching and cleaning up
 
 ```sh
-.bessemer/bessemer status
+.speepobox/speepobox status
 ```
 
 `status` shows running containers and the recent runs. Its **OWNER** column says who owns each
@@ -311,12 +309,12 @@ container:
 
 - `pid <N>` — a live dispatch.
 - `dead — next dispatch reclaims` — the dispatcher died, and the next dispatch will clean it up.
-- `no lock — reported only` — nothing here names an owner, so bessemer never touches it.
+- `no lock — reported only` — nothing here names an owner, so speepobox never touches it.
 
 The recent runs show each run's outcome, cost, PR, and any rescue branch.
 
 ```sh
-.bessemer/bessemer doctor
+.speepobox/speepobox doctor
 ```
 
 `doctor` checks the host and changes nothing: docker, the image and whether it is stale, the
@@ -324,8 +322,8 @@ credential, node, git and `origin`, `gh`, the config, the tasks dir, the runtime
 upstream release. It exits 1 on any FAIL.
 
 ```sh
-.bessemer/bessemer gc
-.bessemer/bessemer gc --force
+.speepobox/speepobox gc
+.speepobox/speepobox gc --force
 ```
 
 `gc` lists what dead runs left on the host and touches nothing. `gc --force` removes the dead ones.
@@ -337,7 +335,7 @@ deleted.
 
 - **A kept checkout.** At the end of a run, the commits are moved back onto your branch and the
   copy is removed. When the branch will not take them, they go onto a rescue branch. When neither
-  works, the copy in `.bessemer/checkouts/<slug>` is kept and the run prints the commands to recover
+  works, the copy in `.speepobox/checkouts/<slug>` is kept and the run prints the commands to recover
   from it. The next dispatch of the same branch tries the move again first and clears the copy if it
   works. A dispatch of another branch reports the copy and leaves it alone.
 - **A rescue branch.** When your branch moved while the run worked and the run's commits do not
@@ -348,15 +346,15 @@ deleted.
   its lock and container stay behind. The next dispatch of any branch reclaims them. It removes the
   checkout only after confirming the commits in it are on a branch, and otherwise keeps it and says
   so.
-- **The ledger.** `.bessemer/runs.jsonl` gets one JSON line per run that took the lock, written
+- **The ledger.** `.speepobox/runs.jsonl` gets one JSON line per run that took the lock, written
   when the run ends. The line records the branch, what was dispatched, the base and the diff
   boundary, why the run stopped, the review verdict, the PR, the token counts, and any rescue
   branch. `status` is the readable view; the run log has the detail.
 
 #### Configuration
 
-These are the `.bessemer/config.toml` keys a dispatcher is most likely to change. Put a change just
-for you in `.bessemer/config.local.toml`, which is gitignored and overrides the committed file.
+These are the `.speepobox/config.toml` keys a dispatcher is most likely to change. Put a change just
+for you in `.speepobox/config.local.toml`, which is gitignored and overrides the committed file.
 
 - `pass-timeout` — seconds one agent pass may run before it is killed. Default `1800`.
 - `max-review-rounds` — how many review rounds a run gets. Default `3`.
@@ -370,7 +368,7 @@ for you in `.bessemer/config.local.toml`, which is gitignored and overrides the 
 - `memory` — the container's memory limit. Default `8g`.
 - `pids-limit` — the container's process limit. Default `2048`.
 
-The comments in `.bessemer/config.toml` cover the rest, and they come from the package's
+The comments in `.speepobox/config.toml` cover the rest, and they come from the package's
 `templates/config.toml`.
 
 ### 5. Upgrading
@@ -379,39 +377,39 @@ The comments in `.bessemer/config.toml` cover the rest, and they come from the p
 where a new release shows up. To move to the newest:
 
 ```sh
-.bessemer/bessemer upgrade
+.speepobox/speepobox upgrade
 ```
 
 To move to a named release, or roll back to an earlier one:
 
 ```sh
-.bessemer/bessemer upgrade --to v1
+.speepobox/speepobox upgrade --to v1
 ```
 
 `upgrade` rewrites only the `tool-sha` line and commits nothing. It then prints the drift check to
 run, which runs the new release and compares your scaffold files with its templates:
 
 ```sh
-.bessemer/bessemer init --diff
+.speepobox/speepobox init --diff
 ```
 
 For each file `--diff` reports behind, it shows the diff and the command that refreshes it. For an
 ordinary file that is:
 
 ```sh
-rm .bessemer/<file> && .bessemer/bessemer init
+rm .speepobox/<file> && .speepobox/speepobox init
 ```
 
 The shim itself is not refreshed by deleting it — that would delete the command that runs `init` —
 so it is moved aside and run from there:
 
 ```sh
-mv .bessemer/bessemer .bessemer/bessemer.old && .bessemer/bessemer.old init && rm .bessemer/bessemer.old
+mv .speepobox/speepobox .speepobox/speepobox.old && .speepobox/speepobox.old init && rm .speepobox/speepobox.old
 ```
 
 If that `init` fails partway, put the old shim back with
-`mv .bessemer/bessemer.old .bessemer/bessemer`; failing both, run `init` from a hand clone as in the
-bootstrap. Review the diff, then commit `.bessemer/`.
+`mv .speepobox/speepobox.old .speepobox/speepobox`; failing both, run `init` from a hand clone as in the
+bootstrap. Review the diff, then commit `.speepobox/`.
 
 ### 6. When the pin cannot be fetched
 
@@ -421,7 +419,7 @@ or anything but 40 hex characters (`!! [short]`). Either way there are two remed
 - List the releases and copy one onto the pin by hand: run
   `gh api --paginate repos/HireAnEsquire/speepobox/tags --jq '.[] | "\(.commit.sha) \(.name)"'`,
   take the SHA on the `vN` line of the release you want, and write it into
-  `.bessemer/config.toml` as `tool-sha = "<that SHA>"`.
+  `.speepobox/config.toml` as `tool-sha = "<that SHA>"`.
 - Or let `upgrade` write it, from a hand clone of the release you want, made as in the
   bootstrap — every command there but `init`:
 
@@ -431,26 +429,26 @@ or anything but 40 hex characters (`!! [short]`). Either way there are two remed
 
 ### 7. The package cache
 
-The shim keeps each pinned release in `${XDG_CACHE_HOME:-$HOME/.cache}/bessemer/<sha>/`. The cache
+The shim keeps each pinned release in `${XDG_CACHE_HOME:-$HOME/.cache}/speepobox/<sha>/`. The cache
 is shared by every served repo on the host and is never pruned; `gc` does not touch it. Removing it
 is always safe — the next run rebuilds what it needs:
 
 ```sh
-rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/bessemer"
+rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/speepobox"
 ```
 
-or one release's entry, `rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/bessemer/<sha>"`.
+or one release's entry, `rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/speepobox/<sha>"`.
 
 ## This repo
 
-bessemer is the TypeScript port of the bash dispatcher it was incubated inside, and since ticket 18
+speepobox is the TypeScript port of the bash dispatcher it was incubated inside, and since ticket 18
 it sits at the root of this repo rather than in a directory of its own. The decisions behind it are
 in [docs/wayfinder/effect-agentbox/](docs/wayfinder/effect-agentbox/MAP.md).
 
-`.bessemer/` is everything bessemer keeps in this repo — its config, its credential, its prompt
+`.speepobox/` is everything speepobox keeps in this repo — its config, its credential, its prompt
 overrides, and its runtime state (checkouts, locks, logs, and the run ledger). An adopter's repo gets
 the same directory, which is what keeps self-hosting from being a special case. The credential is
-read from `.bessemer/.env` since T58; this repo's own file stays at the repo root until the operator
+read from `.speepobox/.env` since T58; this repo's own file stays at the repo root until the operator
 moves it with `mv`, which is their act and never a pass's (19 §3).
 
 ## License

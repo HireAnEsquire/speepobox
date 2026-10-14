@@ -13,8 +13,8 @@ import {
   CREDENTIAL_FILENAME,
   type CredentialSource,
 } from "../agent/credential.ts";
-import type { BessemerConfigShape } from "../config/config.ts";
-import { bessemerDir, resolveTasksDir } from "../config/paths.ts";
+import type { SpeepoboxConfigShape } from "../config/config.ts";
+import { speepoboxDir, resolveTasksDir } from "../config/paths.ts";
 // The dispatcher-freshness question (T42), and the `RepoUrl` userinfo rule
 // beside it: both are pure imports and not the `Git` tag, for the same
 // reason — `doctor` must work when the toolchain it inspects is broken, so
@@ -70,7 +70,7 @@ export class RuntimeRootUnwritable extends Data.TaggedError("RuntimeRootUnwritab
 const ok = (probe: string, detail: string): ProbeRow => ({ probe, status: "ok", detail });
 const warn = (probe: string, detail: string): ProbeRow => ({ probe, status: "warn", detail });
 
-// What `config.ts`'s provider chain reads out of the bessemer directory. A
+// What `config.ts`'s provider chain reads out of the speepobox directory. A
 // `config.local.toml` beside it wins for whatever key it declares, which is a
 // fact about values rather than about where a served repo's config lives —
 // the row below names the file an adopter is told to write.
@@ -116,19 +116,19 @@ export const rootsRow = (roots: {
   readonly credential: Option.Option<AgentCredential>;
   readonly selfHosted: boolean;
 }): ProbeRow => {
-  const bessemer = bessemerDir(roots.repoRoot);
+  const speepobox = speepoboxDir(roots.repoRoot);
   return ok(
     "roots",
     [
       `serving ${roots.repoRoot}`,
       `package ${roots.packageRoot} at ${revisionLabel(roots.dispatcherRevision)}`,
-      `config ${join(bessemer, CONFIG_FILENAME)}`,
+      `config ${join(speepobox, CONFIG_FILENAME)}`,
       // `none` and not a path: an absent credential has no source, and probe 3
       // is where a host is told what to do about it — this row would be a
       // second, shorter answer to a question that already has one.
       `credential ${Option.match(roots.credential, {
         onNone: () => "none",
-        onSome: (found) => `from ${credentialSource(bessemer, found.source)}`,
+        onSome: (found) => `from ${credentialSource(speepobox, found.source)}`,
       })}`,
       roots.selfHosted ? "self-hosted" : "not self-hosted",
     ].join("; "),
@@ -383,7 +383,7 @@ export const ghProbe = (
 
 // 8. tasks dir: where one-off specs live.
 export const tasksDirProbe = (
-  config: BessemerConfigShape,
+  config: SpeepoboxConfigShape,
   repoRoot: string,
 ): Effect.Effect<ReadonlyArray<ProbeRow>, TasksDirMissing, FileSystem.FileSystem> =>
   Effect.gen(function* () {
@@ -399,10 +399,10 @@ export const tasksDirProbe = (
     return yield* new TasksDirMissing({ detail: `${dir} missing — mkdir -p ${dir}` });
   });
 
-// 9. runtime root writable: the bessemer directory by default (T57), or
+// 9. runtime root writable: the speepobox directory by default (T57), or
 // wherever a `runtime-root` moved the writes to.
 //
-// Absent and unwritable are two rows, not one (T57): `.bessemer/` exists in
+// Absent and unwritable are two rows, not one (T57): `.speepobox/` exists in
 // this repo because `config.toml` is committed there, but an adopter whose
 // config arrived by hand may have no directory at all, and `mkdir` is the fix
 // for that where `chmod` is the fix for the other. One detail covering both
@@ -410,7 +410,7 @@ export const tasksDirProbe = (
 // ledger appends to `<runtimeRoot>/runs.jsonl` directly, so the directory has
 // to be there before the first dispatch, and this row is where a host is told.
 export const runtimeRootProbe = (
-  config: BessemerConfigShape,
+  config: SpeepoboxConfigShape,
 ): Effect.Effect<ReadonlyArray<ProbeRow>, RuntimeRootUnwritable, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
@@ -562,7 +562,7 @@ export const upstreamProbe = (host: {
     // An unreadable or absent file has no pin line, which is the grammar's
     // own answer for it — probe 7 says what is wrong with the file itself.
     const text = yield* fs
-      .readFileString(join(bessemerDir(host.repoRoot), CONFIG_FILENAME))
+      .readFileString(join(speepoboxDir(host.repoRoot), CONFIG_FILENAME))
       .pipe(Effect.orElseSucceed(() => ""));
     const pin = pinIn(text);
     const releases = yield* Effect.either(readRemoteReleases(host.packageRepoRoot));

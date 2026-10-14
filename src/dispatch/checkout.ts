@@ -103,7 +103,7 @@ export const repoUrl = (location: string): Effect.Effect<RepoUrl, GitError> =>
 // The email a dispatch commits under when the dispatching dev's config names
 // none (`run.sh:1454`). A noreply address rather than a guess at one: an
 // invented address is a real mailbox belonging to somebody else.
-const FALLBACK_EMAIL = "bessemer@users.noreply.github.com";
+const FALLBACK_EMAIL = "speepobox@users.noreply.github.com";
 
 // And the name, when the config names none: the host user this dispatch is
 // running as (`run.sh:1453`'s `id -un`, without the child process).
@@ -562,7 +562,7 @@ export const checkout = (
           detail: `an earlier run of '${plan.branch}' left its own copy of the repository behind, and the commits in
 it are still only in there. Nothing was removed, nothing was cloned, and this dispatch stops here.
 
-bessemer gives every run a private copy of this repository to work in, and moves the commits
+speepobox gives every run a private copy of this repository to work in, and moves the commits
 back when the run ends. ${deadRunKeptItBecause(plan, salvaged.why)}
 
 To bring the commits over as a branch you can look at before deciding anything:
@@ -830,7 +830,7 @@ yours to remove, and dispatching this branch again then works:
         _tag: "Warned",
         detail: `this run's commits are still in its own copy of the repository, not on '${plan.branch}'.
 
-bessemer gives every run a private copy of this repository to work in, and moves the commits
+speepobox gives every run a private copy of this repository to work in, and moves the commits
 back when the run ends. ${thisRunKeptItBecause(plan, salvaged.why)}
 
 To bring the commits over as a branch you can look at before deciding anything:
