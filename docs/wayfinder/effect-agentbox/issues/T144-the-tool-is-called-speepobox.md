@@ -1,6 +1,6 @@
 # T144 — The tool is called speepobox
 
-Status: ready-for-agent
+Status: Done (PR #2. Every name the tool writes, reads back or prints says `speepobox`; shims `bessemer.v2`/`v3` retired and the shim template is `speepobox` v5; history docs frozen, MAP carries the dated line. One mention site beyond the list: `test/init.test.ts`'s `RETIRED_NAME`, which rebuilds the older template texts. Host steps (clear old containers, move runtime state, rebuild, tag v4, re-pin hae) follow.)
 Type: AFK
 Blocked by:
 
