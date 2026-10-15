@@ -1,6 +1,6 @@
 # T146 — one lock read
 
-Status: ready-for-agent
+Status: Done (PR #4. `readLockOnDisk` in `src/reconcile/lock-on-disk.ts` is the one lock-file read; the reconciler, `status`, and — found in review — `gc`'s `lockIsLive` all call it.)
 Type: AFK
 Blocked by:
 
