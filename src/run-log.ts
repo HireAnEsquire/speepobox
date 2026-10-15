@@ -161,6 +161,13 @@ const summarize = (event: ReporterEvent): string => {
       return `stop: SIGINT to pid ${event.pid} for '${event.branch}'`;
     case "RunStopped":
       return `stop: '${event.branch}' stopped`;
+    // Nor does `--detach`'s parent (T153): it holds no lock, so it opens no log.
+    case "DetachedOutput":
+      return `detach | ${event.line}`;
+    case "DetachedStarted":
+      return `detach: '${event.branch}' started (pid ${event.pid})`;
+    case "DetachedStopped":
+      return `detach: '${event.branch}' stopped before it started (pid ${event.pid})`;
     case "PlanResolved":
       return `plan: ${taskNamed(event.plan.task)} on '${event.plan.branch}' | base ${event.plan.baseRef} | boundary ${event.plan.mergeBaseSha}`;
     case "ResourceAcquired":

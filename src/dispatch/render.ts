@@ -12,6 +12,7 @@ import type { ForgeError } from "../forge/forge.ts";
 import type { GcRefused } from "../gc/argv.ts";
 import type { InitRefused } from "../init/argv.ts";
 import type { LogsRefused } from "../logs/argv.ts";
+import type { DetachedChildExited, DetachRefused } from "../detach/detach.ts";
 import type { StopRefused } from "../stop/stop.ts";
 import type { UpgradeRefused } from "../upgrade/argv.ts";
 import type { GitError } from "../git/git.ts";
@@ -133,7 +134,10 @@ export const renderPlan = (plan: DispatchPlan): string =>
 // `bin.ts` could not have asserted. `GcRefused` (T99) is the same kind of
 // member: `gc` is intercepted before the dispatch surface, and its refusal is
 // that same one line, and so are `InitRefused` (T114), `UpgradeRefused`
-// (T128), `LogsRefused` (T151), and `StopRefused` (T152).
+// (T128), `LogsRefused` (T151), `StopRefused` (T152), and `DetachRefused` (T153).
+// `DetachedChildExited` (T153) carries no detail and renders as None, as
+// `ValidationError` does: the detached child's own output, relayed above it,
+// already said why.
 // `ImageBuildRefused` (T111) is `image build`'s, which is on the dispatch
 // surface and refuses before `Sandbox.build` is asked.
 export type DispatchFailure =
@@ -156,6 +160,8 @@ export type DispatchFailure =
   | UpgradeRefused
   | LogsRefused
   | StopRefused
+  | DetachRefused
+  | DetachedChildExited
   | ImageBuildRefused
   | ValidationError;
 
@@ -185,6 +191,7 @@ const label = (
     | UpgradeRefused
     | LogsRefused
     | StopRefused
+    | DetachRefused
     | ImageBuildRefused,
 ): string => {
   switch (error._tag) {

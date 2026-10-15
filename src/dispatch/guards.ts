@@ -120,10 +120,14 @@ const git = (
 // An absent flag is an answer missing (T86). A flag typed with nothing in it
 // is refused in the same words, but it stays a `GuardRefused`: the empty flag
 // is what was typed, and the picker never opens for one.
+// Exported for `detach` (T153), which has to name a branch's files before
+// the child whose guards would say this has started.
+export const BRANCH_REQUIRED =
+  "--branch is required — the working branch. Create it first: git branch <name> [<start>]";
+
 export const branchGiven = (request: DispatchRequest): Effect.Effect<string, GuardRefused> => {
   const given = Option.filter(request.branch, (value) => value.trim() !== "");
-  const detail =
-    "--branch is required — the working branch. Create it first: git branch <name> [<start>]";
+  const detail = BRANCH_REQUIRED;
   return Option.match(given, {
     onNone: () =>
       Option.isNone(request.branch)

@@ -60,6 +60,27 @@ export type ReporterEvent =
   // run it interrupts says how it ended itself.
   | { readonly _tag: "RunStopping"; readonly branch: string; readonly pid: number }
   | { readonly _tag: "RunStopped"; readonly branch: string }
+  // `--detach` (T153): a line the detached child wrote before its lock,
+  // relayed; the three start lines once it holds the lock and its log is
+  // open; and, when the parent stopped a child that had not started, which
+  // of the two cases it was. Not step notifications: the parent is not the
+  // run, and the run notifies for itself.
+  | { readonly _tag: "DetachedOutput"; readonly line: string }
+  | {
+      readonly _tag: "DetachedStarted";
+      readonly branch: string;
+      readonly pid: number;
+      readonly log: string;
+    }
+  | {
+      readonly _tag: "DetachedStopped";
+      readonly branch: string;
+      readonly pid: number;
+      // Whether the child held the lock before the SIGINT reached it.
+      readonly heldLock: boolean;
+      // Whether it exited within the wait after the SIGINT.
+      readonly exited: boolean;
+    }
   // What a dispatch resolved to before it acquired anything. Emitted once,
   // by the one derivation, so T15's `--dry-run` prints this rather than
   // re-deriving a second answer (05 Q20).

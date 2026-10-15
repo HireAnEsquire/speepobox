@@ -24,6 +24,14 @@ import { LogsRefused, parseLogsArgv } from "./argv.ts";
 
 const LOG_NAME = /^(.*)-(\d+)\.log$/;
 
+// When a log's run started, off its name alone: the epoch milliseconds a
+// run id ends in. `detach` (T153) asks it of the log it found, to tell the
+// run it started from an earlier one of the same branch.
+export const logStartedAt = (name: string): Option.Option<bigint> => {
+  const match = LOG_NAME.exec(name);
+  return match === null ? Option.none() : Option.some(BigInt(match[2]!));
+};
+
 // The newest log of `slug` among a directory's names, or none. The name is
 // parsed rather than prefix-matched: slug `foo` must not claim
 // `foo-bar-1791813203269.log`, whose slug is `foo-bar`.
@@ -52,11 +60,12 @@ export interface LogsOptions {
   readonly pollInterval?: Duration.DurationInput;
 }
 
-// Bytes past what was already printed, split into lines. A trailing partial
+// Bytes past what was already printed, split into lines — here and for the
+// output `detach` relays (T153). A trailing partial
 // line is held back until its newline arrives — or until the run ends, when
 // whatever is left is printed as the last line. The decoder streams, so a
 // multi-byte character split across two reads is decoded whole.
-const lineSplitter = () => {
+export const lineSplitter = () => {
   const decoder = new TextDecoder();
   let pending = "";
   return {
