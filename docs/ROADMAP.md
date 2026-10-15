@@ -30,18 +30,6 @@ adapter (codex or cursor) is the last part of the route: the need is real but no
   whether they need the review loop.
 - Needs a map. Not charted yet.
 
-### Writable container storage
-
-Give a repo docker-managed volumes for slow installs (`node_modules`, a package cache), so a run
-does not reinstall from scratch. Today hae's setup hook runs a full install into the bind-mounted
-clone on every run.
-
-- Constraint carried from the effect-agentbox map: docker-managed volumes only, never a writable
-  host directory, and `SandboxMount` stays mode-less.
-- The trust edge to rule on: a cache that outlives a run is something run N writes and run N+1
-  executes.
-- One grill, then one ticket. No map.
-
 ### Setup script
 
 A guided first install for a new adopter: the credential, the tasks dir, the defaults. `init` and
@@ -67,6 +55,16 @@ Each of these waits for a trigger. None is scheduled.
 - **Dashboard.** Trigger: pain from watching many parallel runs. A UI that can start dispatches
   needs its own security grill: bound to loopback, token-gated, safe against DNS rebinding and CSRF.
 - **Jira adapter.** No adopter has asked for one.
+- **Faster setup installs.** Trigger: setup time that hurts. Measured in hae on 2026-10-15: the
+  setup hook takes about 40s of a 10 to 30 minute run. `yarn install` is 34s of it: 13s to download
+  packages, 20s to write `node_modules` into the bind-mounted clone. Three routes, cheapest first:
+  - A. hae bakes a yarn cache into its image (`YARN_CACHE_FOLDER`). This removes the download. It is
+    a hae change, with no speepobox code. The lockfile still decides the versions, so a stale cache
+    only costs time.
+  - B. Each run gets its own docker volume over `node_modules`, removed with the container. This
+    should cut most of the 20s. It needs a volume kind beside `SandboxMount`, which stays mode-less.
+  - C. One volume per repo that outlives runs. Ruled out: run N would write code that run N+1
+    executes, and parallel runs would share it.
 
 ## Small ideas
 
