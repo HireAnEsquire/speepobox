@@ -77,8 +77,9 @@ Usage:
   speepobox upgrade [--to vN]
                       move .speepobox/config.toml's tool-sha pin to the newest
                       release, or to the one --to names (rollbacks included).
-                      Rewrites that one line, commits nothing, and prints
-                      .speepobox/speepobox init --diff to run next
+                      Rewrites that one line, then runs the shim's
+                      init --refresh so the new release refreshes the
+                      scaffold (not on a rollback). Commits nothing
   speepobox image build
                       build the configured image from .speepobox/image, labelled
                       with the inputs probe 2 checks. Exit 1 if the build fails

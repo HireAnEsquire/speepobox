@@ -391,12 +391,23 @@ To move to a named release, or roll back to an earlier one:
 .speepobox/speepobox upgrade --to v1
 ```
 
-`upgrade` rewrites only the `tool-sha` line and commits nothing. It then prints the drift check to
-run, which runs the new release and compares your scaffold files with its templates:
+`upgrade` rewrites the `tool-sha` line, then refreshes the scaffold: it runs
+`.speepobox/speepobox init --refresh`, so the new release — the one that ships the templates — applies
+them, and prints what that refresh wrote, kept, refreshed, and removed. It commits nothing. When a
+file it kept needs your hand, or the image's inputs changed and the image wants a rebuild, it says
+so. If the refresh fails, the pin stays moved and `upgrade` exits 1 with the command to retry; running
+`upgrade` again is that retry. On a pin that is already current it still refreshes, which costs no
+fetch.
+
+A rollback (`--to` an earlier release) moves the pin and refreshes nothing: scaffold files are not
+rolled back. `init --diff` shows how they compare with the older release's templates:
 
 ```sh
 .speepobox/speepobox init --diff
 ```
+
+The upgrade from v4 to v5 needs one `init --refresh` by hand afterwards, because v4's `upgrade` does
+not refresh; every upgrade from v5 on does it for you.
 
 For each file `--diff` reports behind, it shows the diff and the command that refreshes it. A file
 you never edited — its text still matches its own stamp — is *pristine*, and one command takes every
@@ -429,8 +440,8 @@ If that `init` fails partway, put the old shim back with
 `mv .speepobox/speepobox.old .speepobox/speepobox`; failing both, run `init` from a hand clone as in the
 bootstrap.
 
-So the usual upgrade is `upgrade`, then `init --diff`, then `init --refresh`, then a hand merge of any
-edited file. Review the diff, then commit `.speepobox/`.
+So the usual upgrade is `upgrade`, then a hand merge of any file it names, then a commit: review the
+diff, then commit `.speepobox/`.
 
 ### 6. When the pin cannot be fetched
 
