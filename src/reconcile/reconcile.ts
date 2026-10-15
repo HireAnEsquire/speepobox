@@ -52,12 +52,13 @@ import {
 } from "../dispatch/plan.ts";
 import { Git } from "../git/git.ts";
 import { exec } from "../internal/exec.ts";
-import { isProcessAlive, parsePid } from "../lock/liveness.ts";
+import { isProcessAlive } from "../lock/liveness.ts";
 import { RunLock } from "../lock/run-lock.ts";
 import { evictorInMarkerName } from "../lock/witness.ts";
 import { ownershipFilterArgs } from "../ownership/labels.ts";
 import { Reporter } from "../reporter.ts";
 import { Sandbox } from "../sandbox/sandbox.ts";
+import { readLockOnDisk } from "./lock-on-disk.ts";
 import {
   branchInHead,
   type CheckoutOnDisk,
@@ -168,17 +169,6 @@ export const scanWreckage = (
         ),
       );
 
-    // A scan is a snapshot: a file that vanished under it is not wreckage
-    // anybody has to account for, so an unreadable entry drops out rather than
-    // becoming a lock nobody can name.
-    const lockAt = (file: string): Effect.Effect<Option.Option<LockOnDisk>> =>
-      fs.readFileString(file).pipe(
-        Effect.map((contents) =>
-          Option.some<LockOnDisk>({ path: file, owner: parsePid(contents) }),
-        ),
-        Effect.orElseSucceed(() => Option.none<LockOnDisk>()),
-      );
-
     // The branch a kept copy is on, read as a file rather than asked of git:
     // this is the scan, and the scan touches every slug on the host, so it
     // reads directories rather than spawning a `git` per one. `.git/HEAD` is
@@ -251,7 +241,7 @@ export const scanWreckage = (
     for (const entry of lockEntries) {
       const slug = slugOfLockEntry(entry);
       if (Option.isSome(slug)) {
-        const lock = yield* lockAt(path.join(locksDir, entry));
+        const lock = yield* readLockOnDisk(path.join(locksDir, entry));
         if (Option.isSome(lock)) {
           locks.set(slug.value, lock.value);
         }
