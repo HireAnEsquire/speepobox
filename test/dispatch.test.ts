@@ -1040,11 +1040,16 @@ describe("dispatch guards", () => {
         // nothing past the read is asked.
         `${inRepo(result.repoRoot)} rev-parse --verify refs/remotes/origin/${BRANCH}`,
         `${inRepo(result.repoRoot)} rev-parse --verify refs/heads/${BRANCH}`,
+        // Whether the branch was checked out mid-run (T148), before the
+        // land's fetch into it.
+        `${inRepo(result.repoRoot)} worktree list --porcelain`,
         `${inRepo(result.repoRoot)} rev-list --count ${MERGE_BASE_SHA}..refs/heads/${BRANCH}`,
         `${inRepo(result.repoRoot)} rev-list --count ${PRE_TIP}..refs/heads/${BRANCH}`,
         // The release's salvage asks whether the branch is there before it
-        // fetches onto it (T107), in the repo the fetch would write to.
+        // fetches onto it (T107), in the repo the fetch would write to — and
+        // whether it is checked out there (T148).
         `${inRepo(result.repoRoot)} rev-parse --verify refs/heads/${BRANCH}`,
+        `${inRepo(result.repoRoot)} worktree list --porcelain`,
         // The release's containment read, which names *two* repositories for
         // one question (T38): the tip in the copy the commits are in, the
         // ancestry in the repo whose branch has to hold them before the copy

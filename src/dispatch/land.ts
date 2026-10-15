@@ -19,7 +19,7 @@
 // which is exactly what matrix row 14 says a failed push leaves behind.
 import { Effect, Option, Ref } from "effect";
 import { SpeepoboxConfig } from "../config/config.ts";
-import { Git, type GitError } from "../git/git.ts";
+import { Git, GitError, worktreeHolding } from "../git/git.ts";
 import { IssueStore, type IssueStoreError } from "../issues/issue-store.ts";
 import type { IssueOutcome } from "../ledger/record.ts";
 import { Reporter } from "../reporter.ts";
@@ -92,6 +92,22 @@ export const land = (
     // Onto the branch the run was given, and only ever that one: the release's
     // rescue is salvage, and a land that partially succeeded onto a branch
     // nobody asked for is the outcome this step exists to refuse (T29).
+    //
+    // **Asked first: is the branch checked out somewhere now** (T148). The
+    // guard refused a checked-out branch before the run, but a dispatcher can
+    // check it out while the run is going, and git will not fetch into it —
+    // so the fetch would fail quoting git's raw refusal, which reads as
+    // diverged history. The lookup buys the sentence and nothing else: a
+    // lookup that fails goes on to the fetch exactly as before it was asked,
+    // and where the commits go is still the release's to decide.
+    const holder = yield* worktreeHolding(plan.branch, repoRoot).pipe(
+      Effect.orElseSucceed(() => Option.none<string>()),
+    );
+    if (Option.isSome(holder)) {
+      return yield* new GitError({
+        detail: `'${plan.branch}' was checked out at ${holder.value} during the run, and git does not fetch into a checked-out branch — so this run's work was not landed and nothing was pushed. Its commits are kept on a branch of the run's own, which the warning about this run's copy of the repository names.`,
+      });
+    }
     yield* repo.fetchBack({ from, into: repoRoot, branch: plan.branch, onto: plan.branch });
 
     const sinceBoundary = yield* repo.countCommits({

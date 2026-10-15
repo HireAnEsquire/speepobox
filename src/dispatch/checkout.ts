@@ -81,7 +81,7 @@
 import { userInfo } from "node:os";
 import { FileSystem } from "@effect/platform";
 import { Effect, Either, Option, Ref, Schema, type Scope } from "effect";
-import { Git, GitError } from "../git/git.ts";
+import { Git, GitError, worktreeHolding } from "../git/git.ts";
 import { RepoUrl } from "../git/repo-url.ts";
 import { Reporter } from "../reporter.ts";
 import { type DispatchPlan, type HardReset, shortSha } from "./plan.ts";
@@ -171,9 +171,13 @@ const rescueBranch = (branch: string, tip: string): string =>
 // there are two answers since T107: the fetch ran and git refused it, or the
 // branch could not be read and no fetch onto it ran at all. The second carries
 // the read's words and no `GitError` of a fetch, because there was none.
+// T148 added a third: the branch is checked out in a worktree of the repo, which
+// git will not fetch into, so no fetch onto it ran either — and what there is
+// to say is where it is checked out.
 export type BranchAttempt =
   | { readonly _tag: "Refused"; readonly error: GitError }
-  | { readonly _tag: "Unread"; readonly detail: string };
+  | { readonly _tag: "Unread"; readonly detail: string }
+  | { readonly _tag: "CheckedOut"; readonly path: string };
 
 export type Unmoved =
   | {
@@ -195,30 +199,77 @@ export type Unmoved =
 // records where the commits are (`rescuedOnto`), not why.
 export type RescueReason =
   | { readonly _tag: "Refused" }
-  | { readonly _tag: "BranchUnread"; readonly detail: string };
+  | { readonly _tag: "BranchUnread"; readonly detail: string }
+  | { readonly _tag: "CheckedOut"; readonly path: string };
 
 export type Salvage =
   | { readonly _tag: "WentHome" }
   | { readonly _tag: "Rescued"; readonly onto: string; readonly because: RescueReason }
   | { readonly _tag: "Kept"; readonly why: Unmoved };
 
+// Why a checked-out branch is not a destination (T148), said the same way by
+// the rescue clause and by the branch attempt it stands for.
+const checkedOutAt = (branch: string, path: string): string =>
+  `'${branch}' is checked out at ${path}, and git does not fetch into a checked-out branch`;
+
 // The clause every rescue sentence carries, at the release, the acquire, and
 // `gc --force`: why the commits are not on the branch they were for.
-export const rescueBecause = (branch: string, because: RescueReason): string =>
-  because._tag === "Refused"
-    ? `its commits would not go onto '${branch}'`
-    : `'${branch}' could not be read here (${because.detail}), so its commits were not sent there`;
+export const rescueBecause = (branch: string, because: RescueReason): string => {
+  switch (because._tag) {
+    case "Refused":
+      return `its commits would not go onto '${branch}'`;
+    case "BranchUnread":
+      return `'${branch}' could not be read here (${because.detail}), so its commits were not sent there`;
+    case "CheckedOut":
+      return checkedOutAt(branch, because.path);
+  }
+};
+
+// What a dispatcher whose checkout holds the branch runs to land a rescue
+// (T148): they already have the branch checked out, so the first step runs
+// right there, and the PR the failed land never reached is theirs to open.
+const checkedOutRecovery = (branch: string, path: string, rescue: string): string =>
+  `To put them on '${branch}' from the checkout that holds it, and push:
+  git -C ${path} merge --ff-only ${rescue}
+  git -C ${path} push origin ${branch}
+The PR was not opened or updated: open it, or re-dispatch with --resume ${branch}.`;
 
 // Which destinations a rescue arm tried, said the same way by every renderer:
-// both, or — when the branch could not be read — the run's own alone.
-export const destinationsTried = (branch: string, home: BranchAttempt, whose: string): string =>
-  home._tag === "Refused"
-    ? `onto '${branch}', then onto a branch of ${whose} own`
-    : `onto a branch of ${whose} own, because '${branch}' could not be read here`;
+// both, or — when the branch could not be read or is checked out — the run's
+// own alone.
+export const destinationsTried = (branch: string, home: BranchAttempt, whose: string): string => {
+  switch (home._tag) {
+    case "Refused":
+      return `onto '${branch}', then onto a branch of ${whose} own`;
+    case "Unread":
+      return `onto a branch of ${whose} own, because '${branch}' could not be read here`;
+    case "CheckedOut":
+      return `onto a branch of ${whose} own, because '${branch}' is checked out at ${home.path}`;
+  }
+};
 
-// What git said about the branch attempt: the fetch's refusal, or the read's.
-export const branchAttemptSaid = (home: BranchAttempt): string =>
-  home._tag === "Refused" ? home.error.detail : home.detail;
+// What git said about the branch attempt: the fetch's refusal, the read's,
+// or the worktree list's.
+export const branchAttemptSaid = (home: BranchAttempt): string => {
+  switch (home._tag) {
+    case "Refused":
+      return home.error.detail;
+    case "Unread":
+      return home.detail;
+    case "CheckedOut":
+      return `its worktree list has the branch checked out at ${home.path}`;
+  }
+};
+
+// The opening a rescue-arm keep owes when the branch was never fetched onto:
+// why it was not a destination at all.
+const notSentBecause = (
+  branch: string,
+  home: Exclude<BranchAttempt, { _tag: "Refused" }>,
+): string =>
+  home._tag === "Unread"
+    ? `'${branch}' could not be read here`
+    : `'${branch}' is checked out at ${home.path}`;
 
 // What the salvage is about: a copy on disk and the branch it is for — the two
 // facts it reads, and all a caller holding no plan has (T98). A `DispatchPlan`
@@ -258,7 +309,7 @@ export const rescueDidNotLand = (
   `${
     why.home._tag === "Refused"
       ? "The branch would not take them:"
-      : `'${branch}' could not be read here, so they were not sent there:`
+      : `${notSentBecause(branch, why.home)}, so they were not sent there:`
   }
 
 git said: ${branchAttemptSaid(why.home)}
@@ -327,8 +378,10 @@ commits — was tried too, and that did not work either.`,
       ? `This move did not go through: the branch inside the copy no longer
 continues on from '${plan.branch}' as it stands here, which is usually because the run tidied up
 its own commits before finishing.`
-      : `'${plan.branch}' could not be read here, so the commits were not sent there — a
-fetch onto a branch that is not there would have created it.`;
+      : why.home._tag === "Unread"
+        ? `'${plan.branch}' could not be read here, so the commits were not sent there — a
+fetch onto a branch that is not there would have created it.`
+        : `${checkedOutAt(plan.branch, why.home.path)}, so the commits were not sent there.`;
   return `${opening} Nothing was deleted and nothing is lost — the copy was kept
 for exactly this reason.
 
@@ -461,6 +514,33 @@ export const salvage = (
         { _tag: "Unread", detail },
         { _tag: "BranchUnread", detail },
       );
+    }
+
+    // **And a checked-out branch is not a destination either** (T148): git
+    // refuses a fetch into a branch checked out in any worktree, so the fetch
+    // could only fail, and its refusal reads as diverged history. The branch
+    // is there, though, so the containment question is still worth asking
+    // first — a dispatcher who checked it out after the commits went home is
+    // looking at them — and only a branch that does not hold them sends them
+    // to the rescue. A lookup that fails carries on exactly as before it was
+    // asked: it is for a better sentence, never for a different outcome.
+    const holder = yield* worktreeHolding(plan.branch, repoRoot).pipe(
+      Effect.orElseSucceed(() => Option.none<string>()),
+    );
+    if (Option.isSome(holder)) {
+      const tip = yield* readTip;
+      const contained = yield* Either.match(tip, {
+        onLeft: () => Effect.succeed(false),
+        onRight: (at) =>
+          repo
+            .branchContains({ repo: repoRoot, branch: plan.branch, commit: at })
+            .pipe(Effect.orElseSucceed(() => false)),
+      });
+      if (contained) {
+        return { _tag: "WentHome" };
+      }
+      const path = holder.value;
+      return yield* rescueFrom(tip, { _tag: "CheckedOut", path }, { _tag: "CheckedOut", path });
     }
 
     const home = yield* Effect.either(fetchOnto(plan.branch));
@@ -765,10 +845,18 @@ yours to remove, and dispatching this branch again then works:
                   // human gets a branch, and `git log`, `git diff`, `git
                   // merge`, and `git cherry-pick` all work on it with no
                   // explanation of what a checkout is.
+                  //
+                  // A branch checked out mid-run (T148) gets the steps as
+                  // well: the dispatcher has it open, so the merge is theirs
+                  // to run right there, and the land never reached the PR.
                   onSome: ({ onto, because }) =>
                     reporter.emit({
                       _tag: "Warned",
-                      detail: `this run ended, and ${rescueBecause(plan.branch, because)} — they are on '${onto}' now, so merge or cherry-pick from there whenever you like. Nothing was lost, and the run's copy of the repository has been cleaned up.`,
+                      detail:
+                        because._tag === "CheckedOut"
+                          ? `this run ended, and ${rescueBecause(plan.branch, because)} — the commits are on '${onto}' now. Nothing was lost, and the run's copy of the repository has been cleaned up.
+${checkedOutRecovery(plan.branch, because.path, onto)}`
+                          : `this run ended, and ${rescueBecause(plan.branch, because)} — they are on '${onto}' now, so merge or cherry-pick from there whenever you like. Nothing was lost, and the run's copy of the repository has been cleaned up.`,
                     }),
                 }),
               ),

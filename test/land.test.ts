@@ -559,6 +559,52 @@ describe("the land", () => {
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
 
+  // A dispatcher who checks the branch out mid-run (T148): git will not fetch
+  // into it, so the land asks first and says so, rather than quoting git's
+  // refusal of a fetch it never needed to make.
+  it.scoped("fails at stage land, fetching nothing, when the branch was checked out mid-run", () =>
+    Effect.gen(function* () {
+      const elsewhere = "/home/dev/hae-wt";
+      const checkedOut = yield* world({
+        counts: WORKED,
+        worktrees: [
+          { path: "/home/dev/hae", branch: Option.some("main") },
+          { path: elsewhere, branch: Option.some(BRANCH) },
+        ],
+      });
+      const outcome = yield* Effect.either(
+        runLanding(checkedOut).pipe(Effect.provide(checkedOut.layer)),
+      );
+
+      expect(Either.isLeft(outcome)).toBe(true);
+      if (Either.isLeft(outcome)) {
+        expect(outcome.left._tag).toBe("GitError");
+        expect(outcome.left.detail).toContain(`'${BRANCH}' was checked out at ${elsewhere}`);
+        expect(outcome.left.detail).toContain("nothing was pushed");
+      }
+      expect((yield* Ref.get(checkedOut.appended))[0]?.terminalReason).toEqual(
+        Option.some({ _tag: "Failed", stage: "land" as const }),
+      );
+      // Neither the land nor the release fetched onto the checked-out branch.
+      const calls = yield* Ref.get(checkedOut.gitCalls);
+      expect(calls.filter((call) => call._tag === "FetchBack" && call.onto === BRANCH)).toEqual([]);
+      expect(calls.filter((call) => call._tag === "Push")).toEqual([]);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+
+  it.scoped("lands as before when the worktree lookup fails", () =>
+    Effect.gen(function* () {
+      const scratch = yield* world({ counts: WORKED, worktreesFails: "fatal: not a git repo" });
+      yield* runLanding(scratch).pipe(Effect.provide(scratch.layer));
+      const calls = yield* Ref.get(scratch.gitCalls);
+      expect(
+        calls.filter((call) => call._tag === "FetchBack" && call.onto === BRANCH),
+      ).toHaveLength(2);
+      expect(calls.filter((call) => call._tag === "Push")).toHaveLength(1);
+      expect(warningsIn(yield* Ref.get(scratch.events))).toEqual([]);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+
   // Matrix row 14: the commits are home and the remote refused them. All three
   // release — the checkout by its ordinary derived path, because its
   // fast-forward already succeeded — and the row still names `land`.

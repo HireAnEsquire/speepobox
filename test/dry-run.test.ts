@@ -1167,13 +1167,17 @@ describe("a dry run and a real dispatch", () => {
         `${inRepo(dry.repoRoot)} config --get user.name`,
         `${inRepo(dry.repoRoot)} config --get user.email`,
         // The land's own reads, which a rehearsal makes too: what the branch
-        // held when this run was typed, and what it holds past the boundary.
+        // held when this run was typed, whether it was checked out mid-run
+        // (T148), and what it holds past the boundary.
         `${inRepo(dry.repoRoot)} rev-parse --verify refs/heads/${BRANCH}`,
+        `${inRepo(dry.repoRoot)} worktree list --porcelain`,
         `${inRepo(dry.repoRoot)} rev-list --count ${MERGE_BASE_SHA}..refs/heads/${BRANCH}`,
         `${inRepo(dry.repoRoot)} rev-list --count ${PRE_TIP}..refs/heads/${BRANCH}`,
         // The release's branch read (T107), before its fetch onto the branch:
-        // a read, so a rehearsal makes it for real.
+        // a read, so a rehearsal makes it for real — and the worktree read
+        // beside it (T148).
         `${inRepo(dry.repoRoot)} rev-parse --verify refs/heads/${BRANCH}`,
+        `${inRepo(dry.repoRoot)} worktree list --porcelain`,
         // And the release's containment read, made for real here as every read
         // is (T38): the copy's tip, asked of the copy. It gets no answer,
         // because a rehearsal recorded the clone rather than making it — which
@@ -1273,6 +1277,7 @@ describe("a rehearsed land with an approved issue", () => {
       }
       expect(yield* Ref.get(commands)).toEqual([
         `${inRepo(REPO_ROOT)} rev-parse --verify refs/heads/${BRANCH}`,
+        `${inRepo(REPO_ROOT)} worktree list --porcelain`,
         `${inRepo(REPO_ROOT)} rev-list --count ${MERGE_BASE_SHA}..refs/heads/${BRANCH}`,
         `${inRepo(REPO_ROOT)} rev-list --count ${PRE_TIP}..refs/heads/${BRANCH}`,
       ]);
