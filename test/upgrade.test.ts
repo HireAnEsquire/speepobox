@@ -12,7 +12,7 @@ import type { Release } from "../src/git/releases.ts";
 import { exec } from "../src/internal/exec.ts";
 import { Reporter, type ReporterEvent } from "../src/reporter.ts";
 import { parseUpgradeArgv, UPGRADE_USAGE, UpgradeRefused } from "../src/upgrade/argv.ts";
-import { IMAGE_BUILD, REFRESH } from "../src/init/render.ts";
+import { IMAGE_BUILD, REFRESH, renderInit } from "../src/init/render.ts";
 import {
   COMMIT_LINE,
   INIT_DIFF_COMMAND,
@@ -572,6 +572,31 @@ describe("upgrade's refresh (T149)", () => {
         expect(rendered).toContain(REFRESHED);
         expect(rendered).not.toContain(REBUILD_LINE);
         expect(rendered).not.toContain(KEPT_EDITED_LINE);
+      }),
+    ),
+  );
+
+  // The child is the new release's `init --refresh`, so its stdout is
+  // `renderInit` over a refresh: the report relays it whole, and it carries
+  // no first-time setup for an adopter already set up.
+  it.scoped("relays a real init --refresh render with no Next steps in it", () =>
+    provideReal(
+      Effect.gen(function* () {
+        const f = yield* fixture([["v1"], ["v2"]], (shas) => pinOf(shas[0]!));
+        const render = renderInit({
+          _tag: "Write",
+          files: [
+            { path: ".speepobox/config.toml", action: "kept" },
+            { path: ".speepobox/AGENTS.md", action: "refreshed", from: 1, to: 2 },
+          ],
+          warnings: [],
+        });
+        yield* writeShim(f.repoRoot, `cat <<'EOF'\n${render}\nEOF`);
+        const { exit, events } = yield* run(f);
+        expect(Exit.isSuccess(exit)).toBe(true);
+        const rendered = renderUpgrade(reported(events), reportedRefresh(events));
+        expect(rendered).toContain(render);
+        expect(rendered).not.toContain("Next steps");
       }),
     ),
   );

@@ -1,8 +1,8 @@
 // The `init` renderer: a pure function over `InitSnapshot`, subscribed to the
 // `Reporter` stream exactly as `gc`'s is. A write is a `removed` line for each
 // leftover a killed refresh left (T147), one `wrote`, `kept`, or `refreshed`
-// (T145) line per file, any warning, then the next steps — printed, and never
-// run. A `--diff` (T116) is one line per file, then each
+// (T145) line per file, any warning, then — only where a file was written —
+// the next steps, printed and never run. A `--diff` (T116) is one line per file, then each
 // behind file's diff and its remedy, then a shim that cannot run and its
 // `chmod` (T127), then how many files `--refresh` would take (T145).
 import { Option } from "effect";
@@ -62,13 +62,16 @@ export const NEXT_STEPS: ReadonlyArray<string> = [
   "commit .speepobox/, the shim .speepobox/speepobox included",
 ];
 
+// The next steps are first-time setup, so a run that wrote nothing — a
+// `--refresh`, which `upgrade` relays verbatim (T149), or a re-run `init` —
+// owes none: an adopter already set up is not told to set up again.
 const renderWrite = (snapshot: InitWrite): string =>
   [
     ...snapshot.files.map(fileLine),
     ...snapshot.warnings.map((warning) => `WARN  ${warning}`),
-    "",
-    "Next steps:",
-    ...NEXT_STEPS.map((step, index) => `  ${index + 1}. ${step}`),
+    ...(snapshot.files.some((file) => file.action === "wrote")
+      ? ["", "Next steps:", ...NEXT_STEPS.map((step, index) => `  ${index + 1}. ${step}`)]
+      : []),
   ].join("\n");
 
 const stateOf = (file: DriftFile): string => {
