@@ -777,15 +777,51 @@ describe("cancel", () => {
   );
 });
 
+// T150: an empty tasks dir lists no spec or feature rows, and the rows that
+// need no tasks dir — the typed task and the resume (T85) — still open the
+// picker.
 describe("a tasks dir with nothing to dispatch", () => {
-  it.scoped("refuses by naming the directory rather than opening an empty list", () =>
+  it.scoped("opens on the typed-task and resume rows, and the task row dispatches", () =>
     Effect.gen(function* () {
-      const result = yield* pick({ answers: [], specs: [] });
+      const result = yield* pick({
+        specs: [],
+        answers: [TASK_LABEL, "b", ENTER, "Dispatch"],
+        branches: [...BRANCHES, branchAt("b", 4)],
+        editor: editorWriting([TASK]),
+      });
 
+      expect(result.asked[0]?.rows.map((row) => row.label)).toEqual([TASK_LABEL, RESUME_LABEL]);
+      expect(answered(result)).toEqual(["--task", TASK, "--branch", "b"]);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("offers the typed-task row alone for a seeded --branch", () =>
+    Effect.gen(function* () {
+      const result = yield* pick({
+        specs: [],
+        seed: seedFor(typedRequest({ branch: Option.some(BRANCH) })),
+        answers: [TASK_LABEL, ENTER, "Dispatch"],
+        editor: editorWriting([TASK]),
+      });
+
+      expect(result.asked[0]?.rows.map((row) => row.label)).toEqual([TASK_LABEL]);
+      expect(answered(result)).toEqual(["--task", TASK, "--branch", BRANCH]);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("still refuses a seeded --issues, which no row is left to answer", () =>
+    Effect.gen(function* () {
+      const result = yield* pick({
+        specs: [],
+        seed: seedFor(typedRequest({ issues: Option.some("01") })),
+        answers: [],
+      });
+
+      expect(result.asked).toEqual([]);
       expect(Either.isLeft(result.outcome)).toBe(true);
       if (Either.isLeft(result.outcome)) {
         expect(result.outcome.left._tag).toBe("GuardRefused");
-        expect(result.outcome.left.detail).toContain("no specs under");
+        expect(result.outcome.left.detail).toContain("no features under");
       }
     }).pipe(Effect.provide(NodeContext.layer)),
   );

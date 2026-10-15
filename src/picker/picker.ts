@@ -973,27 +973,17 @@ export const pickerArgv = (
     const tasksDir = resolveTasksDir(request.repoRoot, config.tasksDir);
     const specs = yield* readSpecs(tasksDir);
     const features = yield* readFeatures(tasksDir);
-    // A list with nothing in it is a refusal rather than an empty prompt: the
-    // dispatcher's next move is to write a spec or to type a path, and
-    // neither is something a list of no rows can say.
-    if (
-      specs.length === 0 &&
-      features.length === 0 &&
-      (request.seed === undefined || Option.isNone(request.seed.source))
-    ) {
-      return yield* new GuardRefused({
-        detail: `no specs under '${tasksDir}' — write one there, or dispatch a path`,
-      });
-    }
+    // An empty tasks dir is no refusal (T150): it lists no spec or feature
+    // rows, and the typed-task and resume rows below them are still offered.
     // Built once, so an edited source step finds its previous choice among
     // them by `===` (`FeatureSource`) — the task and resume rows below the
     // rest (T85).
     const listed = [...sourceRows(features, specs), ...ENTRY_ROWS];
     // Filtered once, too, so the rows stay the same objects (T86).
     const sources = request.seed === undefined ? listed : seededSourceRows(listed, request.seed);
-    // And the same refusal after the filter: typed `--issues` keeps only the
-    // feature rows, and a tasks dir holding specs alone leaves none of them
-    // to ask from. A seed that named its source asks no source step.
+    // A refusal after the filter, though: typed `--issues` keeps only the
+    // feature rows, and a tasks dir holding no feature leaves none of them to
+    // ask from. A seed that named its source asks no source step.
     if (sources.length === 0 && request.seed !== undefined && Option.isNone(request.seed.source)) {
       return yield* new GuardRefused({
         detail: `no features under '${tasksDir}' — --issues narrows a feature's issues; write one there, or pass --feature <folder>`,
