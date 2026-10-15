@@ -7,11 +7,15 @@
 // `init.ts` works out itself (T115), and the one it cannot work out is a
 // refusal made there, never here (T3). `--diff` (T116) is a bare word, and it
 // refuses either flag beside it: those configure a write `--diff` never makes.
+// `--refresh` (T145) is a bare word too, and refuses `--diff` beside it for
+// the same reason; beside `--base` or `--image` it is allowed, since those
+// still apply only to an absent `config.toml`.
 // Every other word — a rehearsal flag, `--force` — is unknown and refused with
 // the usage line.
 import { Data, Either, Option } from "effect";
 
-export const INIT_USAGE = "speepobox init [--base <ref>] [--image <tag>] | speepobox init --diff";
+export const INIT_USAGE =
+  "speepobox init [--base <ref>] [--image <tag>] [--refresh] | speepobox init --diff";
 
 // One line on stderr and exit 1, through the renderer every other refusal
 // uses (`dispatch/render.ts`).
@@ -24,6 +28,8 @@ export interface InitArgs {
   readonly image: Option.Option<string>;
   // Report drift and write nothing (T116).
   readonly diff: boolean;
+  // Also overwrite every stamped file that is behind and pristine (T145).
+  readonly refresh: boolean;
 }
 
 const VALUE_FLAGS = { "--base": "base", "--image": "image" } as const;
@@ -45,6 +51,7 @@ export const parseInitArgv = (
     image: Option.none(),
   };
   let diff = false;
+  let refresh = false;
   let at = 0;
   while (at < argv.length) {
     const word = argv[at]!;
@@ -53,6 +60,14 @@ export const parseInitArgv = (
         return Either.left(refused("--diff given twice"));
       }
       diff = true;
+      at += 1;
+      continue;
+    }
+    if (word === "--refresh") {
+      if (refresh) {
+        return Either.left(refused("--refresh given twice"));
+      }
+      refresh = true;
       at += 1;
       continue;
     }
@@ -70,6 +85,11 @@ export const parseInitArgv = (
     values[key] = Option.some(value);
     at += 2;
   }
+  if (diff && refresh) {
+    return Either.left(
+      refused("--diff writes nothing, and --refresh is a write — give one or the other"),
+    );
+  }
   if (diff) {
     const configured = Option.isSome(values.base)
       ? "--base"
@@ -84,5 +104,5 @@ export const parseInitArgv = (
       );
     }
   }
-  return Either.right({ ...values, diff });
+  return Either.right({ ...values, diff, refresh });
 };

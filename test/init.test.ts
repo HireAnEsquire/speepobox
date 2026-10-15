@@ -165,6 +165,9 @@ const configIn = (repoRoot: string) =>
 const listing = (repoRoot: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readDirectory(repoRoot, { recursive: true }));
 
+const parseRefusal = (argv: ReadonlyArray<string>): string =>
+  Either.getLeft(parseInitArgv(argv)).pipe(Option.getOrThrow).detail;
+
 describe("parseInitArgv", () => {
   it("reads both flags", () => {
     expect(parseInitArgv(ARGV)).toEqual(
@@ -172,13 +175,14 @@ describe("parseInitArgv", () => {
         base: Option.some("origin/main"),
         image: Option.some("acme-speepobox"),
         diff: false,
+        refresh: false,
       }),
     );
   });
 
   it("parses both flags as optional, so a missing one is the guard's to refuse", () => {
     expect(parseInitArgv([])).toEqual(
-      Either.right({ base: Option.none(), image: Option.none(), diff: false }),
+      Either.right({ base: Option.none(), image: Option.none(), diff: false, refresh: false }),
     );
   });
 
@@ -191,11 +195,26 @@ describe("parseInitArgv", () => {
 
   it("reads --diff as a bare word, and refuses it beside a flag that configures a write", () => {
     expect(parseInitArgv(["--diff"])).toEqual(
-      Either.right({ base: Option.none(), image: Option.none(), diff: true }),
+      Either.right({ base: Option.none(), image: Option.none(), diff: true, refresh: false }),
     );
     expect(Either.isLeft(parseInitArgv(["--diff", "--base", "x"]))).toBe(true);
     expect(Either.isLeft(parseInitArgv(["--image", "y", "--diff"]))).toBe(true);
     expect(Either.isLeft(parseInitArgv(["--diff", "--diff"]))).toBe(true);
+  });
+
+  it("reads --refresh as a bare word, beside --base and --image but never --diff (T145)", () => {
+    expect(parseInitArgv(["--refresh", ...ARGV])).toEqual(
+      Either.right({
+        base: Option.some("origin/main"),
+        image: Option.some("acme-speepobox"),
+        diff: false,
+        refresh: true,
+      }),
+    );
+    expect(parseRefusal(["--refresh", "--diff"])).toContain("--refresh is a write");
+    expect(parseRefusal(["--diff", "--refresh"])).toContain("--refresh is a write");
+    expect(parseRefusal(["--refresh", "--refresh"])).toContain("--refresh given twice");
+    expect(INIT_USAGE).toContain("[--refresh]");
   });
 
   it("refuses a flag with no value, and one given twice", () => {
