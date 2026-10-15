@@ -13,15 +13,15 @@
 // `Sandbox`. Not merely because `Sandbox` does not exist until T3: `status`
 // has to work when the world it inspects is broken, so it stays on the
 // chokepoint after T3 too.
-import { FileSystem } from "@effect/platform";
+import type { FileSystem } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Clock, Effect, Either, Option } from "effect";
 import { SpeepoboxConfig } from "../config/config.ts";
 import { lockPathFor } from "../dispatch/plan.ts";
 import { exec } from "../internal/exec.ts";
 import { Ledger } from "../ledger/ledger.ts";
-import { parsePid } from "../lock/liveness.ts";
 import { ownershipFilterArgs } from "../ownership/labels.ts";
+import { readLockOnDisk } from "../reconcile/lock-on-disk.ts";
 import { classify, type LockOnDisk, slugOfContainer } from "../reconcile/wreckage.ts";
 import { Reporter } from "../reporter.ts";
 import type { ContainerHalf, ContainerOwner, LedgerHalf, RunningContainer } from "./snapshot.ts";
@@ -77,20 +77,13 @@ export const ownerOf = (
   );
 };
 
-// The slug's lock, read as the reconciler's `lockAt` reads it. Absent and
-// unreadable alike are `None` — `status` never fails over a lock.
+// The slug's lock, through the reconciler's own read (`readLockOnDisk`).
+// Absent and unreadable alike are `None` — `status` never fails over a lock.
 const lockFor = (
   runtimeRoot: string,
   container: ContainerRow,
 ): Effect.Effect<Option.Option<LockOnDisk>, never, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const file = lockPathFor(runtimeRoot, slugOfContainer(container.name));
-    return yield* fs.readFileString(file).pipe(
-      Effect.map((contents) => Option.some<LockOnDisk>({ path: file, owner: parsePid(contents) })),
-      Effect.orElseSucceed(() => Option.none<LockOnDisk>()),
-    );
-  });
+  readLockOnDisk(lockPathFor(runtimeRoot, slugOfContainer(container.name)));
 
 const containerHalf = (
   repoRoot: string,
