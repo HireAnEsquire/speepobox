@@ -1,8 +1,9 @@
 // The `init` renderer: a pure function over `InitSnapshot`, subscribed to the
-// `Reporter` stream exactly as `gc`'s is. A write is one `wrote` or `kept`
-// line per file, any warning, then the next steps — printed, and never run. A
-// `--diff` (T116) is one line per file, then each behind file's diff and its
-// remedy, then a shim that cannot run and its `chmod` (T127).
+// `Reporter` stream exactly as `gc`'s is. A write is one `wrote`, `kept`, or
+// `refreshed` (T145) line per file, any warning, then the next steps —
+// printed, and never run. A `--diff` (T116) is one line per file, then each
+// behind file's diff and its remedy, then a shim that cannot run and its
+// `chmod` (T127), then how many files `--refresh` would take (T145).
 import { Option } from "effect";
 import { SPEEPOBOX_DIRNAME } from "../config/paths.ts";
 import {
@@ -29,10 +30,17 @@ const valuesLine = (values: InitValues): string =>
     .map((key) => `${key} = "${values[key].value}" (${values[key].source})`)
     .join(", ");
 
-const fileLine = (file: InitFile): string =>
-  file.action === "wrote" && file.values !== undefined
+const fileLine = (file: InitFile): string => {
+  if (file.action === "refreshed") {
+    return `refreshed  ${file.path}  (v${file.from} → v${file.to})`;
+  }
+  if (file.action === "kept" && file.behindEdited === true) {
+    return `kept  ${file.path}  (behind, edited — see init --diff)`;
+  }
+  return file.action === "wrote" && file.values !== undefined
     ? `${file.action}  ${file.path}  ${valuesLine(file.values)}`
     : `${file.action}  ${file.path}`;
+};
 
 export const NEXT_STEPS: ReadonlyArray<string> = [
   "put your own stack's base image in .speepobox/image/Dockerfile",
@@ -75,14 +83,22 @@ const noteOf = (file: DriftFile, selfHosted: boolean): string => {
   return "";
 };
 
-// A behind shim is not refreshed by deleting it, which would delete the
+// A behind, pristine file — the shim included — is one `init --refresh` takes
+// in place (T145). A behind, *edited* file is taken only by hand, which loses
+// the edits, so the old remedies stay for it alone, after a line saying so.
+export const REFRESH = `${SHIM_PATH} init --refresh`;
+
+const isRefreshable = (file: DriftFile): boolean =>
+  file._tag === "Stamped" && file.state === "behind" && !file.edited;
+
+// An edited shim is not refreshed by deleting it, which would delete the
 // command that runs `init` (09, amended). The shim names the repo from its own
 // directory and `exec`s node, so it runs as well from beside its old name, and
 // `init` reads the moved-away shim as absent and writes the new one 0755.
 export const SHIM_REFRESH = `mv ${SHIM_PATH} ${SHIM_PATH}.old && ${SHIM_PATH}.old init && rm ${SHIM_PATH}.old`;
 export const SHIM_RESTORE = `mv ${SHIM_PATH}.old ${SHIM_PATH}`;
 
-const refreshLines = (file: StampedDrift): ReadonlyArray<string> =>
+const handLines = (file: StampedDrift): ReadonlyArray<string> =>
   file.template === SHIM
     ? [
         `To refresh it: ${SHIM_REFRESH}`,
@@ -90,6 +106,14 @@ const refreshLines = (file: StampedDrift): ReadonlyArray<string> =>
         "Failing both, run init from a hand clone of speepobox.",
       ]
     : [`To refresh it: rm ${file.path} && ${SHIM_PATH} init`];
+
+const refreshLines = (file: StampedDrift): ReadonlyArray<string> =>
+  file.edited
+    ? [
+        "This file has your edits: merge the diff above by hand, or take the template and lose them with:",
+        ...handLines(file),
+      ]
+    : [`To refresh it: ${REFRESH}`];
 
 const behindSection = (file: StampedDrift, selfHosted: boolean): ReadonlyArray<string> => [
   "",
@@ -112,6 +136,8 @@ const notExecutableSection = (file: StampedDrift): ReadonlyArray<string> => [
 const renderDiff = (snapshot: InitDiff): string => {
   const width = Math.max(...snapshot.files.map((file) => stateOf(file).length));
   const drifted = snapshot.files.filter((file) => countsAsDrift(file, snapshot.selfHosted)).length;
+  // A self-hosted repo is one `init` refuses, `--refresh` included.
+  const refreshable = snapshot.selfHosted ? 0 : snapshot.files.filter(isRefreshable).length;
   return [
     ...snapshot.files.map((file) => {
       const note = noteOf(file, snapshot.selfHosted);
@@ -130,6 +156,11 @@ const renderDiff = (snapshot: InitDiff): string => {
       ? "No drift."
       : `Drift: ${drifted} file${drifted === 1 ? "" : "s"} missing or behind.`,
     ...snapshot.files.filter(isNotExecutable).map((file) => `Not executable: ${file.path}.`),
+    ...(refreshable === 0
+      ? []
+      : [
+          `init --refresh takes the ${refreshable} pristine file${refreshable === 1 ? "" : "s"} above in one step.`,
+        ]),
   ].join("\n");
 };
 

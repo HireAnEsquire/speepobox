@@ -6,11 +6,17 @@
 // the read-only slice whose config layer is the tolerant one: an absent or
 // broken `config.toml` cannot stop the command that writes it.
 //
-// **Only absent files are written** (E4). A file already there is never
-// opened for writing and is reported `kept`; there is no `--force`, and an
-// adopter refreshes a file by deleting it and running `init` again. Nothing is
-// written until every refusal has had its chance, a directory standing where
-// a file goes included.
+// **Only absent files are written, and what nobody edited is refreshed** (E4,
+// as T145 amends it). A file already there is never opened for writing and is
+// reported `kept` — except that `--refresh` overwrites a stamped file that is
+// behind and pristine: one `init` wrote and nobody touched, since its body
+// still hashes to its own stamp, so taking the template loses nothing. It is
+// sorted by `diff.ts`'s one classification, reported `refreshed`, and
+// replaced atomically, by a rename over the old file. An edited file, an
+// unstamped one, and `config.toml` are never overwritten; there is no
+// `--force`, and an edited file is still taken by deleting it and running
+// `init` again. Nothing is written until every refusal has had its chance, a
+// directory standing where a file goes included.
 //
 // `--diff` (T116) is the read-only branch: it writes nothing, runs where
 // `init` refuses, and lives in `diff.ts`.
@@ -41,7 +47,7 @@ import { releaseAt, type Release } from "../git/releases.ts";
 import { Reporter } from "../reporter.ts";
 import { InitRefused, parseInitArgv } from "./argv.ts";
 import { failureCount, scaffoldDrift } from "./diff.ts";
-import type { InitFile, InitValues } from "./snapshot.ts";
+import type { InitFile, InitValues, StampedDrift } from "./snapshot.ts";
 import {
   SHIM,
   STAMPED_TEMPLATES,
@@ -198,6 +204,38 @@ const resolveToolSha = (
   };
 };
 
+interface Target {
+  readonly name: string;
+  readonly shown: string;
+  readonly at: string;
+}
+
+type Plan =
+  | { readonly _tag: "Write" }
+  | { readonly _tag: "Keep"; readonly behindEdited: boolean }
+  | { readonly _tag: "Refresh"; readonly from: number; readonly to: number };
+
+// Overwrites a file whole or not at all (T145): the text goes to a temp file
+// beside it, which takes the mode, and a `rename` puts it over the old one —
+// which also leaves the old inode with anyone who has it open, the running
+// shim among them. Any failure removes the temp file and leaves the old text
+// as it was. The shim is 0755; any other file keeps the mode it had.
+const replaceFile = (
+  at: string,
+  text: string,
+  executable: boolean,
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const temp = `${at}.refresh`;
+    const mode = executable ? 0o755 : (yield* fs.stat(at)).mode & 0o7777;
+    yield* fs.writeFileString(temp, text).pipe(
+      Effect.zipRight(fs.chmod(temp, mode)),
+      Effect.zipRight(fs.rename(temp, at)),
+      Effect.tapError(() => Effect.ignore(fs.remove(temp, { force: true }))),
+    );
+  });
+
 const isAlreadyExists = (error: PlatformError): boolean =>
   error._tag === "SystemError" && error.reason === "AlreadyExists";
 
@@ -229,7 +267,7 @@ export const init = (
     }
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const targets = SCAFFOLD.map((name) => ({
+    const targets = SCAFFOLD.map((name): Target => ({
       name,
       shown: `${SPEEPOBOX_DIRNAME}/${name}`,
       at: path.join(options.repoRoot, SPEEPOBOX_DIRNAME, name),
@@ -275,45 +313,109 @@ export const init = (
         })
       : Option.none();
 
-    // What each absent file is written with; a present one is kept, so it
-    // has nothing to be written with.
+    // `--refresh` (T145) sorts every stamped file exactly as `--diff` does,
+    // once and before anything is written, so its refusals come first too.
+    const standing = parsed.right.refresh ? yield* scaffoldDrift(options, "init --refresh") : [];
+    const stampedStanding = (name: string): Option.Option<StampedDrift> =>
+      Option.fromNullable(
+        standing.find(
+          (file): file is StampedDrift => file._tag === "Stamped" && file.template === name,
+        ),
+      );
+
+    // What becomes of each file: an absent one is written, a behind and
+    // pristine one `--refresh` overwrites, and every other is kept.
+    const plans = targets.map((target, index): Plan => {
+      if (!present[index]) return { _tag: "Write" };
+      return Option.match(stampedStanding(target.name), {
+        onNone: () => ({ _tag: "Keep", behindEdited: false }),
+        onSome: (file) =>
+          file.state !== "behind"
+            ? { _tag: "Keep", behindEdited: false }
+            : file.edited
+              ? { _tag: "Keep", behindEdited: true }
+              : { _tag: "Refresh", from: file.stampVersion, to: file.templateVersion },
+      });
+    });
+
+    // What each absent or refreshed file is written with; a kept one has
+    // nothing to be written with.
     const contents = yield* Effect.forEach(targets, (target, index) =>
-      present[index]
+      plans[index]!._tag === "Keep"
         ? Effect.succeed(Option.none<string>())
         : Effect.map(contentsOf(options.templatesRoot, target.name, values), Option.some),
     );
 
+    // Every refreshed file so far, which a refusal partway names: those stay
+    // refreshed, and the adopter is told which.
+    const refreshed: Array<string> = [];
+    const soFar = (): string =>
+      !parsed.right.refresh
+        ? ""
+        : refreshed.length === 0
+          ? " — nothing was refreshed"
+          : ` — already refreshed: ${refreshed.join(", ")}`;
+
+    const writeAbsent = (target: Target, text: string) =>
+      fs.makeDirectory(path.dirname(target.at), { recursive: true }).pipe(
+        Effect.zipRight(
+          fs.writeFileString(
+            target.at,
+            text,
+            target.name === SHIM ? { flag: "wx", mode: 0o755 } : { flag: "wx" },
+          ),
+        ),
+        Effect.as<InitFile>(
+          target.name === CONFIG && Option.isSome(values)
+            ? { path: target.shown, action: "wrote", values: values.value }
+            : { path: target.shown, action: "wrote" },
+        ),
+        Effect.catchIf(isAlreadyExists, () =>
+          Effect.succeed<InitFile>({ path: target.shown, action: "kept" }),
+        ),
+        Effect.mapError(
+          (error) =>
+            new InitRefused({
+              detail: `init could not write ${target.shown}: ${error.message}${soFar()}`,
+            }),
+        ),
+      );
+
     // `wx` on top of the look above: a file that appeared in between is still
     // never opened for writing, and is as `kept` as one that was there first.
-    // The shim is executed, so it is created 0755 — on this write, which is
-    // the only one it ever gets: a kept shim's mode is never touched (T127).
+    // The shim is executed, so it is created 0755 — on this write, or on a
+    // refresh, and never otherwise: a kept shim's mode is never touched (T127).
     const written = yield* Effect.forEach(targets, (target, index) =>
       Option.match(contents[index]!, {
-        onNone: () => Effect.succeed<InitFile>({ path: target.shown, action: "kept" }),
-        onSome: (text) =>
-          fs.makeDirectory(path.dirname(target.at), { recursive: true }).pipe(
-            Effect.zipRight(
-              fs.writeFileString(
-                target.at,
-                text,
-                target.name === SHIM ? { flag: "wx", mode: 0o755 } : { flag: "wx" },
+        onNone: () => {
+          const plan = plans[index]!;
+          return Effect.succeed<InitFile>(
+            plan._tag === "Keep" && plan.behindEdited
+              ? { path: target.shown, action: "kept", behindEdited: true }
+              : { path: target.shown, action: "kept" },
+          );
+        },
+        onSome: (text) => {
+          const plan = plans[index]!;
+          if (plan._tag === "Refresh") {
+            return replaceFile(target.at, text, target.name === SHIM).pipe(
+              Effect.mapError(
+                (error) =>
+                  new InitRefused({
+                    detail: `init could not refresh ${target.shown}, which is left as it was: ${error.message}${soFar()}`,
+                  }),
               ),
-            ),
-            Effect.as<InitFile>(
-              target.name === CONFIG && Option.isSome(values)
-                ? { path: target.shown, action: "wrote", values: values.value }
-                : { path: target.shown, action: "wrote" },
-            ),
-            Effect.catchIf(isAlreadyExists, () =>
-              Effect.succeed<InitFile>({ path: target.shown, action: "kept" }),
-            ),
-            Effect.mapError(
-              (error) =>
-                new InitRefused({
-                  detail: `init could not write ${target.shown}: ${error.message}`,
-                }),
-            ),
-          ),
+              Effect.tap(() => Effect.sync(() => refreshed.push(target.shown))),
+              Effect.as<InitFile>({
+                path: target.shown,
+                action: "refreshed",
+                from: plan.from,
+                to: plan.to,
+              }),
+            );
+          }
+          return writeAbsent(target, text);
+        },
       }),
     );
 

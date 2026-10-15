@@ -6,6 +6,7 @@
 import { basename, join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
+import { SystemError } from "@effect/platform/Error";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { NodeContext } from "@effect/platform-node";
 import { Cause, Effect, Either, Exit, Layer, Option, Ref } from "effect";
@@ -165,6 +166,9 @@ const configIn = (repoRoot: string) =>
 const listing = (repoRoot: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readDirectory(repoRoot, { recursive: true }));
 
+const parseRefusal = (argv: ReadonlyArray<string>): string =>
+  Either.getLeft(parseInitArgv(argv)).pipe(Option.getOrThrow).detail;
+
 describe("parseInitArgv", () => {
   it("reads both flags", () => {
     expect(parseInitArgv(ARGV)).toEqual(
@@ -172,13 +176,14 @@ describe("parseInitArgv", () => {
         base: Option.some("origin/main"),
         image: Option.some("acme-speepobox"),
         diff: false,
+        refresh: false,
       }),
     );
   });
 
   it("parses both flags as optional, so a missing one is the guard's to refuse", () => {
     expect(parseInitArgv([])).toEqual(
-      Either.right({ base: Option.none(), image: Option.none(), diff: false }),
+      Either.right({ base: Option.none(), image: Option.none(), diff: false, refresh: false }),
     );
   });
 
@@ -191,11 +196,26 @@ describe("parseInitArgv", () => {
 
   it("reads --diff as a bare word, and refuses it beside a flag that configures a write", () => {
     expect(parseInitArgv(["--diff"])).toEqual(
-      Either.right({ base: Option.none(), image: Option.none(), diff: true }),
+      Either.right({ base: Option.none(), image: Option.none(), diff: true, refresh: false }),
     );
     expect(Either.isLeft(parseInitArgv(["--diff", "--base", "x"]))).toBe(true);
     expect(Either.isLeft(parseInitArgv(["--image", "y", "--diff"]))).toBe(true);
     expect(Either.isLeft(parseInitArgv(["--diff", "--diff"]))).toBe(true);
+  });
+
+  it("reads --refresh as a bare word, beside --base and --image but never --diff (T145)", () => {
+    expect(parseInitArgv(["--refresh", ...ARGV])).toEqual(
+      Either.right({
+        base: Option.some("origin/main"),
+        image: Option.some("acme-speepobox"),
+        diff: false,
+        refresh: true,
+      }),
+    );
+    expect(parseRefusal(["--refresh", "--diff"])).toContain("--refresh is a write");
+    expect(parseRefusal(["--diff", "--refresh"])).toContain("--refresh is a write");
+    expect(parseRefusal(["--refresh", "--refresh"])).toContain("--refresh given twice");
+    expect(INIT_USAGE).toContain("[--refresh]");
   });
 
   it("refuses a flag with no value, and one given twice", () => {
@@ -703,9 +723,13 @@ describe("init --diff", () => {
       expect(text).toContain("includes your own edits");
       expect(text).toContain("-# a line the newer template dropped");
       expect(text).toContain("+++ templates/image/inputs v2");
-      expect(text).toContain("rm .speepobox/image/inputs && .speepobox/speepobox init");
+      expect(text).toContain("To refresh it: .speepobox/speepobox init --refresh");
+      expect(text).not.toContain("rm .speepobox/image/inputs");
       expect(text).toContain("nothing of yours is lost");
       expect(text).toContain("Drift: 1 file missing or behind.");
+      expect(text.split("\n").at(-1)).toBe(
+        "init --refresh takes the 1 pristine file above in one step.",
+      );
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -721,6 +745,13 @@ describe("init --diff", () => {
       expect(standing(snapshot)[3]).toEqual([".speepobox/image/inputs", "behind", "edited"]);
       expect(text).toContain("-package.json");
       expect(text).not.toContain("nothing of yours is lost");
+      // An edited file is taken by hand, and the line before the remedy says
+      // what that costs (T145).
+      expect(text).toContain(
+        "This file has your edits: merge the diff above by hand, or take the template and lose them with:\n" +
+          "To refresh it: rm .speepobox/image/inputs && .speepobox/speepobox init",
+      );
+      expect(text).not.toContain("init --refresh");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -803,9 +834,8 @@ describe("init --diff", () => {
       expect(text).toContain("+/logs/");
       expect(text).toContain("-logs/");
       expect(text).toContain("nothing of yours is lost");
-      expect(text).toContain(
-        "To refresh it: rm .speepobox/.gitignore && .speepobox/speepobox init",
-      );
+      expect(text).toContain("To refresh it: .speepobox/speepobox init --refresh");
+      expect(text).not.toContain("rm .speepobox/.gitignore");
       expect(text).not.toContain(".old");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -839,14 +869,33 @@ describe("init --diff", () => {
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
-  // Deleting the shim deletes the command that runs init (09, amended).
-  it.scoped("refreshes a behind shim by moving it aside, with the restore line beside it", () =>
+  // A pristine shim is renamed over in place (T145).
+  it.scoped("refreshes a behind, pristine shim with init --refresh", () =>
     Effect.gen(function* () {
       const repoRoot = yield* scaffolded;
       yield* olderTemplate(repoRoot, "speepobox");
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
       expect(standing(snapshot)[4]).toEqual([".speepobox/speepobox", "behind", "pristine"]);
+      expect(text).toContain("To refresh it: .speepobox/speepobox init --refresh");
+      expect(text).not.toContain(".old");
+      expect(text).toContain("init --refresh takes the 1 pristine file above in one step.");
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  // Deleting the shim deletes the command that runs init (09, amended).
+  it.scoped("refreshes a behind, edited shim by moving it aside, with the restore line", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, "speepobox");
+      const shim = join(repoRoot, ".speepobox/speepobox");
+      yield* fs.writeFileString(shim, `${yield* fs.readFileString(shim)}# mine\n`);
+      const { drifted, snapshot, text } = yield* diff(repoRoot);
+      expect(drifted).toBe(1);
+      expect(standing(snapshot)[4]).toEqual([".speepobox/speepobox", "behind", "edited"]);
+      expect(text).toContain("This file has your edits");
+      expect(text).not.toContain("init --refresh");
       expect(text).toContain(
         "To refresh it: mv .speepobox/speepobox .speepobox/speepobox.old && .speepobox/speepobox.old init && rm .speepobox/speepobox.old",
       );
@@ -975,6 +1024,222 @@ describe("init --diff", () => {
         expect(events).toEqual([]);
         expect(yield* listing(repoRoot)).toEqual([]);
       }).pipe(Effect.provide(NodeContext.layer)),
+  );
+});
+
+// `init --refresh` (T145): `init`, plus every stamped file that is behind and
+// pristine overwritten with the current template, by `diff.ts`'s own sorting.
+const scaffoldPath = (repoRoot: string, name: string) => join(repoRoot, ".speepobox", name);
+
+// Every scaffold file's text, by its path under the speepobox directory.
+const texts = (repoRoot: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    return Object.fromEntries(
+      yield* Effect.forEach(SCAFFOLD, (path) =>
+        Effect.map(fs.readFileString(join(repoRoot, path)), (text) => [path, text] as const),
+      ),
+    );
+  });
+
+const templateText = (name: StampedTemplate) =>
+  Effect.map(
+    Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFileString(join(templatesRoot, name))),
+    (text) => stamp(name, TEMPLATE_VERSIONS[name], text),
+  );
+
+describe("init --refresh", () => {
+  it.scoped(
+    "overwrites a behind, pristine file, and keeps edited, unstamped, current, and config files",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const repoRoot = yield* scaffolded;
+        yield* olderTemplate(repoRoot, ".gitignore");
+        // Behind and edited.
+        yield* olderTemplate(repoRoot, "image/inputs");
+        const inputs = scaffoldPath(repoRoot, "image/inputs");
+        yield* fs.writeFileString(inputs, `${yield* fs.readFileString(inputs)}package.json\n`);
+        // Unstamped, which reads as behind and edited.
+        const dockerfile = scaffoldPath(repoRoot, "image/Dockerfile");
+        yield* fs.writeFileString(
+          dockerfile,
+          (yield* fs.readFileString(dockerfile))
+            .split("\n")
+            .filter((line) => !line.startsWith("# speepobox-template:"))
+            .join("\n"),
+        );
+        const before = yield* texts(repoRoot);
+
+        const { exit, events } = yield* run(repoRoot, ["--refresh"]);
+        expect(Exit.isSuccess(exit)).toBe(true);
+        expect(written(events).files).toEqual([
+          { path: ".speepobox/config.toml", action: "kept" },
+          {
+            path: ".speepobox/.gitignore",
+            action: "refreshed",
+            from: TEMPLATE_VERSIONS[".gitignore"] - 1,
+            to: TEMPLATE_VERSIONS[".gitignore"],
+          },
+          { path: ".speepobox/image/Dockerfile", action: "kept", behindEdited: true },
+          { path: ".speepobox/image/inputs", action: "kept", behindEdited: true },
+          { path: ".speepobox/speepobox", action: "kept" },
+          { path: ".speepobox/tasks/.gitkeep", action: "kept" },
+        ]);
+
+        const after = yield* texts(repoRoot);
+        expect(after[".speepobox/.gitignore"]).toBe(yield* templateText(".gitignore"));
+        expect({ ...after, ".speepobox/.gitignore": "" }).toEqual({
+          ...before,
+          ".speepobox/.gitignore": "",
+        });
+        expect(yield* fs.readDirectory(join(repoRoot, ".speepobox"))).not.toContainEqual(
+          expect.stringContaining(".refresh"),
+        );
+
+        const lines = renderInit(written(events)).split("\n");
+        expect(lines.slice(0, 4)).toEqual([
+          "kept  .speepobox/config.toml",
+          `refreshed  .speepobox/.gitignore  (v${TEMPLATE_VERSIONS[".gitignore"] - 1} → v${TEMPLATE_VERSIONS[".gitignore"]})`,
+          "kept  .speepobox/image/Dockerfile  (behind, edited — see init --diff)",
+          "kept  .speepobox/image/inputs  (behind, edited — see init --diff)",
+        ]);
+      }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("refreshes a behind, pristine shim in place, mode 0755", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, "speepobox");
+      yield* fs.chmod(scaffoldPath(repoRoot, "speepobox"), 0o700);
+      const { exit, events } = yield* run(repoRoot, ["--refresh"]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(actions(events)[4]).toEqual({ path: ".speepobox/speepobox", action: "refreshed" });
+      expect(yield* fs.readFileString(scaffoldPath(repoRoot, "speepobox"))).toBe(
+        yield* templateText("speepobox"),
+      );
+      expect((yield* fs.stat(scaffoldPath(repoRoot, "speepobox"))).mode & 0o777).toBe(0o755);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("still writes absent files, as plain init does", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* fs.remove(scaffoldPath(repoRoot, ".gitignore"));
+      yield* fs.remove(scaffoldPath(repoRoot, "tasks/.gitkeep"));
+      const { exit, events } = yield* run(repoRoot, ["--refresh"]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(actions(events)).toEqual([
+        { path: ".speepobox/config.toml", action: "kept" },
+        { path: ".speepobox/.gitignore", action: "wrote" },
+        { path: ".speepobox/image/Dockerfile", action: "kept" },
+        { path: ".speepobox/image/inputs", action: "kept" },
+        { path: ".speepobox/speepobox", action: "kept" },
+        { path: ".speepobox/tasks/.gitkeep", action: "wrote" },
+      ]);
+      expect(yield* fs.readFileString(scaffoldPath(repoRoot, ".gitignore"))).toBe(
+        yield* templateText(".gitignore"),
+      );
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("writes every absent file, config.toml included, into an empty repo", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* fs.makeTempDirectoryScoped();
+      const { exit, events } = yield* run(repoRoot, ["--refresh", ...ARGV]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(actions(events)).toEqual(SCAFFOLD.map((path) => ({ path, action: "wrote" })));
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped(
+    "leaves a file whose rename fails whole, refusing with what was already refreshed",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const repoRoot = yield* scaffolded;
+        yield* olderTemplate(repoRoot, ".gitignore");
+        yield* olderTemplate(repoRoot, "image/inputs");
+        const old = yield* fs.readFileString(scaffoldPath(repoRoot, "image/inputs"));
+        const failing: FileSystem.FileSystem = {
+          ...fs,
+          rename: (from, to) =>
+            to === scaffoldPath(repoRoot, "image/inputs")
+              ? Effect.fail(
+                  new SystemError({
+                    reason: "PermissionDenied",
+                    module: "FileSystem",
+                    method: "rename",
+                    pathOrDescriptor: to,
+                    description: "rename refused",
+                  }),
+                )
+              : fs.rename(from, to),
+        };
+        const { exit, events } = yield* run(repoRoot, ["--refresh"]).pipe(
+          Effect.provideService(FileSystem.FileSystem, failing),
+        );
+        const detail = refusalOf(exit);
+        expect(detail).toContain("init could not refresh .speepobox/image/inputs");
+        expect(detail).toContain("already refreshed: .speepobox/.gitignore");
+        expect(events).toEqual([]);
+        expect(yield* fs.readFileString(scaffoldPath(repoRoot, "image/inputs"))).toBe(old);
+        expect(yield* fs.readFileString(scaffoldPath(repoRoot, ".gitignore"))).toBe(
+          yield* templateText(".gitignore"),
+        );
+        expect(yield* fs.readDirectory(join(repoRoot, ".speepobox/image"))).toEqual(
+          expect.not.arrayContaining([expect.stringContaining(".refresh")]),
+        );
+      }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped.each([
+    { argv: ["--refresh", "--diff"], refusal: "--refresh is a write" },
+    { argv: ["--refresh", "--refresh"], refusal: "--refresh given twice" },
+  ])("refuses $argv, and writes nothing", ({ argv, refusal }) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* fs.makeTempDirectoryScoped();
+      const { exit, events } = yield* run(repoRoot, argv);
+      expect(refusalOf(exit)).toContain(refusal);
+      expect(events).toEqual([]);
+      expect(yield* listing(repoRoot)).toEqual([]);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("refuses a self-hosted repo, and writes nothing", () =>
+    Effect.gen(function* () {
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, ".gitignore");
+      const before = yield* tree(repoRoot);
+      const { exit, events } = yield* run(repoRoot, ["--refresh"], { selfHosted: true });
+      expect(refusalOf(exit)).toContain("not scaffolded");
+      expect(events).toEqual([]);
+      expect(yield* tree(repoRoot)).toEqual(before);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("leaves a repo whose files were all pristine with no drift", () =>
+    Effect.gen(function* () {
+      const repoRoot = yield* scaffolded;
+      for (const name of STAMPED_TEMPLATES) {
+        yield* olderTemplate(repoRoot, name);
+      }
+      const behind = yield* diff(repoRoot);
+      expect(behind.drifted).toBe(STAMPED_TEMPLATES.length);
+      expect(behind.text.split("\n").at(-1)).toBe(
+        `init --refresh takes the ${STAMPED_TEMPLATES.length} pristine files above in one step.`,
+      );
+      const { exit } = yield* run(repoRoot, ["--refresh"]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      const { drifted, text } = yield* diff(repoRoot);
+      expect(drifted).toBe(0);
+      expect(text).toContain("No drift.");
+      expect(text).not.toContain("init --refresh");
+    }).pipe(Effect.provide(NodeContext.layer)),
   );
 });
 
