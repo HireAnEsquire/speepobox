@@ -319,6 +319,14 @@ container:
 The recent runs show each run's outcome, cost, PR, and any rescue branch.
 
 ```sh
+.speepobox/speepobox stop <branch>
+```
+
+`stop` ends a branch's live run, such as one running in the background with no terminal to press
+Ctrl-C in. It sends the run SIGINT and waits for it to tear down. The commits are kept, as on
+Ctrl-C, and the row records the run as interrupted.
+
+```sh
 .speepobox/speepobox doctor
 ```
 

@@ -14,6 +14,7 @@ import { isAnswerMissing } from "./dispatch/guards.ts";
 import { type DispatchFailure, renderFailure } from "./dispatch/render.ts";
 import { doctor } from "./doctor/doctor.ts";
 import { exitCodeFor } from "./exit-code.ts";
+import { exec } from "./internal/exec.ts";
 import { gc } from "./gc/gc.ts";
 import { imageBuild } from "./image/build.ts";
 import { resolveForgeRepo } from "./forge/forge.ts";
@@ -27,6 +28,7 @@ import { type Seed, seedOf } from "./picker/seed.ts";
 import { PromptClackLive } from "./prompt/clack.ts";
 import { SandboxLive } from "./sandbox/sandbox.ts";
 import { status } from "./status/status.ts";
+import { stop, type StopHost } from "./stop/stop.ts";
 import { upgrade } from "./upgrade/upgrade.ts";
 
 const usage = `speepobox — AFK agent dispatcher (ADR 0007)
@@ -57,6 +59,11 @@ Usage:
                       Off a terminal, this text
   speepobox status    read-only: what's running, what just finished, where the
                       PRs are. Always exit 0; each half degrades on its own
+  speepobox stop <branch>
+                      interrupt <branch>'s live run with SIGINT and wait for it
+                      to tear down. The commits are kept and the row records
+                      the run as interrupted. Exit 1 if there is no live run,
+                      or it is still tearing down after 120s
   speepobox doctor    read-only preflight: eleven probes, exit 1 on any FAIL,
                       exit 0 on warnings
   speepobox gc [--force]
@@ -98,7 +105,20 @@ const reportFailure = (error: DispatchFailure): Effect.Effect<void> =>
     process.exitCode = 1;
   });
 
-// status, doctor, gc, init, and upgrade are intercepted before flag
+// The real host calls `stop` makes (T152). SIGINT and nothing else: a
+// SIGKILL'd dispatcher skips its finalizers and strands its lock and container.
+const stopHost: StopHost = {
+  elapsed: (pid) => exec("ps", "-o", "etime=", "-p", String(pid)),
+  interrupt: (pid) =>
+    Effect.try({
+      try: () => {
+        process.kill(pid, "SIGINT");
+      },
+      catch: (error) => (error instanceof Error ? error.message : String(error)),
+    }),
+};
+
+// status, doctor, gc, init, upgrade, and stop are intercepted before flag
 // parsing and before any preflight (03 §1.1): they must work when the thing
 // they inspect is broken, so they run on the read-only slice of appLiveFor.
 // The dispatch surface (T3+) is what gets the full appLiveFor.
@@ -246,6 +266,14 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
   switch (argv[0]) {
     case "status":
       return status({ repoRoot }).pipe(Effect.provide(appBaseLiveFor(repoRoot, stdinIsTTY)));
+    // `stop` (T152) on the read-only slice, as `status` is: it reads the lock
+    // and `ps`, sends one SIGINT, and writes nothing. The two host calls are
+    // made here, so no test of `stop/stop.ts` signals a real process.
+    case "stop":
+      return stop({ argv: argv.slice(1), host: stopHost }).pipe(
+        Effect.provide(appBaseLiveFor(repoRoot, stdinIsTTY)),
+        Effect.catchAll(reportFailure),
+      );
     // gc parses its own words (`gc/argv.ts`), and a refusal — an unknown flag,
     // either of `--force`'s two refusals, or a removal that failed — is one
     // line through the renderer every other refusal uses. The read-only slice

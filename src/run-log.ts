@@ -151,6 +151,11 @@ const summarize = (event: ReporterEvent): string => {
       return event.snapshot._tag === "Pinned"
         ? `upgrade: pinned ${event.snapshot.to.tag}`
         : `upgrade: ${event.snapshot.release.tag} unchanged`;
+    // Nor does `stop` (T152).
+    case "RunStopping":
+      return `stop: SIGINT to pid ${event.pid} for '${event.branch}'`;
+    case "RunStopped":
+      return `stop: '${event.branch}' stopped`;
     case "PlanResolved":
       return `plan: ${taskNamed(event.plan.task)} on '${event.plan.branch}' | base ${event.plan.baseRef} | boundary ${event.plan.mergeBaseSha}`;
     case "ResourceAcquired":

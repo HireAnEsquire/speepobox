@@ -11,6 +11,7 @@ import type { DockerUnavailable, GhUnavailable, ImageUnavailable } from "../doct
 import type { ForgeError } from "../forge/forge.ts";
 import type { GcRefused } from "../gc/argv.ts";
 import type { InitRefused } from "../init/argv.ts";
+import type { StopRefused } from "../stop/stop.ts";
 import type { UpgradeRefused } from "../upgrade/argv.ts";
 import type { GitError } from "../git/git.ts";
 import type { ImageBuildRefused } from "../image/build.ts";
@@ -130,7 +131,7 @@ export const renderPlan = (plan: DispatchPlan): string =>
 // on stderr and the same exit 1, rendered here rather than in a second shape
 // `bin.ts` could not have asserted. `GcRefused` (T99) is the same kind of
 // member: `gc` is intercepted before the dispatch surface, and its refusal is
-// that same one line, and so are `InitRefused` (T114) and `UpgradeRefused` (T128). `ImageBuildRefused`
+// that same one line, and so are `InitRefused` (T114), `UpgradeRefused` (T128), and `StopRefused` (T152). `ImageBuildRefused`
 // (T111) is `image build`'s, which is on the dispatch surface and refuses
 // before `Sandbox.build` is asked.
 export type DispatchFailure =
@@ -151,6 +152,7 @@ export type DispatchFailure =
   | GcRefused
   | InitRefused
   | UpgradeRefused
+  | StopRefused
   | ImageBuildRefused
   | ValidationError;
 
@@ -178,6 +180,7 @@ const label = (
     | GcRefused
     | InitRefused
     | UpgradeRefused
+    | StopRefused
     | ImageBuildRefused,
 ): string => {
   switch (error._tag) {
@@ -199,7 +202,7 @@ const label = (
     // ("this dispatcher's source here is missing …", T44), a
     // `RepoRootRefused` ("--repo-root must be an absolute path …", T60), a
     // `GcRefused` ("unknown gc flag: …", T99), an `InitRefused` ("init needs
-    // --base …", T114), an `UpgradeRefused` ("pin … is no release", T128), and an `ImageBuildRefused` ("image input not found: …",
+    // --base …", T114), an `UpgradeRefused` ("pin … is no release", T128), a `StopRefused` ("no live run for …", T152), and an `ImageBuildRefused` ("image input not found: …",
     // T111) do.
     case "LockError":
       return "lock: ";
