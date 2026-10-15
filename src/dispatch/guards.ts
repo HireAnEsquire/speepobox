@@ -19,7 +19,7 @@ import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Data, DateTime, Effect, Either, Option } from "effect";
 import { type AgentCredential, CREDENTIAL_ADVICE } from "../agent/credential.ts";
 import { resolveSandboxEnvFile, resolveSetupHookPath } from "../config/paths.ts";
-import { Git, type GitError, ORIGIN } from "../git/git.ts";
+import { Git, type GitError, ORIGIN, worktreeHolding } from "../git/git.ts";
 import { repoArgs } from "../git/repo-args.ts";
 import type { RepoSlug } from "../git/repo-slug.ts";
 import { exec } from "../internal/exec.ts";
@@ -178,19 +178,13 @@ export const branchNotCheckedOut = (
   repoRoot: string,
 ): Effect.Effect<void, GuardRefused, Git> =>
   Effect.gen(function* () {
-    const repo = yield* Git;
-    const worktrees = yield* repo
-      .worktrees(repoRoot)
-      .pipe(
-        Effect.mapError(
-          (error) =>
-            new GuardRefused({ detail: `could not read this repo's worktrees: ${error.detail}` }),
-        ),
-      );
-    const holder = worktrees.find(
-      (worktree) => Option.isSome(worktree.branch) && worktree.branch.value === branch,
+    const holding = yield* worktreeHolding(branch, repoRoot).pipe(
+      Effect.mapError(
+        (error) =>
+          new GuardRefused({ detail: `could not read this repo's worktrees: ${error.detail}` }),
+      ),
     );
-    if (holder === undefined) {
+    if (Option.isNone(holding)) {
       return;
     }
     // The repo root is the current worktree's root — `findRepoRoot` walks up
@@ -199,9 +193,9 @@ export const branchNotCheckedOut = (
     // second git call.
     return yield* new GuardRefused({
       detail:
-        resolve(holder.path) === resolve(repoRoot)
+        resolve(holding.value) === resolve(repoRoot)
           ? `'${branch}' is checked out in this repo — git refuses fetches/resets into a checked-out branch; switch away first`
-          : `'${branch}' is checked out in the worktree at ${holder.path} — git refuses fetches/resets into a branch checked out anywhere in this repo; switch away there or remove that worktree`,
+          : `'${branch}' is checked out in the worktree at ${holding.value} — git refuses fetches/resets into a branch checked out anywhere in this repo; switch away there or remove that worktree`,
     });
   });
 

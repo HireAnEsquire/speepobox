@@ -325,6 +325,9 @@ export interface FakeGitOptions {
   // HEAD) writes an entry with `branch: Option.none()` rather than omitting
   // the field.
   readonly worktrees?: ReadonlyArray<Worktree>;
+  // git failing to list the worktrees at all (T148), which the land and the
+  // salvage answer by carrying on exactly as they did before they asked.
+  readonly worktreesFails?: string;
   // What each ref's tree holds, keyed by `<ref>:<path>` (T71). An unscripted
   // key is a directory the ref does not carry, which is an answer — `None`,
   // the case `IssueStore` refuses on — and not a failure.
@@ -446,7 +449,10 @@ export const fakeGit = (
                   : new GitError({ detail: options.branchContainsFails }),
             ),
           ),
-        worktrees: () => Effect.succeed(options.worktrees ?? []),
+        worktrees: () =>
+          options.worktreesFails === undefined
+            ? Effect.succeed(options.worktrees ?? [])
+            : new GitError({ detail: options.worktreesFails }),
         mergeBase: () => Effect.die("this fake Git answers no merge-base questions"),
         originUrl: () => Effect.die("this fake Git answers no origin-url questions"),
         originHead: ({ repo }) =>

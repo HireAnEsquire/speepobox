@@ -2108,3 +2108,136 @@ describe("a salvage whose branch the served repo cannot read", () => {
     }).pipe(Effect.provide(NodeFileSystem.layer)),
   );
 });
+
+// T148: a branch checked out in a worktree of the repo is not a destination
+// either — git will not fetch into it — so the salvage goes straight to the
+// rescue and the release hands the dispatcher the steps, with the run's real
+// values, from the checkout they already have open.
+describe("a salvage whose branch is checked out in a worktree", () => {
+  const HOLDER = "/home/dev/hae-wt";
+  const holding = { worktrees: [{ path: HOLDER, branch: Option.some(BRANCH) }] };
+
+  it.scoped("rescues at the release because it is checked out, fetching nothing onto it", () =>
+    Effect.gen(function* () {
+      const scratch = yield* world(holding);
+
+      yield* runInScope(
+        scratch.plan,
+        scratch.repoRoot,
+        TEST_CREDENTIAL,
+        TEST_FORGE_REPO,
+        () => Effect.void,
+      ).pipe(Effect.provide(scratch.layer));
+
+      expect(fetchedOnto(yield* Ref.get(scratch.gitCalls))).toEqual([RESCUE]);
+      expect((yield* Ref.get(scratch.appended))[0]?.rescuedOnto).toEqual(Option.some(RESCUE));
+
+      const warnings = warningsIn(yield* Ref.get(scratch.events));
+      expect(warnings).toHaveLength(1);
+      const warning = warnings[0] ?? "";
+      expect(warning).toContain(
+        `'${BRANCH}' is checked out at ${HOLDER}, and git does not fetch into a checked-out branch`,
+      );
+      expect(warning).toContain(`  git -C ${HOLDER} merge --ff-only ${RESCUE}\n`);
+      expect(warning).toContain(`  git -C ${HOLDER} push origin ${BRANCH}\n`);
+      expect(warning).toContain(`--resume ${BRANCH}`);
+      expect(warning).not.toContain("would not go onto");
+      expect(warning).not.toMatch(/<[a-z]+>/);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+
+  it.scoped("answers Rescued because CheckedOut, with no fetch onto the branch", () =>
+    Effect.gen(function* () {
+      const scratch = yield* world(holding);
+      yield* keptCheckoutAt(scratch.plan.checkoutPath);
+
+      const salvaged = yield* salvage(scratch.plan, scratch.repoRoot).pipe(
+        Effect.provide(scratch.layer),
+      );
+
+      expect(salvaged).toEqual({
+        _tag: "Rescued",
+        onto: STALE_RESCUE,
+        because: { _tag: "CheckedOut", path: HOLDER },
+      });
+      // The read, the copy's tip, the question whether the checked-out branch
+      // already holds it, then the rescue and the read that says it landed.
+      expect(yield* Ref.get(scratch.gitCalls)).toEqual([
+        branchRead(scratch.repoRoot),
+        { _tag: "RevParse", repo: scratch.plan.checkoutPath, rev: `refs/heads/${BRANCH}` },
+        { _tag: "BranchContains", repo: scratch.repoRoot, branch: BRANCH, commit: PRE_TIP },
+        {
+          _tag: "FetchBack",
+          from: repoUrl(scratch.plan.checkoutPath),
+          into: scratch.repoRoot,
+          branch: BRANCH,
+          onto: STALE_RESCUE,
+        },
+        { _tag: "BranchContains", repo: scratch.repoRoot, branch: STALE_RESCUE, commit: PRE_TIP },
+      ]);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+
+  it.scoped("mints nothing when the checked-out branch already holds the commits", () =>
+    Effect.gen(function* () {
+      const scratch = yield* world({ ...holding, branchAlreadyContains: true });
+      yield* keptCheckoutAt(scratch.plan.checkoutPath);
+
+      const salvaged = yield* salvage(scratch.plan, scratch.repoRoot).pipe(
+        Effect.provide(scratch.layer),
+      );
+
+      expect(salvaged).toEqual({ _tag: "WentHome" });
+      expect(fetchedOnto(yield* Ref.get(scratch.gitCalls))).toEqual([]);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+
+  it.scoped("salvages as before when the worktree lookup fails", () =>
+    Effect.gen(function* () {
+      const scratch = yield* world({
+        worktreesFails: "fatal: not a git repository",
+        homeFetchBackFails: "! [rejected] (non-fast-forward)",
+      });
+      yield* keptCheckoutAt(scratch.plan.checkoutPath);
+
+      const salvaged = yield* salvage(scratch.plan, scratch.repoRoot).pipe(
+        Effect.provide(scratch.layer),
+      );
+
+      expect(salvaged).toEqual({
+        _tag: "Rescued",
+        onto: STALE_RESCUE,
+        because: { _tag: "Refused" },
+      });
+      expect(fetchedOnto(yield* Ref.get(scratch.gitCalls))).toEqual([BRANCH, STALE_RESCUE]);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+
+  it.scoped("says the branch is checked out when the rescue cannot be written either", () =>
+    Effect.gen(function* () {
+      const scratch = yield* world({ ...holding, fetchBackFails: "fatal: cannot lock ref" });
+      yield* keptCheckoutAt(scratch.plan.checkoutPath);
+
+      const outcome = yield* Effect.either(
+        runInScope(
+          scratch.plan,
+          scratch.repoRoot,
+          TEST_CREDENTIAL,
+          TEST_FORGE_REPO,
+          () => Effect.void,
+        ).pipe(Effect.provide(scratch.layer)),
+      );
+
+      expect(Either.isLeft(outcome)).toBe(true);
+      if (Either.isLeft(outcome)) {
+        const detail = outcome.left.detail;
+        expect(detail).toContain(
+          `onto a branch of the dead run's own, because '${BRANCH}' is checked out at ${HOLDER}`,
+        );
+        expect(detail).toContain("git also said: fatal: cannot lock ref");
+        expect(detail).not.toContain("neither went through");
+      }
+      expect(fetchedOnto(yield* Ref.get(scratch.gitCalls))).toEqual([STALE_RESCUE]);
+    }).pipe(Effect.provide(NodeFileSystem.layer)),
+  );
+});
