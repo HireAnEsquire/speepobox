@@ -17,7 +17,7 @@ import { Data, Either, Option } from "effect";
 // carries no stamp — it is the one substituted file, checked for presence only.
 export const TEMPLATE_VERSIONS = {
   "config.toml": 4,
-  ".gitignore": 3,
+  ".gitignore": 4,
   "image/Dockerfile": 4,
   "image/inputs": 2,
   // The shim (T125), written at `.speepobox/speepobox` (T127) and stamped after

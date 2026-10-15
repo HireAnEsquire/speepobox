@@ -9,8 +9,10 @@ import { ResolvedValue } from "./values.ts";
 
 // Absent files are written (E4). A file already there is never opened for
 // writing, except a stamped one `--refresh` finds behind and pristine (T145),
-// so every file is exactly one of the three.
-export const InitAction = Schema.Literal("wrote", "kept", "refreshed");
+// so every file is exactly one of the three. The fourth is not a scaffold
+// file: a refresh's temp file a killed refresh left, which `--refresh`
+// removes before it writes anything (T147).
+export const InitAction = Schema.Literal("wrote", "kept", "refreshed", "removed");
 export type InitAction = Schema.Schema.Type<typeof InitAction>;
 
 // The three values `config.toml` is written with, each beside where it came
@@ -49,12 +51,20 @@ export const InitFile = Schema.Union(
     from: Schema.Number,
     to: Schema.Number,
   }),
+  // A `<file>.refresh` beside a stamped scaffold file, left by a refresh
+  // killed between its write and its rename, and removed by `--refresh`
+  // (T147).
+  Schema.Struct({
+    path: Schema.String,
+    action: Schema.Literal("removed"),
+  }),
 );
 export type InitFile = Schema.Schema.Type<typeof InitFile>;
 
 export const InitWrite = Schema.TaggedStruct("Write", {
   files: Schema.Array(InitFile),
-  // At most one today: the pin written empty, and why (T115).
+  // The pin written empty, and why (T115); and a leftover `<file>.refresh`
+  // `--refresh` could not or would not remove (T147).
   warnings: Schema.Array(Schema.String),
 });
 export type InitWrite = Schema.Schema.Type<typeof InitWrite>;

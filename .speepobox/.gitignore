@@ -1,4 +1,4 @@
-# speepobox-template: .gitignore v3 sha256:ea946b681276
+# speepobox-template: .gitignore v4 sha256:85f8ed93cdba
 # Everything in the speepobox directory except the committed config layer and
 # this file: the operator's private settings, the agent credential, and this
 # repo's runtime state. `config.toml` is the layer that travels with the repo
@@ -22,3 +22,7 @@
 # runtime root (T84, T108). They hold the dispatcher's own text while it is
 # being written. Anchored, so nothing under the tasks dir can match.
 /*-edit-*/
+# A refresh's temp file, `<file>.refresh`, left only if a refresh was
+# killed between its write and its rename (T147). Unanchored, so one under
+# image/ matches too.
+*.refresh
