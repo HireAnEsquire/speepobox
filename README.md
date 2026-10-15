@@ -295,6 +295,11 @@ The run log is `.speepobox/logs/<slug>-<id>.log`, one file per run. Logs are nev
 block prints the run's log path when the run starts, so `tail -f` that path to watch the agent
 work. The log has every prompt verbatim and everything the agent printed.
 
+While a run is going, leave its branch checked out nowhere: the run fetches its commits into that
+branch at the end, git refuses to fetch into a checked-out branch, and the commits go to a rescue
+branch instead. Leave `.speepobox/prompts/` and the spec file alone too, since each pass reads its
+prompt when it starts and the spec is mounted from your working tree.
+
 Ctrl-C, or closing the terminal, tears the run down: the container goes, the commits are moved back
 as at the end of a run, and the row records the run as interrupted.
 
@@ -464,8 +469,9 @@ in [docs/wayfinder/effect-agentbox/](docs/wayfinder/effect-agentbox/MAP.md).
 `.speepobox/` is everything speepobox keeps in this repo — its config, its credential, its prompt
 overrides, and its runtime state (checkouts, locks, logs, and the run ledger). An adopter's repo gets
 the same directory, which is what keeps self-hosting from being a special case. The credential is
-read from `.speepobox/.env` since T58; this repo's own file stays at the repo root until the operator
-moves it with `mv`, which is their act and never a pass's (19 §3).
+read from `.speepobox/.env`, as in an adopter's repo.
+
+To dispatch agents into this repo, read [docs/self-hosting.md](docs/self-hosting.md).
 
 ## License
 
