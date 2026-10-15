@@ -1,11 +1,12 @@
 import { describe, expect, it } from "@effect/vitest";
 import { FileSystem } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
-import { Effect, Either, Redacted, Ref } from "effect";
+import { Duration, Effect, Either, Redacted, Ref } from "effect";
 import { CREDENTIAL_NAMES } from "../src/agent/credential.ts";
 import {
   exec,
   execFed,
+  execDetached,
   execInteractive,
   execStreamed,
   execUnder,
@@ -449,6 +450,82 @@ describe("the interactive chokepoint", () => {
       if (Either.isLeft(outcome)) {
         expect(outcome.left._tag).toBe("ExecError");
       }
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+});
+
+// The detached child (T153), on the real clock: it is a process that outlives
+// the call that started it, so the cases poll its `exited` as the detach
+// module does.
+const untilExited = (exited: Effect.Effect<boolean>) =>
+  Effect.gen(function* () {
+    for (let poll = 0; poll < 200; poll++) {
+      if (yield* exited) {
+        return;
+      }
+      yield* Effect.sleep(Duration.millis(25));
+    }
+    throw new Error("the detached child never exited");
+  });
+
+describe("the detached chokepoint", () => {
+  it.scopedLive(
+    "hands the child the environment it was given, whole, and its output to the file",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const dir = yield* fs.makeTempDirectoryScoped();
+        const out = `${dir}/child.out`;
+        yield* fs.writeFileString(out, "");
+        const child = yield* execDetached(
+          { ...process.env, SPEEPOBOX_DETACH_CANARY: "inherited" },
+          out,
+          "node",
+          "-e",
+          'console.log(process.env.SPEEPOBOX_DETACH_CANARY ?? "ABSENT"); console.error("on stderr")',
+        );
+        expect(child.pid).toBeGreaterThan(0);
+        yield* untilExited(child.exited);
+        const written = yield* fs.readFileString(out);
+        expect(written).toContain("inherited\n");
+        expect(written).toContain("on stderr\n");
+      }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scopedLive("interrupt sends the child SIGINT", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const dir = yield* fs.makeTempDirectoryScoped();
+      const out = `${dir}/child.out`;
+      yield* fs.writeFileString(out, "");
+      const child = yield* execDetached(
+        process.env,
+        out,
+        "node",
+        "-e",
+        'process.on("SIGINT", () => { console.log("SIGINT"); process.exit(0); }); console.log("ready"); setInterval(() => {}, 1000);',
+      );
+      for (let poll = 0; poll < 200; poll++) {
+        if ((yield* fs.readFileString(out)).includes("ready")) {
+          break;
+        }
+        yield* Effect.sleep(Duration.millis(25));
+      }
+      expect(yield* child.exited).toBe(false);
+      yield* child.interrupt;
+      yield* untilExited(child.exited);
+      expect(yield* fs.readFileString(out)).toBe("ready\nSIGINT\n");
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("a missing binary fails with a typed ExecError", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const dir = yield* fs.makeTempDirectoryScoped();
+      const outcome = yield* Effect.either(
+        execDetached(process.env, `${dir}/child.out`, "speepobox-no-such-binary-xyz"),
+      );
+      expect(Either.isLeft(outcome) && outcome.left._tag).toBe("ExecError");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 });
