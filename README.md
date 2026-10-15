@@ -393,14 +393,27 @@ run, which runs the new release and compares your scaffold files with its templa
 .speepobox/speepobox init --diff
 ```
 
-For each file `--diff` reports behind, it shows the diff and the command that refreshes it. For an
-ordinary file that is:
+For each file `--diff` reports behind, it shows the diff and the command that refreshes it. A file
+you never edited — its text still matches its own stamp — is *pristine*, and one command takes every
+pristine behind file at once, the shim included:
+
+```sh
+.speepobox/speepobox init --refresh
+```
+
+`--refresh` writes any absent file as `init` does, overwrites each behind and pristine file with the
+current template, and reports it `refreshed` with both versions. Each overwrite is a rename over the
+old file, so a failed one leaves the old text whole. It never overwrites a file you edited, an
+unstamped file, or `config.toml`; those are reported `kept`, and an edited behind one says so.
+
+A file you edited is yours to merge: take what you want from the diff by hand, or take the template
+and lose your edits. For an ordinary file that is:
 
 ```sh
 rm .speepobox/<file> && .speepobox/speepobox init
 ```
 
-The shim itself is not refreshed by deleting it — that would delete the command that runs `init` —
+An edited shim is not refreshed by deleting it — that would delete the command that runs `init` —
 so it is moved aside and run from there:
 
 ```sh
@@ -409,7 +422,10 @@ mv .speepobox/speepobox .speepobox/speepobox.old && .speepobox/speepobox.old ini
 
 If that `init` fails partway, put the old shim back with
 `mv .speepobox/speepobox.old .speepobox/speepobox`; failing both, run `init` from a hand clone as in the
-bootstrap. Review the diff, then commit `.speepobox/`.
+bootstrap.
+
+So the usual upgrade is `upgrade`, then `init --diff`, then `init --refresh`, then a hand merge of any
+edited file. Review the diff, then commit `.speepobox/`.
 
 ### 6. When the pin cannot be fetched
 
