@@ -24,6 +24,14 @@ import { SHIM } from "./stamp.ts";
 // The shim, as every command printed for an adopter to paste spells it (F2).
 const SHIM_PATH = `${SPEEPOBOX_DIRNAME}/${SHIM}`;
 
+// The command that builds the image, as `init`'s next steps and `upgrade`'s
+// rebuild line both name it (T149).
+export const IMAGE_BUILD = `${SHIM_PATH} image build`;
+
+// What a behind, edited file's `kept` line ends with: `upgrade` reads the
+// refresh child's output for it (T149).
+export const KEPT_BEHIND_EDITED = "(behind, edited — see init --diff)";
+
 // The values a written `config.toml` holds, each with where it came from
 // (T115) — an adopter reads them before committing the file.
 const valuesLine = (values: InitValues): string =>
@@ -39,7 +47,7 @@ const fileLine = (file: InitFile): string => {
     return `removed  ${file.path}  (left by an interrupted refresh)`;
   }
   if (file.action === "kept" && file.behindEdited === true) {
-    return `kept  ${file.path}  (behind, edited — see init --diff)`;
+    return `kept  ${file.path}  ${KEPT_BEHIND_EDITED}`;
   }
   return file.action === "wrote" && file.values !== undefined
     ? `${file.action}  ${file.path}  ${valuesLine(file.values)}`
@@ -48,7 +56,7 @@ const fileLine = (file: InitFile): string => {
 
 export const NEXT_STEPS: ReadonlyArray<string> = [
   "put your own stack's base image in .speepobox/image/Dockerfile",
-  "run `.speepobox/speepobox image build`",
+  `run \`${IMAGE_BUILD}\``,
   "put the agent credential in .speepobox/.env",
   "run `.speepobox/speepobox doctor`",
   "commit .speepobox/, the shim .speepobox/speepobox included",
