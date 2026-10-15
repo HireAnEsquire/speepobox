@@ -211,6 +211,9 @@ describe("the rendered .gitignore", () => {
         ".speepobox/config.local.toml",
         // The credential is unanchored on purpose: never committed from anywhere.
         ".speepobox/tasks/f/.env",
+        // A refresh killed before its rename (T147), at the top level and under image/.
+        ".speepobox/speepobox.refresh",
+        ".speepobox/image/Dockerfile.refresh",
       ]) {
         expect([path, yield* ignored(path)]).toEqual([path, true]);
       }
