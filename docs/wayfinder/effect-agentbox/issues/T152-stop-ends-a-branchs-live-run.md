@@ -1,6 +1,6 @@
 # T152 — `stop` ends a branch's live run
 
-Status: needs-triage
+Status: Done (PR #10. `stop <branch>` in `src/stop/`, on the read-only slice. The host calls (`ps -o etime=` and `process.kill(pid, "SIGINT")`) are a `StopHost` built in `bin.ts`. The host-only check is still to run.)
 Type: AFK
 Blocked by:
 

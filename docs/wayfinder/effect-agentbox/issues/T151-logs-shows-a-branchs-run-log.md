@@ -1,6 +1,6 @@
 # T151 — `logs` shows a branch's run log
 
-Status: needs-triage
+Status: Done (PR #9. `logs <branch> [--follow]` in `src/logs/`, on the read-only slice. The newest log is chosen by `newestLogFor`, off the name alone; output goes through two new `ReporterEvent`s, `LogOpened` and `LogLine`. Ctrl-C during `--follow` is untested; the host-only check is still to run.)
 Type: AFK
 Blocked by:
 
