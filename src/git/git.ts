@@ -571,6 +571,26 @@ export interface GitShape {
 
 export class Git extends Context.Tag("Git")<Git, GitShape>() {}
 
+// Which worktree of `repo` has `branch` checked out, if any — the one lookup
+// behind every "git will not fetch into it" answer (T148). The guard refuses
+// on it before the run, and the land and the salvage ask it again at the end,
+// because a dispatcher can check the branch out while the run is going. Asked
+// of the whole worktree list: git refuses a fetch into a branch checked out in
+// **any** worktree, not only the current one.
+export const worktreeHolding = (
+  branch: string,
+  repo: string,
+): Effect.Effect<Option.Option<string>, GitError, Git> =>
+  Effect.gen(function* () {
+    const git = yield* Git;
+    const worktrees = yield* git.worktrees(repo);
+    return Option.fromNullable(
+      worktrees.find(
+        (worktree) => Option.isSome(worktree.branch) && worktree.branch.value === branch,
+      ),
+    ).pipe(Option.map((worktree) => worktree.path));
+  });
+
 const BRANCH_PREFIX = "refs/heads/";
 
 // The mode every entry the status commit writes carries (`run.sh:1367`): a
