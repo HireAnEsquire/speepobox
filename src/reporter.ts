@@ -51,6 +51,10 @@ export type ReporterEvent =
       readonly snapshot: UpgradeSnapshot;
       readonly refresh: RefreshOutcome;
     }
+  // `logs` (T151): the file it chose, then that file a line at a time, as
+  // the file holds it. Not a step notification: reading a log is not a run.
+  | { readonly _tag: "LogOpened"; readonly path: string }
+  | { readonly _tag: "LogLine"; readonly line: string }
   // What a dispatch resolved to before it acquired anything. Emitted once,
   // by the one derivation, so T15's `--dry-run` prints this rather than
   // re-deriving a second answer (05 Q20).

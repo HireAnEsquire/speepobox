@@ -81,6 +81,12 @@ const renderConsoleEvent = (event: ReporterEvent): string => {
       return renderInit(event.snapshot);
     case "UpgradeReported":
       return renderUpgrade(event.snapshot, event.refresh);
+    // `logs` (T151): the path on a line of its own, so a reader can open the
+    // file elsewhere, then the file verbatim.
+    case "LogOpened":
+      return `==> ${event.path} <==`;
+    case "LogLine":
+      return event.line;
     // The rehearsal's own line (T15), under `would  ` for the reason a warning
     // sits under `WARN  `: a dry run's console is the plan block followed by
     // the mutations it did not perform, and the two read as one column.

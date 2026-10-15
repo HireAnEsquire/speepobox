@@ -319,6 +319,16 @@ container:
 The recent runs show each run's outcome, cost, PR, and any rescue branch.
 
 ```sh
+.speepobox/speepobox logs <branch>
+.speepobox/speepobox logs <branch> --follow
+```
+
+`logs` prints the path of a branch's newest run log, then its contents. With `--follow` it keeps
+printing what the run appends, the way `tail -f` does, and exits when the run ends. A background
+dispatch is watched with `.speepobox/speepobox logs <branch> --follow`. A `--dry-run` writes no
+log, so a branch that was only rehearsed has none.
+
+```sh
 .speepobox/speepobox doctor
 ```
 

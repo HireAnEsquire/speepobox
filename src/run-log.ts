@@ -146,6 +146,11 @@ const summarize = (event: ReporterEvent): string => {
       return event.snapshot._tag === "Write"
         ? `init: ${event.snapshot.files.map((file) => `${file.action} ${file.path}`).join(", ")}`
         : `init --diff: ${event.snapshot.files.length} files`;
+    // Nor does `logs` (T151), which only reads one.
+    case "LogOpened":
+      return `logs: ${event.path}`;
+    case "LogLine":
+      return `logs | ${event.line}`;
     // Nor does `upgrade` (T128).
     case "UpgradeReported":
       return event.snapshot._tag === "Pinned"
