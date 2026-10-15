@@ -1,6 +1,6 @@
 # T145 — init refreshes what nobody edited
 
-Status: ready-for-agent
+Status: Done (PR #3. `init --refresh` overwrites each stamped file that is behind and pristine, atomically, and reports it `refreshed`; edited, unstamped, and `config.toml` stay byte-identical. `init --diff` points pristine files at `--refresh`. Known gap: the temp file has a fixed name, `<file>.refresh`, so a kill mid-refresh can strand one.)
 Type: AFK
 Blocked by:
 
