@@ -95,8 +95,11 @@ export interface InitDiffOptions {
 // Reads the scaffold and the templates, and answers with every file's
 // standing. A path that cannot be read as a file — a directory standing
 // there, a permission — refuses naming it, rather than reading as missing.
+// `init --refresh` (T145) asks the same question, so one classification
+// decides what both report; `command` is who a refusal says was reading.
 export const scaffoldDrift = (
   options: InitDiffOptions,
+  command = "init --diff",
 ): Effect.Effect<ReadonlyArray<DriftFile>, InitRefused, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
@@ -113,7 +116,7 @@ export const scaffoldDrift = (
       Effect.mapError(
         (error) =>
           new InitRefused({
-            detail: `init --diff could not read ${shown("config.toml")}: ${error.message}`,
+            detail: `${command} could not read ${shown("config.toml")}: ${error.message}`,
           }),
       ),
     );
@@ -133,7 +136,7 @@ export const scaffoldDrift = (
           Effect.mapError(
             (error) =>
               new InitRefused({
-                detail: `init --diff could not read ${shown(template)}: ${error.message}`,
+                detail: `${command} could not read ${shown(template)}: ${error.message}`,
               }),
           ),
         );
@@ -144,7 +147,7 @@ export const scaffoldDrift = (
                 Effect.mapError(
                   (error) =>
                     new InitRefused({
-                      detail: `init --diff could not read ${shown(template)}: ${error.message}`,
+                      detail: `${command} could not read ${shown(template)}: ${error.message}`,
                     }),
                 ),
               )
