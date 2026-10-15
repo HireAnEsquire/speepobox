@@ -31,9 +31,10 @@ import { Clock, Effect, Either, Option } from "effect";
 import { SpeepoboxConfig, loadConfig } from "../config/config.ts";
 import { LOCKS_DIRNAME, LOGS_DIRNAME, lockPathFor } from "../dispatch/plan.ts";
 import type { Git } from "../git/git.ts";
-import { isProcessAlive, ownerIsAlive, parsePid } from "../lock/liveness.ts";
+import { isProcessAlive, ownerIsAlive } from "../lock/liveness.ts";
 import type { RunLock } from "../lock/run-lock.ts";
 import { EDIT_MARKER, editorDirPid } from "../prompt/editor.ts";
+import { readLockOnDisk } from "../reconcile/lock-on-disk.ts";
 import { scanWreckage, type WreckageScan } from "../reconcile/reconcile.ts";
 import { classify, type RunWreckage, WITNESS_SUFFIX } from "../reconcile/wreckage.ts";
 import { Reporter } from "../reporter.ts";
@@ -222,12 +223,11 @@ const snapshotOf = (
     ): Effect.Effect<GcLeftover> =>
       Effect.map(ageOf(file), (modifiedAt) => ({ kind, path: file, slug, modifiedAt, state }));
 
-    // Whether a slug's lock names a live owner, read as the reconciler reads
-    // it: a lock that is absent or unreadable names nobody.
-    const lockIsLive = (slug: string): Effect.Effect<boolean> =>
-      fs.readFileString(lockPathFor(config.runtimeRoot, slug)).pipe(
-        Effect.map((contents) => ownerIsAlive(parsePid(contents))),
-        Effect.orElseSucceed(() => false),
+    // Whether a slug's lock names a live owner, through the reconciler's own
+    // read (`readLockOnDisk`): a lock that is absent or unreadable names nobody.
+    const lockIsLive = (slug: string): Effect.Effect<boolean, never, FileSystem.FileSystem> =>
+      Effect.map(readLockOnDisk(lockPathFor(config.runtimeRoot, slug)), (lock) =>
+        Option.exists(lock, ({ owner }) => ownerIsAlive(owner)),
       );
 
     const locksDir = path.join(config.runtimeRoot, LOCKS_DIRNAME);
