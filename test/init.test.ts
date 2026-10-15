@@ -18,7 +18,7 @@ import { type Git, GitLive } from "../src/git/git.ts";
 import { exec } from "../src/internal/exec.ts";
 import { INIT_USAGE, InitRefused, parseInitArgv } from "../src/init/argv.ts";
 import { init } from "../src/init/init.ts";
-import { NEXT_STEPS, renderInit } from "../src/init/render.ts";
+import { KEPT_BEHIND_EDITED, NEXT_STEPS, renderInit } from "../src/init/render.ts";
 import { pinIn } from "../src/pin/pin.ts";
 import { driftOf } from "../src/init/diff.ts";
 import type { InitDiff, InitSnapshot, InitValues, InitWrite } from "../src/init/snapshot.ts";
@@ -543,6 +543,39 @@ describe("renderInit", () => {
       ...NEXT_STEPS.map((step, index) => `  ${index + 1}. ${step}`),
     ]);
     expect(NEXT_STEPS).toHaveLength(5);
+  });
+
+  // The next steps are first-time setup: a run that wrote nothing — a
+  // `--refresh`, which `upgrade` relays (T149), or a re-run — owes none.
+  it("ends a refresh that wrote nothing after its file lines and warnings", () => {
+    const text = renderInit({
+      _tag: "Write",
+      files: [
+        { path: ".speepobox/.gitignore", action: "refreshed", from: 3, to: 4 },
+        { path: ".speepobox/AGENTS.md", action: "kept", behindEdited: true },
+      ],
+      warnings: ["something to say"],
+    });
+    expect(text.split("\n")).toEqual([
+      "refreshed  .speepobox/.gitignore  (v3 → v4)",
+      `kept  .speepobox/AGENTS.md  ${KEPT_BEHIND_EDITED}`,
+      "WARN  something to say",
+    ]);
+  });
+
+  it("ends a re-run that kept every file after its file lines", () => {
+    const text = renderInit({
+      _tag: "Write",
+      files: [
+        { path: ".speepobox/config.toml", action: "kept" },
+        { path: ".speepobox/.gitignore", action: "kept" },
+      ],
+      warnings: [],
+    });
+    expect(text.split("\n")).toEqual([
+      "kept  .speepobox/config.toml",
+      "kept  .speepobox/.gitignore",
+    ]);
   });
 
   // An adopter reads the values before committing them (T115), so a written

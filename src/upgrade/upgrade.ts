@@ -1,6 +1,7 @@
 // `upgrade` (SPEC §7, P6 F13 and F15): moves the served repo's pin to the
 // newest release, or with `--to vN` to a named one, rollbacks included. It
-// rewrites one line and commits nothing.
+// rewrites one line and commits nothing, then hands the scaffold refresh to
+// the release it pinned (T149, `refresh.ts`).
 //
 // Intercepted in `bin.ts` beside `init`, before any config decode: the pin is
 // read by T121's grammar, never through `SpeepoboxConfig` (T120). Everything is
@@ -25,6 +26,7 @@ import {
 import { pinIn, pinLineIn, PinRefusal, renderPinRefusal, withPin } from "../pin/pin.ts";
 import { Reporter } from "../reporter.ts";
 import { parseUpgradeArgv, UpgradeRefused } from "./argv.ts";
+import { refresh } from "./refresh.ts";
 import { shownPin } from "./render.ts";
 import type { PinnedBefore, UpgradeSnapshot } from "./snapshot.ts";
 
@@ -122,7 +124,17 @@ export const upgrade = (
           Effect.mapError((error) => refuse(`upgrade could not write ${CONFIG}: ${error.message}`)),
         );
     }
-    yield* reporter.emit({ _tag: "UpgradeReported", snapshot: decided });
+    // T149: then the new release refreshes the scaffold. Its failure is
+    // upgrade's, after the report — the pin is never moved back.
+    const refreshed = yield* refresh(options.repoRoot, decided);
+    yield* reporter.emit({
+      _tag: "UpgradeReported",
+      snapshot: decided,
+      refresh: refreshed.outcome,
+    });
+    if (Option.isSome(refreshed.error)) {
+      return yield* refreshed.error.value;
+    }
   });
 
 const pinnedBefore = (releases: ReadonlyArray<Release>, value: string): PinnedBefore =>

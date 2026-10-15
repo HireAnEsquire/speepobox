@@ -63,6 +63,12 @@ const ENV_ALLOWLIST: ReadonlyArray<string> = [
   // Harmless to the captured children beside it — none of them is on a
   // screen, so none of them renders anything a terminal type would change.
   "TERM",
+  // The package cache, read by the shim `upgrade` runs as a child to refresh
+  // the scaffold (T149): `.speepobox/speepobox init --refresh` looks for the
+  // pinned release under `${XDG_CACHE_HOME:-$HOME/.cache}`, so a child that
+  // could not see it would build a second cache beside the one the
+  // dispatcher's own shim used.
+  "XDG_CACHE_HOME",
 ];
 
 // The one variable a child of ours is **given** rather than forwarded, and the
