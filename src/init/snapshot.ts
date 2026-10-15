@@ -7,9 +7,10 @@ import { Schema } from "effect";
 import { SHIM } from "./stamp.ts";
 import { ResolvedValue } from "./values.ts";
 
-// Only absent files are written (E4): a file already there is never opened
-// for writing, so every file is exactly one of the two.
-export const InitAction = Schema.Literal("wrote", "kept");
+// Absent files are written (E4). A file already there is never opened for
+// writing, except a stamped one `--refresh` finds behind and pristine (T145),
+// so every file is exactly one of the three.
+export const InitAction = Schema.Literal("wrote", "kept", "refreshed");
 export type InitAction = Schema.Schema.Type<typeof InitAction>;
 
 // The three values `config.toml` is written with, each beside where it came
@@ -31,11 +32,22 @@ export const InitFile = Schema.Union(
     // The file's path relative to the served repo's root, `/`-separated.
     path: Schema.String,
     action: Schema.Literal("kept"),
+    // Set by `--refresh` alone, on a file it found behind and edited — an
+    // unstamped one included — and so would not overwrite (T145).
+    behindEdited: Schema.optionalWith(Schema.Boolean, { exact: true }),
   }),
   Schema.Struct({
     path: Schema.String,
     action: Schema.Literal("wrote"),
     values: Schema.optionalWith(InitValues, { exact: true }),
+  }),
+  // A behind, pristine stamped file `--refresh` overwrote (T145), with the
+  // stamp version it had and the template version it has now.
+  Schema.Struct({
+    path: Schema.String,
+    action: Schema.Literal("refreshed"),
+    from: Schema.Number,
+    to: Schema.Number,
   }),
 );
 export type InitFile = Schema.Schema.Type<typeof InitFile>;

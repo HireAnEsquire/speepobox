@@ -722,9 +722,13 @@ describe("init --diff", () => {
       expect(text).toContain("includes your own edits");
       expect(text).toContain("-# a line the newer template dropped");
       expect(text).toContain("+++ templates/image/inputs v2");
-      expect(text).toContain("rm .speepobox/image/inputs && .speepobox/speepobox init");
+      expect(text).toContain("To refresh it: .speepobox/speepobox init --refresh");
+      expect(text).not.toContain("rm .speepobox/image/inputs");
       expect(text).toContain("nothing of yours is lost");
       expect(text).toContain("Drift: 1 file missing or behind.");
+      expect(text.split("\n").at(-1)).toBe(
+        "init --refresh takes the 1 pristine file above in one step.",
+      );
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -740,6 +744,13 @@ describe("init --diff", () => {
       expect(standing(snapshot)[3]).toEqual([".speepobox/image/inputs", "behind", "edited"]);
       expect(text).toContain("-package.json");
       expect(text).not.toContain("nothing of yours is lost");
+      // An edited file is taken by hand, and the line before the remedy says
+      // what that costs (T145).
+      expect(text).toContain(
+        "This file has your edits: merge the diff above by hand, or take the template and lose them with:\n" +
+          "To refresh it: rm .speepobox/image/inputs && .speepobox/speepobox init",
+      );
+      expect(text).not.toContain("init --refresh");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
@@ -822,9 +833,8 @@ describe("init --diff", () => {
       expect(text).toContain("+/logs/");
       expect(text).toContain("-logs/");
       expect(text).toContain("nothing of yours is lost");
-      expect(text).toContain(
-        "To refresh it: rm .speepobox/.gitignore && .speepobox/speepobox init",
-      );
+      expect(text).toContain("To refresh it: .speepobox/speepobox init --refresh");
+      expect(text).not.toContain("rm .speepobox/.gitignore");
       expect(text).not.toContain(".old");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
@@ -858,14 +868,33 @@ describe("init --diff", () => {
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
-  // Deleting the shim deletes the command that runs init (09, amended).
-  it.scoped("refreshes a behind shim by moving it aside, with the restore line beside it", () =>
+  // A pristine shim is renamed over in place (T145).
+  it.scoped("refreshes a behind, pristine shim with init --refresh", () =>
     Effect.gen(function* () {
       const repoRoot = yield* scaffolded;
       yield* olderTemplate(repoRoot, "speepobox");
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
       expect(standing(snapshot)[4]).toEqual([".speepobox/speepobox", "behind", "pristine"]);
+      expect(text).toContain("To refresh it: .speepobox/speepobox init --refresh");
+      expect(text).not.toContain(".old");
+      expect(text).toContain("init --refresh takes the 1 pristine file above in one step.");
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  // Deleting the shim deletes the command that runs init (09, amended).
+  it.scoped("refreshes a behind, edited shim by moving it aside, with the restore line", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, "speepobox");
+      const shim = join(repoRoot, ".speepobox/speepobox");
+      yield* fs.writeFileString(shim, `${yield* fs.readFileString(shim)}# mine\n`);
+      const { drifted, snapshot, text } = yield* diff(repoRoot);
+      expect(drifted).toBe(1);
+      expect(standing(snapshot)[4]).toEqual([".speepobox/speepobox", "behind", "edited"]);
+      expect(text).toContain("This file has your edits");
+      expect(text).not.toContain("init --refresh");
       expect(text).toContain(
         "To refresh it: mv .speepobox/speepobox .speepobox/speepobox.old && .speepobox/speepobox.old init && rm .speepobox/speepobox.old",
       );
