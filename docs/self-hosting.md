@@ -98,7 +98,7 @@ git tag -a v<N> origin/main -m "v<N>: <what changed>"
 git push origin v<N>
 ```
 
-Adopters pick it up with `.speepobox/speepobox upgrade`, then `init --diff` and `init --refresh`.
+Adopters pick it up with `.speepobox/speepobox upgrade`, which moves the pin and refreshes the scaffold. From v4, one `init --refresh` by hand follows the first upgrade.
 
 ## Tests
 

@@ -1,6 +1,6 @@
 # T149 — upgrade refreshes
 
-Status: needs-triage
+Status: Done (PR #7. `upgrade` moves the pin, then runs the shim's `init --refresh` as a child and relays its lines; not on a rollback, and no child without a runnable shim. A failed child keeps the moved pin and exits 1. `init` prints its Next steps only where it wrote a file, so the relay carries no setup advice. Left as is: a release that adds a new scaffold file writes it on refresh, so that one upgrade shows the Next steps again.)
 Type: AFK
 Blocked by: T147
 
