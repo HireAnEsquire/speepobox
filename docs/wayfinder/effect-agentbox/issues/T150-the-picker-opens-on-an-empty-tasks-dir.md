@@ -1,6 +1,6 @@
 # T150 — the picker opens on an empty tasks dir
 
-Status: needs-triage
+Status: Done (PR #8. The empty-tasks-dir refusal is gone from `pickerArgv`; the picker opens on the typed-task and resume rows. The `no features under` and `cannot be read` refusals are unchanged.)
 Type: AFK
 Blocked by:
 

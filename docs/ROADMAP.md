@@ -11,7 +11,6 @@ the effort is, why it waits, and what it waits on. It never holds the effort's d
 
 ## Now
 
-- **T150: the picker opens on an empty tasks dir.** Dispatched 2026-10-15. Ships in v6.
 - **Close the effect-agentbox map.** Give T134 its Done line, write the map's final status line, and
   point its Out of scope at this file.
 
