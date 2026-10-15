@@ -1,6 +1,6 @@
 # T147 — refresh leaves no stray file
 
-Status: needs-triage
+Status: Done (PR #5. `init --refresh` removes each stamped target's `<file>.refresh` before it writes, a `removed` line each; `.gitignore` v4 ignores `*.refresh`. Left as is: a refusal after a removal does not name the removed file, and a dangling symlink at the temp path is skipped silently.)
 Type: AFK
 Blocked by:
 

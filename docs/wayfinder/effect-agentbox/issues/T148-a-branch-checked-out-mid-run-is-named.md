@@ -1,6 +1,6 @@
 # T148 — a branch checked out mid-run is named
 
-Status: needs-triage
+Status: Done (PR #6. `worktreeHolding` in `src/git/git.ts` is the one lookup; the guard, the land, and the salvage call it. The land fails staged `land` naming the path; the salvage rescues with `CheckedOut` and prints the merge and push. One addition beyond the ticket, kept: the salvage asks containment first, so a branch that already holds the commits is `WentHome`, no rescue.)
 Type: AFK
 Blocked by:
 
