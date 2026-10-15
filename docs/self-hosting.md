@@ -76,7 +76,10 @@ until the run ends:
   round or the description pass is told. A checkout of a branch that lacks a package prompt crashes
   the next pass.
 - **The spec file.** A one-off spec, such as a ticket under `docs/wayfinder/effect-agentbox/issues/`,
-  is mounted into the container from your working tree. Do not change it mid-run.
+  is mounted into the container from your working tree. A checkout or pull that changes the file
+  makes it vanish inside the container, because git replaces the file rather than writing into it;
+  every later pass then finds no spec. An edit saved in place reaches the agent instead. Leave it
+  alone mid-run. (Measured on Docker Desktop for Mac, 2026-10-15.)
 - **The dispatch's branch.** Never check it out. At the end the run fetches its commits into that
   branch, and git refuses to fetch into a checked-out branch, so the land fails and the commits go to
   a rescue branch `<branch>-from-run-<sha>`.
@@ -91,7 +94,7 @@ edits, while a dispatch is running.**
 A release is a `v<N>` tag on `main`:
 
 ```sh
-git tag v<N> origin/main
+git tag -a v<N> origin/main -m "v<N>: <what changed>"
 git push origin v<N>
 ```
 
