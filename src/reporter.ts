@@ -8,7 +8,7 @@ import type { GcSnapshot } from "./gc/snapshot.ts";
 import type { InitSnapshot } from "./init/snapshot.ts";
 import type { PullRequest } from "./ledger/record.ts";
 import type { StatusSnapshot } from "./status/snapshot.ts";
-import type { UpgradeSnapshot } from "./upgrade/snapshot.ts";
+import type { RefreshOutcome, UpgradeSnapshot } from "./upgrade/snapshot.ts";
 
 export type ProbeStatus = "ok" | "warn" | "fail";
 
@@ -44,8 +44,13 @@ export type ReporterEvent =
   // the next steps under it. Not a step notification: init is not a run.
   | { readonly _tag: "InitReported"; readonly snapshot: InitSnapshot }
   // Where `upgrade` moved the pin, or that it stayed (T128), rendered as
-  // `init`'s report is. Not a step notification: upgrade is not a run.
-  | { readonly _tag: "UpgradeReported"; readonly snapshot: UpgradeSnapshot }
+  // `init`'s report is, and what the refresh after it answered (T149). Not a
+  // step notification: upgrade is not a run.
+  | {
+      readonly _tag: "UpgradeReported";
+      readonly snapshot: UpgradeSnapshot;
+      readonly refresh: RefreshOutcome;
+    }
   // What a dispatch resolved to before it acquired anything. Emitted once,
   // by the one derivation, so T15's `--dry-run` prints this rather than
   // re-deriving a second answer (05 Q20).

@@ -17,3 +17,26 @@ export type UpgradeSnapshot =
   // Nothing was written: plain `upgrade` on the latest release, or `--to`
   // naming the commit already pinned.
   | { readonly _tag: "Unchanged"; readonly release: Release; readonly explicit: boolean };
+
+// What became of the scaffold refresh `upgrade` hands to the new release
+// (T149): the release that ships the templates applies them, so after the pin
+// the repo's own shim runs `init --refresh` as a child, and this is its answer.
+export type RefreshOutcome =
+  // The child ran and exited 0. `output` is its stdout, verbatim; the two
+  // flags are what the report adds after it.
+  | {
+      readonly _tag: "Refreshed";
+      readonly output: string;
+      // A `kept … (behind, edited — see init --diff)` line came back.
+      readonly keptEdited: boolean;
+      // `image/Dockerfile` or `image/inputs` differ in bytes across the child.
+      readonly imageChanged: boolean;
+    }
+  // The pin moved down a release: scaffold files are not rolled back.
+  | { readonly _tag: "RolledBack" }
+  // No shim that can run, so no child: the pin moved and the refresh is the
+  // adopter's to run.
+  | { readonly _tag: "NoShim"; readonly reason: "absent" | "not executable" }
+  // The child exited nonzero or never started. Its stdout is still the
+  // report's; the failure itself is `upgrade`'s error, on stderr.
+  | { readonly _tag: "Failed"; readonly output: string };
