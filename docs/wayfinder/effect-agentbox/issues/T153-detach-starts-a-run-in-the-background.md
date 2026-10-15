@@ -1,6 +1,6 @@
 # T153 — `--detach` starts a run in the background
 
-Status: needs-triage
+Status: Done (PR #11. `--detach` in `src/detach/`. The spawn is `execDetached` in `internal/exec.ts`, which AGENTS.md names as the one exception in `src/`. The `.gitignore` template went to v5 to ignore `detached/`. The host-only check is still to run.)
 Type: AFK
 Blocked by: T151
 
