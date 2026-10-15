@@ -214,6 +214,8 @@ describe("the rendered .gitignore", () => {
         // A refresh killed before its rename (T147), at the top level and under image/.
         ".speepobox/speepobox.refresh",
         ".speepobox/image/Dockerfile.refresh",
+        // A detached run's console (T153).
+        ".speepobox/detached/speepobox-t153.out",
       ]) {
         expect([path, yield* ignored(path)]).toEqual([path, true]);
       }

@@ -12,6 +12,9 @@
 /locks/
 /checkouts/
 /runs.jsonl
+# A detached run's console, `detached/<slug>.out`, kept only to diagnose a
+# crash.
+/detached/
 # The editor's session directories, `<purpose>-edit-<pid>-XXXXXX/` at the
 # runtime root. Anchored, so nothing under the tasks dir can match.
 /*-edit-*/

@@ -1,4 +1,4 @@
-# speepobox-template: .gitignore v4 sha256:85f8ed93cdba
+# speepobox-template: .gitignore v5 sha256:c5a8fbbbe2b6
 # Everything in the speepobox directory except the committed config layer and
 # this file: the operator's private settings, the agent credential, and this
 # repo's runtime state. `config.toml` is the layer that travels with the repo
@@ -18,6 +18,9 @@
 /locks/
 /checkouts/
 /runs.jsonl
+# A detached run's console, `detached/<slug>.out`, kept only to diagnose a
+# crash (T153).
+/detached/
 # The editor's session directories, `<purpose>-edit-<pid>-XXXXXX/` at the
 # runtime root (T84, T108). They hold the dispatcher's own text while it is
 # being written. Anchored, so nothing under the tasks dir can match.
