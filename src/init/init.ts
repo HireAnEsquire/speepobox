@@ -15,7 +15,9 @@
 // replaced atomically, by a rename over the old file. An edited file, an
 // unstamped one, and `config.toml` are never overwritten; there is no
 // `--force`, and an edited file is still taken by deleting it and running
-// `init` again. Nothing is written until every refusal has had its chance, a
+// `init` again. A `<file>.refresh` a killed refresh left beside a stamped
+// file is removed by the next `--refresh`, and by nothing else (T147).
+// Nothing is written until every refusal has had its chance, a
 // directory standing where a file goes included.
 //
 // `--diff` (T116) is the read-only branch: it writes nothing, runs where
@@ -142,7 +144,9 @@ const resolveBase = (
       Effect.flatMap(Git, (git) => git.originHead({ repo: repoRoot })).pipe(
         Effect.mapError(
           (error) =>
-            new InitRefused({ detail: `init could not read origin/HEAD: ${error.detail}` }),
+            new InitRefused({
+              detail: `init could not read origin/HEAD: ${error.detail}`,
+            }),
         ),
         Effect.flatMap(
           Option.match({
@@ -215,6 +219,10 @@ type Plan =
   | { readonly _tag: "Keep"; readonly behindEdited: boolean }
   | { readonly _tag: "Refresh"; readonly from: number; readonly to: number };
 
+// The temp file a refresh writes beside `at`. A fixed name, so a refresh
+// killed before its rename leaves a file the next refresh can find (T147).
+const refreshTemp = (at: string): string => `${at}.refresh`;
+
 // Overwrites a file whole or not at all (T145): the text goes to a temp file
 // beside it, which takes the mode, and a `rename` puts it over the old one —
 // which also leaves the old inode with anyone who has it open, the running
@@ -227,12 +235,60 @@ const replaceFile = (
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const temp = `${at}.refresh`;
+    const temp = refreshTemp(at);
     const mode = executable ? 0o755 : (yield* fs.stat(at)).mode & 0o7777;
     yield* fs.writeFileString(temp, text).pipe(
       Effect.zipRight(fs.chmod(temp, mode)),
       Effect.zipRight(fs.rename(temp, at)),
       Effect.tapError(() => Effect.ignore(fs.remove(temp, { force: true }))),
+    );
+  });
+
+interface Leftover {
+  readonly removed: Option.Option<InitFile>;
+  readonly warning: Option.Option<string>;
+}
+
+// Removes the temp file a killed refresh left beside one stamped target
+// (T147): that exact path, and only a regular file there. Anything else at it
+// is left alone and warned about, and so is a removal that fails — the
+// refresh goes on, and `replaceFile`'s own write overwrites the file anyway.
+const removeLeftover = (target: Target): Effect.Effect<Leftover, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const at = refreshTemp(target.at);
+    const shown = refreshTemp(target.shown);
+    const none: Leftover = { removed: Option.none(), warning: Option.none() };
+    const warn = (warning: string): Leftover => ({
+      ...none,
+      warning: Option.some(warning),
+    });
+    const removal = fs.stat(at).pipe(
+      Effect.flatMap((info) =>
+        info.type !== "File"
+          ? Effect.succeed(
+              warn(
+                `${shown} is ${info.type === "Directory" ? "a directory" : "not a regular file"}, so it is not a refresh's leftover and was left in place`,
+              ),
+            )
+          : fs.remove(at).pipe(
+              Effect.as<Leftover>({
+                removed: Option.some({ path: shown, action: "removed" }),
+                warning: Option.none(),
+              }),
+            ),
+      ),
+      Effect.catchIf(
+        (error) => error._tag === "SystemError" && error.reason === "NotFound",
+        () => Effect.succeed(none),
+      ),
+    );
+    return yield* removal.pipe(
+      Effect.catchAll((error) =>
+        Effect.succeed(
+          warn(`init could not remove ${shown}, left by an interrupted refresh: ${error.message}`),
+        ),
+      ),
     );
   });
 
@@ -285,7 +341,9 @@ export const init = (
         ),
         Effect.mapError(
           (error) =>
-            new InitRefused({ detail: `init could not read ${target.shown}: ${error.message}` }),
+            new InitRefused({
+              detail: `init could not read ${target.shown}: ${error.message}`,
+            }),
         ),
         Effect.flatMap((type) =>
           Option.contains(type, "Directory")
@@ -334,7 +392,11 @@ export const init = (
             ? { _tag: "Keep", behindEdited: false }
             : file.edited
               ? { _tag: "Keep", behindEdited: true }
-              : { _tag: "Refresh", from: file.stampVersion, to: file.templateVersion },
+              : {
+                  _tag: "Refresh",
+                  from: file.stampVersion,
+                  to: file.templateVersion,
+                },
       });
     });
 
@@ -380,6 +442,15 @@ export const init = (
             }),
         ),
       );
+
+    // `--refresh` clears what a killed refresh left before it writes anything
+    // (T147); plain `init` never makes the temp file, so never looks for one.
+    const leftovers = parsed.right.refresh
+      ? yield* Effect.forEach(
+          targets.filter((target) => isStamped(target.name)),
+          removeLeftover,
+        )
+      : [];
 
     // `wx` on top of the look above: a file that appeared in between is still
     // never opened for writing, and is as `kept` as one that was there first.
@@ -429,8 +500,11 @@ export const init = (
       _tag: "InitReported",
       snapshot: {
         _tag: "Write",
-        files: written,
-        warnings: configWritten ? Option.toArray(toolSha.warning) : [],
+        files: [...leftovers.flatMap((leftover) => Option.toArray(leftover.removed)), ...written],
+        warnings: [
+          ...leftovers.flatMap((leftover) => Option.toArray(leftover.warning)),
+          ...(configWritten ? Option.toArray(toolSha.warning) : []),
+        ],
       },
     });
     return 0;

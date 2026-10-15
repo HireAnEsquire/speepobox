@@ -1,7 +1,8 @@
 // The `init` renderer: a pure function over `InitSnapshot`, subscribed to the
-// `Reporter` stream exactly as `gc`'s is. A write is one `wrote`, `kept`, or
-// `refreshed` (T145) line per file, any warning, then the next steps —
-// printed, and never run. A `--diff` (T116) is one line per file, then each
+// `Reporter` stream exactly as `gc`'s is. A write is a `removed` line for each
+// leftover a killed refresh left (T147), one `wrote`, `kept`, or `refreshed`
+// (T145) line per file, any warning, then the next steps — printed, and never
+// run. A `--diff` (T116) is one line per file, then each
 // behind file's diff and its remedy, then a shim that cannot run and its
 // `chmod` (T127), then how many files `--refresh` would take (T145).
 import { Option } from "effect";
@@ -33,6 +34,9 @@ const valuesLine = (values: InitValues): string =>
 const fileLine = (file: InitFile): string => {
   if (file.action === "refreshed") {
     return `refreshed  ${file.path}  (v${file.from} → v${file.to})`;
+  }
+  if (file.action === "removed") {
+    return `removed  ${file.path}  (left by an interrupted refresh)`;
   }
   if (file.action === "kept" && file.behindEdited === true) {
     return `kept  ${file.path}  (behind, edited — see init --diff)`;

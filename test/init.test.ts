@@ -1206,6 +1206,109 @@ describe("init --refresh", () => {
       }).pipe(Effect.provide(NodeContext.layer)),
   );
 
+  // A refresh killed between its write and its rename leaves its temp file
+  // (T147), which the next `--refresh` removes before it writes anything.
+  it.scoped("removes the temp files a killed refresh left, a removed line for each", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, ".gitignore");
+      yield* fs.writeFileString(scaffoldPath(repoRoot, "speepobox.refresh"), "half a shim");
+      yield* fs.writeFileString(scaffoldPath(repoRoot, "image/Dockerfile.refresh"), "FROM");
+      const { exit, events } = yield* run(repoRoot, ["--refresh"]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(actions(events).slice(0, 3)).toEqual([
+        { path: ".speepobox/image/Dockerfile.refresh", action: "removed" },
+        { path: ".speepobox/speepobox.refresh", action: "removed" },
+        { path: ".speepobox/config.toml", action: "kept" },
+      ]);
+      expect(actions(events)[3]).toEqual({ path: ".speepobox/.gitignore", action: "refreshed" });
+      expect(written(events).warnings).toEqual([]);
+      expect(yield* fs.exists(scaffoldPath(repoRoot, "speepobox.refresh"))).toBe(false);
+      expect(yield* fs.exists(scaffoldPath(repoRoot, "image/Dockerfile.refresh"))).toBe(false);
+      const lines = renderInit(written(events)).split("\n");
+      expect(lines.slice(0, 2)).toEqual([
+        "removed  .speepobox/image/Dockerfile.refresh  (left by an interrupted refresh)",
+        "removed  .speepobox/speepobox.refresh  (left by an interrupted refresh)",
+      ]);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("leaves a directory at a temp file's path, warns naming it, and still refreshes", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, ".gitignore");
+      const leftover = scaffoldPath(repoRoot, "speepobox.refresh");
+      yield* fs.makeDirectory(leftover);
+      yield* fs.writeFileString(join(leftover, "kept"), "mine");
+      const { exit, events } = yield* run(repoRoot, ["--refresh"]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(actions(events)).not.toContainEqual(expect.objectContaining({ action: "removed" }));
+      expect(actions(events)[1]).toEqual({ path: ".speepobox/.gitignore", action: "refreshed" });
+      expect(written(events).warnings).toEqual([
+        expect.stringContaining(".speepobox/speepobox.refresh is a directory"),
+      ]);
+      expect(yield* fs.readFileString(join(leftover, "kept"))).toBe("mine");
+      expect(renderInit(written(events))).toContain(
+        "WARN  .speepobox/speepobox.refresh is a directory",
+      );
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("warns, and still refreshes, when a temp file's removal fails", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      yield* olderTemplate(repoRoot, ".gitignore");
+      const leftover = scaffoldPath(repoRoot, ".gitignore.refresh");
+      yield* fs.writeFileString(leftover, "stale");
+      const failing: FileSystem.FileSystem = {
+        ...fs,
+        remove: (path, options) =>
+          path === leftover
+            ? Effect.fail(
+                new SystemError({
+                  reason: "PermissionDenied",
+                  module: "FileSystem",
+                  method: "remove",
+                  pathOrDescriptor: path,
+                  description: "remove refused",
+                }),
+              )
+            : fs.remove(path, options),
+      };
+      const { exit, events } = yield* run(repoRoot, ["--refresh"]).pipe(
+        Effect.provideService(FileSystem.FileSystem, failing),
+      );
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(written(events).warnings).toEqual([
+        expect.stringContaining("init could not remove .speepobox/.gitignore.refresh"),
+      ]);
+      expect(actions(events)[1]).toEqual({ path: ".speepobox/.gitignore", action: "refreshed" });
+      expect(yield* fs.readFileString(scaffoldPath(repoRoot, ".gitignore"))).toBe(
+        yield* templateText(".gitignore"),
+      );
+      expect(yield* fs.exists(leftover)).toBe(false);
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
+  it.scoped("is the only init that removes one: plain init leaves a temp file in place", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const repoRoot = yield* scaffolded;
+      const leftover = scaffoldPath(repoRoot, "speepobox.refresh");
+      yield* fs.writeFileString(leftover, "half a shim");
+      const { exit, events } = yield* run(repoRoot, []);
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(actions(events)).toEqual(SCAFFOLD.map((path) => ({ path, action: "kept" })));
+      expect(yield* fs.readFileString(leftover)).toBe("half a shim");
+      const diffed = yield* run(repoRoot, ["--diff"]);
+      expect(Exit.isSuccess(diffed.exit)).toBe(true);
+      expect(yield* fs.readFileString(leftover)).toBe("half a shim");
+    }).pipe(Effect.provide(NodeContext.layer)),
+  );
+
   it.scoped.each([
     { argv: ["--refresh", "--diff"], refusal: "--refresh is a write" },
     { argv: ["--refresh", "--refresh"], refusal: "--refresh given twice" },
