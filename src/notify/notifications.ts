@@ -204,6 +204,9 @@ export const stepNotificationBodyFor = (event: ReporterEvent): Option.Option<str
     case "InitReported":
     // Nor is upgrade (T128).
     case "UpgradeReported":
+    // Nor is reading a log (T151).
+    case "LogOpened":
+    case "LogLine":
     case "PlanResolved":
     case "ResourceReleased":
     case "PromptAssembled":
