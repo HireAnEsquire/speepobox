@@ -303,6 +303,31 @@ prompt when it starts and the spec is mounted from your working tree.
 Ctrl-C, or closing the terminal, tears the run down: the container goes, the commits are moved back
 as at the end of a run, and the row records the run as interrupted.
 
+#### Running in the background
+
+```sh
+.speepobox/speepobox <spec> --branch <branch> --detach
+```
+
+`--detach` starts the dispatch in a new process, waits until it holds its lock, and exits 0. The run
+keeps going after the terminal, or the agent session that started it, is gone. Every dispatch form
+takes it: a spec, `--task`, `--resume … --feedback`, and `--feature … --issues`. Until the run holds
+its lock you see what a foreground run shows (the plan, any warnings, or the refusal), and then:
+
+```
+started '<branch>' (pid <N>)
+log: <log path>
+watch: .speepobox/speepobox logs <branch> --follow
+```
+
+From then on, watch it with `logs <branch> --follow` and end it with `stop <branch>`. `--detach`
+implies `--no-input`, so it never opens the picker. It is refused with `--dry-run`, because a
+rehearsal holds no lock, and with `--hard-reset`, which asks for confirmation. A run that has not
+started within 120 seconds is sent SIGINT and the command exits 1, and so is Ctrl-C during the wait.
+
+The run's console goes to `.speepobox/detached/<slug>.out`, which the next detach of the branch
+overwrites. It is only for diagnosing a crash. The run log is the record.
+
 #### Watching and cleaning up
 
 ```sh

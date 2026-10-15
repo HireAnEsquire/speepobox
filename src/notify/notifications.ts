@@ -210,6 +210,10 @@ export const stepNotificationBodyFor = (event: ReporterEvent): Option.Option<str
     // Nor is stop (T152): the run it interrupts sends its own terminal one.
     case "RunStopping":
     case "RunStopped":
+    // Nor is `--detach`'s parent (T153): the run it starts notifies for itself.
+    case "DetachedOutput":
+    case "DetachedStarted":
+    case "DetachedStopped":
     case "PlanResolved":
     case "ResourceReleased":
     case "PromptAssembled":

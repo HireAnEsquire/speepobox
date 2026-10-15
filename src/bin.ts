@@ -14,7 +14,8 @@ import { isAnswerMissing } from "./dispatch/guards.ts";
 import { type DispatchFailure, renderFailure } from "./dispatch/render.ts";
 import { doctor } from "./doctor/doctor.ts";
 import { exitCodeFor } from "./exit-code.ts";
-import { exec } from "./internal/exec.ts";
+import { type DetachHost, detach, lockOwnerOnDisk, peelDetach } from "./detach/detach.ts";
+import { exec, execDetached } from "./internal/exec.ts";
 import { gc } from "./gc/gc.ts";
 import { imageBuild } from "./image/build.ts";
 import { resolveForgeRepo } from "./forge/forge.ts";
@@ -46,6 +47,13 @@ Usage:
                       rehearse: every guard, the resolved plan, and the
                       mutations this run would have made — no lock, no
                       container, no checkout, no PR, no ledger row
+  speepobox ... --detach
+                      start the dispatch in the background: wait until it
+                      holds its lock, print its pid and log, and exit 0. The
+                      run outlives this terminal; watch it with logs --follow.
+                      Implies --no-input; refused with --dry-run and
+                      --hard-reset. Exit 1 if it is refused or does not start
+                      within 120s
   speepobox ... --feedback "<what to change>"
                       extra dispatcher instructions for this run. On a --resume
                       whose recorded spec is gone, the feedback is the work
@@ -122,6 +130,24 @@ const stopHost: StopHost = {
       },
       catch: (error) => (error instanceof Error ? error.message : String(error)),
     }),
+};
+
+// The real host calls `--detach` makes (T153). The child is this same
+// entrypoint under the same node binary and flags — host reads, so they are
+// made here — and it takes this process's whole environment, because it is
+// speepobox and resolves the credential and the allowlist itself
+// (`internal/exec.ts`'s `execDetached`).
+const detachHost: DetachHost = {
+  spawn: (args, outFile) =>
+    execDetached(
+      process.env,
+      outFile,
+      process.execPath,
+      ...process.execArgv,
+      process.argv[1] ?? "",
+      ...args,
+    ),
+  lockOwner: lockOwnerOnDisk,
 };
 
 // status, logs, doctor, gc, init, upgrade, and stop are intercepted before flag
@@ -415,8 +441,22 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
     // words that come back and onto the command line the summary prints. Off
     // one it falls through to the dispatch and is refused there — bash's own
     // fall-through, and what this invocation did before the picker existed.
+    //
+    // A dispatch carrying `--detach` (T153) is not run here at all: its words
+    // go to `detach/detach.ts`, which starts them in a new process and waits
+    // for it to hold its lock. It never opens the picker — `--detach` implies
+    // `--no-input` — and the parent needs no dispatch layer, since the child
+    // does the dispatch.
     default:
-      return isModifiersOnly(argv) ? picked(argv, dispatchWords(argv)) : dispatchWords(argv);
+      return Option.match(peelDetach(argv), {
+        onSome: (words) =>
+          detach({ argv: words, repoRoot, host: detachHost }).pipe(
+            Effect.provide(appBaseLiveFor(repoRoot, stdinIsTTY)),
+            Effect.catchAll(reportFailure),
+          ),
+        onNone: () =>
+          isModifiersOnly(argv) ? picked(argv, dispatchWords(argv)) : dispatchWords(argv),
+      });
   }
 };
 

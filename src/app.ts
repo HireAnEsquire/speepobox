@@ -1,6 +1,6 @@
 import { Terminal } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option } from "effect";
 import pc from "picocolors";
 import { type AgentCli, AgentCliLive } from "./agent/agent-cli.ts";
 import { type PromptSource, promptSourceLiveFor } from "./agent/prompt-source.ts";
@@ -12,6 +12,7 @@ import {
   defaultConfigFor,
   loadConfig,
 } from "./config/config.ts";
+import { renderDetachedStarted, renderDetachedStopped } from "./detach/render.ts";
 import { renderPlan } from "./dispatch/render.ts";
 import { AgentCliRecordingLive } from "./dry-run/agent-cli.ts";
 import { ForgeRecordingLive } from "./dry-run/forge.ts";
@@ -92,6 +93,14 @@ const renderConsoleEvent = (event: ReporterEvent): string => {
       return `stopping '${event.branch}' (pid ${event.pid})`;
     case "RunStopped":
       return `stopped '${event.branch}'`;
+    // `--detach` (T153): the child's own lines verbatim, then the three
+    // start lines, or which of the two cases a stopped child was.
+    case "DetachedOutput":
+      return event.line;
+    case "DetachedStarted":
+      return renderDetachedStarted(event);
+    case "DetachedStopped":
+      return renderDetachedStopped(event);
     // The rehearsal's own line (T15), under `would  ` for the reason a warning
     // sits under `WARN  `: a dry run's console is the plan block followed by
     // the mutations it did not perform, and the two read as one column.
@@ -432,3 +441,16 @@ export const appLayerFor = (
   | Prompt,
   ConfigError
 > => appCompositionFor(argv)(repoRoot, stdinIsTTY);
+
+// `--detach` beside `--dry-run` (T153), refused from the command line before
+// any child starts. It is decided here because `detach/detach.ts` may not name
+// the flag (`scripts/check-bans.ts`) — the same reason `isModifiersOnly` lives
+// here rather than in the picker — and it asks exactly what
+// `appCompositionFor` asks, so the parent refuses the words the child would
+// have rehearsed.
+export const detachRehearsalRefusal = (argv: ReadonlyArray<string>): Option.Option<string> =>
+  appCompositionFor(argv) === appDryRunLiveFor
+    ? Option.some(
+        `--detach and ${DRY_RUN_FLAG} pull opposite ways — a rehearsal holds no lock, so there is nothing to wait for. Rehearse in the foreground`,
+      )
+    : Option.none();

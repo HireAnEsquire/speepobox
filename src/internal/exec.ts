@@ -2,6 +2,8 @@
 // enforced by scripts/check-bans.ts. It is an internal module, not a tag — a
 // tag here would recreate the Shell.exec anti-pattern; the seam tests fake is
 // CommandExecutor, which stays in the requirements channel.
+import { spawn } from "node:child_process";
+import { closeSync, openSync } from "node:fs";
 import { Command } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import type { PlatformError } from "@effect/platform/Error";
@@ -347,3 +349,98 @@ export const execInteractive = (
     Command.exitCode,
     Effect.mapError((error) => new ExecError({ command, detail: error.message })),
   );
+
+// The chokepoint's fifth shape, and **the one exception in `src/`** (T153):
+// a child that is started and **not** run to completion, under the parent's
+// whole environment rather than the allowlist. It exists for exactly one
+// caller — `detach/detach.ts`, which starts the package's own entrypoint as
+// the run `--detach` hands back — and both halves of the exception are about
+// what that child is.
+//
+// **Not run to completion**, because the point is that it outlives this
+// process: node's `detached: true` puts it in a new session, so a hangup to
+// the terminal that started the parent never reaches it, and it is `unref`'d
+// once it has started so the parent can exit while it runs. `Command` has no
+// spelling for either, which is why this entry speaks `node:child_process`.
+//
+// **The whole environment**, passed in by `bin.ts` from `process.env` —
+// because the child is speepobox, which resolves the credential itself
+// (`agent/credential.ts`) and applies the allowlist to every child *it*
+// spawns. The allowlist would be wrong here: it carries no credential, by rule
+// (T23), so a token exported in the dispatcher's shell would be dropped on the
+// way to the one process that is supposed to resolve it. Nothing else in
+// `src/` may spawn with an inherited environment.
+//
+// Stdin is `/dev/null`; stdout and stderr both go to `outFile`, opened for
+// appending — the caller created and truncated it, and reads it back while
+// the child writes.
+export interface DetachedChild {
+  readonly pid: number;
+  // Whether the child has exited. A child this process has not reaped keeps
+  // its pid, so the handle below never signals a stranger.
+  readonly exited: Effect.Effect<boolean>;
+  // SIGINT, and nothing else: a SIGKILL'd dispatcher skips its finalizers and
+  // strands its lock and its container. A child that has already exited is
+  // not signalled.
+  readonly interrupt: Effect.Effect<void>;
+}
+
+export const execDetached = (
+  env: Readonly<Record<string, string | undefined>>,
+  outFile: string,
+  command: string,
+  ...args: ReadonlyArray<string>
+): Effect.Effect<DetachedChild, ExecError> =>
+  Effect.async<DetachedChild, ExecError>((resume) => {
+    const failed = (error: unknown) =>
+      Effect.fail(
+        new ExecError({
+          command,
+          detail: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    let out: number;
+    try {
+      out = openSync(outFile, "a");
+    } catch (error) {
+      resume(failed(error));
+      return;
+    }
+    const child = spawn(command, args, {
+      detached: true,
+      env: { ...env },
+      stdio: ["ignore", out, out],
+    });
+    let settled = false;
+    let exited = false;
+    const settle = () => {
+      settled = true;
+      closeSync(out);
+    };
+    child.once("exit", () => {
+      exited = true;
+    });
+    // Kept attached past the spawn: an `error` nobody listens for is thrown.
+    child.on("error", (error) => {
+      if (!settled) {
+        exited = true;
+        settle();
+        resume(failed(error));
+      }
+    });
+    child.once("spawn", () => {
+      settle();
+      child.unref();
+      resume(
+        Effect.succeed({
+          pid: child.pid ?? 0,
+          exited: Effect.sync(() => exited),
+          interrupt: Effect.sync(() => {
+            if (!exited) {
+              child.kill("SIGINT");
+            }
+          }),
+        }),
+      );
+    });
+  });

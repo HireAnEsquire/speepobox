@@ -728,7 +728,22 @@ spawn `.speepobox/speepobox` the same way **not for that reason**: their childre
 and nothing holds a live pid. What they need is a whole environment written by hand — `PATH`,
 `HOME`, `XDG_CACHE_HOME`, and nothing inherited — which the chokepoint has no spelling for
 (`execUnder` carries one variable), and growing `src/` a way to hand a child a whole environment
-for tests alone is the wrong trade (T125). Nothing in `src/` may do either.
+for tests alone is the wrong trade (T125). Nothing in `src/` may do either, except the one entry
+below.
+
+**One exception in `src/`: `execDetached`, which the chokepoint itself holds** (T153). `--detach`
+starts the package's own entrypoint in a new session (`detached: true`) and `unref`s it, so the run
+outlives the process that started it. `Command` has no spelling for that, so this entry is the one
+in `internal/exec.ts` that speaks `node:child_process`, does not run its child to completion, and
+does not apply the allowlist. The child gets the parent's **whole** environment, passed in by
+`bin.ts` from `process.env`. The child is speepobox, which resolves the credential itself
+(`agent/credential.ts`) and applies the allowlist to every child it spawns. The allowlist would be
+wrong for this child: it carries no credential, by rule (T23), so a token exported in the
+dispatcher's shell would never reach the one process that resolves it. The handle sends SIGINT and
+no other signal. Its only caller is `detach/detach.ts`, and the command is always the package's own
+entrypoint. **Nothing else in `src/` may spawn with an inherited environment**: a second caller of
+`execDetached`, or a second inheriting spawn beside it, is how the parent's credentials leak into
+agent containers (05 Q3).
 
 **A secret crosses into a container by name, never by value.** `SandboxEnvVar` renders
 `-e NAME=value` when it has one and bare `-e NAME` when it does not; the credential is the second,

@@ -698,9 +698,11 @@ const olderTemplate = (repoRoot: string, name: StampedTemplate) =>
 const RETIRED_NAME = "bessemer";
 const underRetiredName = (text: string) => text.replaceAll("speepobox", RETIRED_NAME);
 
-// The v3 .gitignore template, recovered from v4 by dropping the `*.refresh`
-// entry T147 added.
-const gitignoreV3 = (v4: string) => {
+// The v3 .gitignore template, recovered from v5 by dropping the `/detached/`
+// entry T153 added and the `*.refresh` entry T147 added.
+const gitignoreV3 = (v5: string) => {
+  const v4 = v5.replace(/\n# A detached run's console,[^]*?\n\/detached\/\n/, "\n");
+  expect(v4).not.toBe(v5);
   const v3 = v4.replace(/\n# A refresh's temp file,[^]*?\n\*\.refresh\n/, "\n");
   expect(v3).not.toBe(v4);
   return v3;
@@ -854,7 +856,7 @@ describe("init --diff", () => {
   // The upgrade an adopter scaffolded before T119 sees: the v1 .gitignore is
   // the v2 template with its runtime state unanchored, and the digest pins
   // that it is the text v1 actually shipped.
-  it.scoped("reports a v1 .gitignore behind the v4 template, showing the anchors", () =>
+  it.scoped("reports a v1 .gitignore behind the v5 template, showing the anchors", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
@@ -873,7 +875,7 @@ describe("init --diff", () => {
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
       expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "behind", "pristine"]);
-      expect(text).toContain("+++ templates/.gitignore v4");
+      expect(text).toContain("+++ templates/.gitignore v5");
       expect(text).toContain("+/logs/");
       expect(text).toContain("-logs/");
       expect(text).toContain("nothing of yours is lost");
@@ -978,7 +980,7 @@ describe("init --diff", () => {
       expect(drifted).toBe(1);
       expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "behind", "edited"]);
       expect(rendered).toContain("no stamp, read as v0");
-      expect(rendered).toContain("+# speepobox-template: .gitignore v4");
+      expect(rendered).toContain("+# speepobox-template: .gitignore v5");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 
