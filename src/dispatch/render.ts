@@ -132,8 +132,9 @@ export const renderPlan = (plan: DispatchPlan): string =>
 // `bin.ts` could not have asserted. `GcRefused` (T99) is the same kind of
 // member: `gc` is intercepted before the dispatch surface, and its refusal is
 // that same one line, and so are `InitRefused` (T114), `UpgradeRefused`
-// (T128), and `LogsRefused` (T151). `ImageBuildRefused` (T111) is `image build`'s, which is on the dispatch surface and refuses
-// before `Sandbox.build` is asked.
+// (T128), and `LogsRefused` (T151). `ImageBuildRefused` (T111) is `image
+// build`'s, which is on the dispatch surface and refuses before
+// `Sandbox.build` is asked.
 export type DispatchFailure =
   | GuardRefused
   | DockerUnavailable
