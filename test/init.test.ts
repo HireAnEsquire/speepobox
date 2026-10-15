@@ -665,6 +665,14 @@ const olderTemplate = (repoRoot: string, name: StampedTemplate) =>
 const RETIRED_NAME = "bessemer";
 const underRetiredName = (text: string) => text.replaceAll("speepobox", RETIRED_NAME);
 
+// The v3 .gitignore template, recovered from v4 by dropping the `*.refresh`
+// entry T147 added.
+const gitignoreV3 = (v4: string) => {
+  const v3 = v4.replace(/\n# A refresh's temp file,[^]*?\n\*\.refresh\n/, "\n");
+  expect(v3).not.toBe(v4);
+  return v3;
+};
+
 // The v2 Dockerfile template, recovered from v4 by putting back the old name
 // (T144) and the "No sudo" sentence T136 turned into the commented-out root
 // block.
@@ -813,11 +821,13 @@ describe("init --diff", () => {
   // The upgrade an adopter scaffolded before T119 sees: the v1 .gitignore is
   // the v2 template with its runtime state unanchored, and the digest pins
   // that it is the text v1 actually shipped.
-  it.scoped("reports a v1 .gitignore behind the v3 template, showing the anchors", () =>
+  it.scoped("reports a v1 .gitignore behind the v4 template, showing the anchors", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* scaffolded;
-      const v2 = underRetiredName(yield* fs.readFileString(join(templatesRoot, ".gitignore")));
+      const v2 = underRetiredName(
+        gitignoreV3(yield* fs.readFileString(join(templatesRoot, ".gitignore"))),
+      );
       const v1 = v2
         .replace(/^\/(config\.local\.toml|logs\/|locks\/|checkouts\/|runs\.jsonl)$/gm, "$1")
         .replace(/^# The agent credential;.*$/m, "# The agent credential.");
@@ -830,7 +840,7 @@ describe("init --diff", () => {
       const { drifted, snapshot, text } = yield* diff(repoRoot);
       expect(drifted).toBe(1);
       expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "behind", "pristine"]);
-      expect(text).toContain("+++ templates/.gitignore v3");
+      expect(text).toContain("+++ templates/.gitignore v4");
       expect(text).toContain("+/logs/");
       expect(text).toContain("-logs/");
       expect(text).toContain("nothing of yours is lost");
@@ -935,7 +945,7 @@ describe("init --diff", () => {
       expect(drifted).toBe(1);
       expect(standing(snapshot)[1]).toEqual([".speepobox/.gitignore", "behind", "edited"]);
       expect(rendered).toContain("no stamp, read as v0");
-      expect(rendered).toContain("+# speepobox-template: .gitignore v3");
+      expect(rendered).toContain("+# speepobox-template: .gitignore v4");
     }).pipe(Effect.provide(NodeContext.layer)),
   );
 

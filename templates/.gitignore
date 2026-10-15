@@ -15,3 +15,7 @@
 # The editor's session directories, `<purpose>-edit-<pid>-XXXXXX/` at the
 # runtime root. Anchored, so nothing under the tasks dir can match.
 /*-edit-*/
+# A refresh's temp file, `<file>.refresh`, left only if a refresh was
+# killed between its write and its rename. Unanchored, so one under image/
+# matches too.
+*.refresh
