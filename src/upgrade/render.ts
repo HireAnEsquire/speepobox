@@ -6,7 +6,7 @@
 // each says so in that slot instead.
 import { IMAGE_BUILD, REFRESH } from "../init/render.ts";
 import type { Release } from "../git/releases.ts";
-import type { PinnedBefore, RefreshOutcome, UpgradeSnapshot } from "./snapshot.ts";
+import type { PinnedBefore, RefreshOutcome, ShimUnrunnable, UpgradeSnapshot } from "./snapshot.ts";
 
 export const INIT_DIFF_COMMAND = ".speepobox/speepobox init --diff";
 
@@ -47,6 +47,9 @@ const outputLines = (output: string): ReadonlyArray<string> => {
   return trimmed === "" ? [] : ["", trimmed];
 };
 
+const shimWhy = (reason: ShimUnrunnable): string =>
+  typeof reason === "string" ? `is ${reason}` : `could not be read: ${reason.unreadable}`;
+
 const refreshLines = (
   snapshot: UpgradeSnapshot,
   refresh: RefreshOutcome,
@@ -70,7 +73,7 @@ const refreshLines = (
     case "NoShim":
       return [
         "",
-        `The scaffold was not refreshed: the shim .speepobox/speepobox is ${refresh.reason}. Once it can run, refresh with:`,
+        `The scaffold was not refreshed: the shim .speepobox/speepobox ${shimWhy(refresh.reason)}. Once it can run, refresh with:`,
         `  ${REFRESH}`,
         COMMIT_LINE,
       ];

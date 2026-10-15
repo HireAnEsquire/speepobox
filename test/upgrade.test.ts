@@ -678,6 +678,33 @@ describe("upgrade's refresh (T149)", () => {
       ),
   );
 
+  // A stat that fails for a reason but a missing file is not an absent shim:
+  // a shim that is a link to itself fails with ELOOP.
+  it.scoped("with a shim it cannot read, says so with the error, and still moves the pin", () =>
+    provideReal(
+      Effect.gen(function* () {
+        const f = yield* fixture([["v1"], ["v2"]], (shas) => pinOf(shas[0]!));
+        const fs = yield* FileSystem.FileSystem;
+        const shim = join(f.repoRoot, ".speepobox/speepobox");
+        yield* fs.symlink(shim, shim).pipe(Effect.orDie);
+        const { exit, events } = yield* run(f);
+        expect(Exit.isSuccess(exit)).toBe(true);
+        expect(yield* configIn(f.repoRoot)).toBe(configWith(pinOf(f.shas[1]!)));
+        const refresh = reportedRefresh(events);
+        expect(refresh).toMatchObject({
+          _tag: "NoShim",
+          reason: { unreadable: expect.stringContaining("ELOOP") },
+        });
+        const rendered = renderUpgrade(reported(events), refresh);
+        expect(rendered).toContain(
+          "The scaffold was not refreshed: the shim .speepobox/speepobox could not be read: ",
+        );
+        expect(rendered).not.toContain("is absent");
+        expect(rendered).toContain(`  ${REFRESH}`);
+      }),
+    ),
+  );
+
   it.scoped("on a child that exits nonzero, keeps the moved pin, quotes stderr, and fails", () =>
     provideReal(
       Effect.gen(function* () {

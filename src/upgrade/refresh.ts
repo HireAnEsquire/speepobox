@@ -18,7 +18,7 @@ import { SHIM } from "../init/stamp.ts";
 import { exec } from "../internal/exec.ts";
 import { UpgradeRefused } from "./argv.ts";
 import { pinnedRelease, UPGRADE_COMMAND } from "./render.ts";
-import type { RefreshOutcome, UpgradeSnapshot } from "./snapshot.ts";
+import type { RefreshOutcome, ShimUnrunnable, UpgradeSnapshot } from "./snapshot.ts";
 
 // The two files whose change means the image is stale, as the scaffold names
 // them.
@@ -32,17 +32,27 @@ export const isRollback = (snapshot: UpgradeSnapshot): boolean =>
 
 // Whether the shim is there and carries an execute bit — the question the
 // kernel would answer at the spawn, asked first so the answer is a sentence.
+// Only a missing file is absent: any other failure says the shim could not be
+// read, in the error's own words.
 const shimState = (
   fs: FileSystem.FileSystem,
   path: string,
-): Effect.Effect<Option.Option<"absent" | "not executable">> =>
+): Effect.Effect<Option.Option<ShimUnrunnable>> =>
   fs.stat(path).pipe(
-    Effect.map((info) =>
+    Effect.map((info): Option.Option<ShimUnrunnable> =>
       info.type === "File" && (info.mode & 0o111) !== 0
         ? Option.none()
-        : Option.some<"absent" | "not executable">("not executable"),
+        : Option.some("not executable"),
     ),
-    Effect.orElseSucceed(() => Option.some<"absent" | "not executable">("absent")),
+    Effect.catchAll((error) =>
+      Effect.succeed(
+        Option.some<ShimUnrunnable>(
+          error._tag === "SystemError" && error.reason === "NotFound"
+            ? "absent"
+            : { unreadable: error.message },
+        ),
+      ),
+    ),
   );
 
 // Each image input's bytes, or none where it cannot be read: "changed" is the
