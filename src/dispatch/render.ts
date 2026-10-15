@@ -11,6 +11,7 @@ import type { DockerUnavailable, GhUnavailable, ImageUnavailable } from "../doct
 import type { ForgeError } from "../forge/forge.ts";
 import type { GcRefused } from "../gc/argv.ts";
 import type { InitRefused } from "../init/argv.ts";
+import type { LogsRefused } from "../logs/argv.ts";
 import type { StopRefused } from "../stop/stop.ts";
 import type { UpgradeRefused } from "../upgrade/argv.ts";
 import type { GitError } from "../git/git.ts";
@@ -131,9 +132,10 @@ export const renderPlan = (plan: DispatchPlan): string =>
 // on stderr and the same exit 1, rendered here rather than in a second shape
 // `bin.ts` could not have asserted. `GcRefused` (T99) is the same kind of
 // member: `gc` is intercepted before the dispatch surface, and its refusal is
-// that same one line, and so are `InitRefused` (T114), `UpgradeRefused` (T128), and `StopRefused` (T152). `ImageBuildRefused`
-// (T111) is `image build`'s, which is on the dispatch surface and refuses
-// before `Sandbox.build` is asked.
+// that same one line, and so are `InitRefused` (T114), `UpgradeRefused`
+// (T128), `LogsRefused` (T151), and `StopRefused` (T152).
+// `ImageBuildRefused` (T111) is `image build`'s, which is on the dispatch
+// surface and refuses before `Sandbox.build` is asked.
 export type DispatchFailure =
   | GuardRefused
   | DockerUnavailable
@@ -152,6 +154,7 @@ export type DispatchFailure =
   | GcRefused
   | InitRefused
   | UpgradeRefused
+  | LogsRefused
   | StopRefused
   | ImageBuildRefused
   | ValidationError;
@@ -180,6 +183,7 @@ const label = (
     | GcRefused
     | InitRefused
     | UpgradeRefused
+    | LogsRefused
     | StopRefused
     | ImageBuildRefused,
 ): string => {

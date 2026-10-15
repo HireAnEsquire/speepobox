@@ -51,6 +51,10 @@ export type ReporterEvent =
       readonly snapshot: UpgradeSnapshot;
       readonly refresh: RefreshOutcome;
     }
+  // `logs` (T151): the file it chose, then that file a line at a time, as
+  // the file holds it. Not a step notification: reading a log is not a run.
+  | { readonly _tag: "LogOpened"; readonly path: string }
+  | { readonly _tag: "LogLine"; readonly line: string }
   // `stop` sent its one SIGINT to a branch's live run, and the run tearing
   // down after it (T152). Not step notifications: stop is not a run, and the
   // run it interrupts says how it ended itself.

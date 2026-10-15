@@ -19,6 +19,7 @@ import { gc } from "./gc/gc.ts";
 import { imageBuild } from "./image/build.ts";
 import { resolveForgeRepo } from "./forge/forge.ts";
 import { init } from "./init/init.ts";
+import { logs } from "./logs/logs.ts";
 import { resolveDispatcherRevision, toDispatcher } from "./git/dispatcher-revision.ts";
 import { readHeadReleases } from "./git/releases.ts";
 import { IssueStoreLive } from "./issues/issue-store.ts";
@@ -59,6 +60,11 @@ Usage:
                       Off a terminal, this text
   speepobox status    read-only: what's running, what just finished, where the
                       PRs are. Always exit 0; each half degrades on its own
+  speepobox logs <branch> [--follow]
+                      read-only: the path and contents of <branch>'s newest run
+                      log. --follow keeps printing what the run appends while
+                      it is live, and exits when it ends. Exit 1 if there is
+                      no log
   speepobox stop <branch>
                       interrupt <branch>'s live run with SIGINT and wait for it
                       to tear down. The commits are kept and the row records
@@ -118,7 +124,7 @@ const stopHost: StopHost = {
     }),
 };
 
-// status, doctor, gc, init, upgrade, and stop are intercepted before flag
+// status, logs, doctor, gc, init, upgrade, and stop are intercepted before flag
 // parsing and before any preflight (03 §1.1): they must work when the thing
 // they inspect is broken, so they run on the read-only slice of appLiveFor.
 // The dispatch surface (T3+) is what gets the full appLiveFor.
@@ -266,6 +272,14 @@ const main = (fullArgv: ReadonlyArray<string>): Effect.Effect<void> => {
   switch (argv[0]) {
     case "status":
       return status({ repoRoot }).pipe(Effect.provide(appBaseLiveFor(repoRoot, stdinIsTTY)));
+    // logs parses its own words (`logs/argv.ts`) and reads files only (T151):
+    // the read-only slice as `status` gets it, so a malformed `config.toml`
+    // falls back to the committed defaults and the log is still found.
+    case "logs":
+      return logs({ argv: argv.slice(1) }).pipe(
+        Effect.provide(appBaseLiveFor(repoRoot, stdinIsTTY)),
+        Effect.catchAll(reportFailure),
+      );
     // `stop` (T152) on the read-only slice, as `status` is: it reads the lock
     // and `ps`, sends one SIGINT, and writes nothing. The two host calls are
     // made here, so no test of `stop/stop.ts` signals a real process.

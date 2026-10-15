@@ -81,6 +81,12 @@ const renderConsoleEvent = (event: ReporterEvent): string => {
       return renderInit(event.snapshot);
     case "UpgradeReported":
       return renderUpgrade(event.snapshot, event.refresh);
+    // `logs` (T151): the path on a line of its own, so a reader can open the
+    // file elsewhere, then the file verbatim.
+    case "LogOpened":
+      return `==> ${event.path} <==`;
+    case "LogLine":
+      return event.line;
     // `stop` (T152): the two lines it prints around its wait.
     case "RunStopping":
       return `stopping '${event.branch}' (pid ${event.pid})`;
