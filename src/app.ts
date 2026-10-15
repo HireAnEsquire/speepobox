@@ -87,6 +87,11 @@ const renderConsoleEvent = (event: ReporterEvent): string => {
       return `==> ${event.path} <==`;
     case "LogLine":
       return event.line;
+    // `stop` (T152): the two lines it prints around its wait.
+    case "RunStopping":
+      return `stopping '${event.branch}' (pid ${event.pid})`;
+    case "RunStopped":
+      return `stopped '${event.branch}'`;
     // The rehearsal's own line (T15), under `would  ` for the reason a warning
     // sits under `WARN  `: a dry run's console is the plan block followed by
     // the mutations it did not perform, and the two read as one column.

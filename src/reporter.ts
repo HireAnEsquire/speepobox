@@ -55,6 +55,11 @@ export type ReporterEvent =
   // the file holds it. Not a step notification: reading a log is not a run.
   | { readonly _tag: "LogOpened"; readonly path: string }
   | { readonly _tag: "LogLine"; readonly line: string }
+  // `stop` sent its one SIGINT to a branch's live run, and the run tearing
+  // down after it (T152). Not step notifications: stop is not a run, and the
+  // run it interrupts says how it ended itself.
+  | { readonly _tag: "RunStopping"; readonly branch: string; readonly pid: number }
+  | { readonly _tag: "RunStopped"; readonly branch: string }
   // What a dispatch resolved to before it acquired anything. Emitted once,
   // by the one derivation, so T15's `--dry-run` prints this rather than
   // re-deriving a second answer (05 Q20).

@@ -207,6 +207,9 @@ export const stepNotificationBodyFor = (event: ReporterEvent): Option.Option<str
     // Nor is reading a log (T151).
     case "LogOpened":
     case "LogLine":
+    // Nor is stop (T152): the run it interrupts sends its own terminal one.
+    case "RunStopping":
+    case "RunStopped":
     case "PlanResolved":
     case "ResourceReleased":
     case "PromptAssembled":
