@@ -65,7 +65,8 @@ Usage:
                       deleted. Exit 0
   speepobox init [--base <ref>] [--image <tag>] [--refresh]
                       write the scaffold into .speepobox/: only files that are
-                      absent, each reported wrote or kept, then the next steps.
+                      absent, each reported wrote or kept, then the next steps
+                      where a file was written.
                       The base defaults to origin/HEAD, the image to the repo
                       directory's name, tool-sha to this package's revision.
                       --refresh also overwrites each file that is behind its
